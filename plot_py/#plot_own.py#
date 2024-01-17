@@ -1,0 +1,60 @@
+#%%
+import numpy as np
+import matplotlib.pyplot as plt
+import os, sys
+import pickle
+
+vul_data = '../output/Earth.vul'
+
+with open(vul_data, 'rb') as handle:
+  data = pickle.load(handle)
+
+vul_data_rainout_high_henrys = '../output/Earth_rainout_high_henrys.vul'
+
+with open(vul_data_rainout_high_henrys, 'rb') as handle:
+  data_rainout_high_henrys = pickle.load(handle)
+# %%
+vul_data_rainout = '../output/Earth_rainout.vul'
+
+with open(vul_data_rainout, 'rb') as handle:
+  data_rainout = pickle.load(handle)
+
+#%%
+vulcan_spec = data['variable']['species']
+spec = ['HCN', 'H2O_l_s']
+#%%
+for sp in spec:
+  plt.plot(data['variable']['ymix'][:,vulcan_spec.index(sp)]-data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)], data['atm']['zco'][1:]/1.e5, label = sp)
+
+plt.xlabel(r'$X-X_{rainout}$')
+plt.ylabel('height')
+plt.legend()
+# %%
+plt.plot(data['variable']['ymix'][:,vulcan_spec.index('HCN')]-data_rainout['variable']['ymix'][:,vulcan_spec.index('HCN')], data['atm']['zco'][1:]/1.e5)
+# %%
+vul_data_rainout_const_iccw = '../output/Earth_rainout_GEOS-Chem_const_iccw.vul'
+
+with open(vul_data_rainout_const_iccw, 'rb') as handle:
+  data_rainout_const_iccw = pickle.load(handle)
+
+for sp in spec:
+  plt.plot(data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)]-data_rainout_const_iccw['variable']['ymix'][:,vulcan_spec.index(sp)], data_rainout['atm']['zco'][1:]/1.e5, label = sp)
+plt.xlabel(r'$X_{rainout}-X_{rainout,const iccw}$')
+plt.ylabel('height')
+plt.legend()
+# %%
+plt.plot(data_rainout['variable']['ymix'][:,vulcan_spec.index('HCN')]-data_rainout_const_iccw['variable']['ymix'][:,vulcan_spec.index('HCN')], data['atm']['zco'][1:]/1.e5)
+# %%
+plt.plot(data['variable']['ymix'][:,vulcan_spec.index('HCN')], data['atm']['zco'][1:]/1.e5)
+# %%
+vul_data_rainout_henrys = '../output/Earth_rainout_GEOS-Chem_henrys.vul'
+
+with open(vul_data_rainout_henrys, 'rb') as handle:
+  vul_data_rainout_henrys = pickle.load(handle)
+
+for sp in spec:
+  plt.plot(data['variable']['ymix'][:,vulcan_spec.index(sp)]-vul_data_rainout_henrys['variable']['ymix'][:,vulcan_spec.index(sp)], data['atm']['zco'][1:]/1.e5, label = sp)
+plt.xlabel(r'$X-X_{rainout,henrys}$')
+plt.ylabel('height')
+plt.legend()
+# %%
