@@ -1429,7 +1429,7 @@ class Integration(object):
         return var
     
     def rainout(self, var, atm):
-        KH = 100000. # efficient Henry's law constant, only for HCN for now..
+        KH = 10. # efficient Henry's law constant, only for HCN for now..
         #L = 1 # cloud water content, gm^-3, I guess could convert y_h20_l_s?
         # rather define L according to curent water content (could use constant but convert to cm3 water/cm3 air....)
         #R = 8.314 # gas constant, J/molK
@@ -1450,18 +1450,19 @@ class Integration(object):
         Lambda = 1.
         b = 1.
 
-        j_cloud = np.nonzero(y_h2o_l_s)[0]
-        j_cloud_bottom = j_cloud[0]
-        j_cloud_top = j_cloud[0]
-        for i in range(j_cloud_bottom, len(j_cloud)-1):
-            if j_cloud[i+1] - j_cloud[i] == 1:
-                continue
-            else:
-                j_cloud_top = i
+        j_no_cloud = np.where(y_h2o_l_s < 1.e1)[0]
+        j_cloud_bot = 0
+        j_cloud_top = 0
+        for i in range(len(j_no_cloud)-1):
+            if j_no_cloud[i+1] - j_no_cloud[i] != 1:
+                j_cloud_bot = j_no_cloud[i]
+                j_cloud_top = j_no_cloud[i+1]
                 break
+            else:
+                continue
 
-        # test
-
+        
+        # maybe invert the for cycle and add 0 there but with an if statement so only the washout is worked there
         
         for j in range(1,nz-1):
             dz_ave = 0.5*(dzi[j-1] + dzi[j])
@@ -1490,6 +1491,26 @@ class Integration(object):
                     else:
                         var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
                         var.k[re+1][j] = 0.
+
+        # for testing purposes, washout will be separate although it means more calculations
+        for j in range(j_cloud_top-1, -1, -1): # -1 is to include 0
+            # initialising k_h2o and dz_ave so can always read the previous value
+            dz_ave = 0.5*(dzi[j_cloud_top-1] + dzi[j_cloud_top])
+            k_h2o = 1./dz_ave * ( Kzz[j_cloud_top]/dzi[j_cloud_top]*(y_h2o[j_cloud_top+1]+y_h2o[j_cloud_top])/2. + Kzz[j_cloud_top-1]/dzi[j_cloud_top-1]*(y_h2o[j_cloud_top]+y_h2o[j_cloud_top-1])/2. ) /y_h2o[j_cloud_top]
+            dz_ave_bot = 0.5*(dzi[j_cloud_bot-1] + dzi[j_cloud_bot])
+            k_h2o_bot = 1./dz_ave_bot * ( Kzz[j_cloud_bot]/dzi[j_cloud_bot]*(y_h2o[j_cloud_bot+1]+y_h2o[j_cloud_bot])/2. + Kzz[j_cloud_bot-1]/dzi[j_cloud_bot-1]*(y_h2o[j_cloud_bot]+y_h2o[j_cloud_bot-1])/2. ) /y_h2o[j_cloud_bot]
+            if j != 0 and j >= j_cloud_bot:
+                dz_ave_new = 0.5*(dzi[j-1] + dzi[j])
+                k_h2o_new = 1./dz_ave_new * ( Kzz[j]/dzi[j]*(y_h2o[j+1]+y_h2o[j])/2. + Kzz[j-1]/dzi[j-1]*(y_h2o[j]+y_h2o[j-1])/2. ) /y_h2o[j]
+                
+                k_wash = Lambda * ( np.min([k_h2o_new*L[j],k_h2o*L[j+1]]) )**b
+                k_h2o = k_h2o_new
+            else: # this is the layers below cloud where there's no clouds
+                k_wash = Lambda * ( k_h2o_bot*L[j_cloud_bot] )**b
+            for re in var.rainout_re_list:
+                if var.Rf[re] == 'HCN -> HCN_rain':
+                    var.k[re][j] += k_wash
+
         return var
     
 class ODESolver(object):

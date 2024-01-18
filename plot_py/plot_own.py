@@ -44,6 +44,14 @@ with open(vul_data_corrected_high_henrys, 'rb') as handle:
 vul_data_corrected_mod = '/home/s2555875/VULCAN-master/output/mod_rate_calc.vul'
 with open(vul_data_corrected_mod, 'rb') as handle:
   data_corrected_mod = pickle.load(handle)
+
+vul_data_cor_mod_top = '/home/s2555875/VULCAN-master/output/mod_with_top.vul'
+with open(vul_data_cor_mod_top, 'rb') as handle:
+  data_cor_mod_top = pickle.load(handle)
+
+vul_data_cor_mod_bot = '/home/s2555875/VULCAN-master/output/mod_with_bot.vul'
+with open(vul_data_cor_mod_bot, 'rb') as handle:
+  data_cor_mod_bot = pickle.load(handle)
 #%%
 for sp in spec:
   plt.plot(data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)]-data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)], data['atm']['zco'][1:]/1.e5, label = sp)
@@ -110,7 +118,7 @@ for sp in spec:
 plt.xlabel(r'$X_{rainout}-X$')
 plt.ylabel('Height [km]')
 plt.legend()
-plt.savefig('../plot/corrected_h2o_hcn_mixing.png')
+plt.savefig('../plot/corrected_h2o_hcn_mixing.pdf')
 #%%
 plt.plot(data_corrected_list_use['variable']['y'][:,vulcan_spec.index('HCN')]-data_h2o_bot['variable']['y'][:,vulcan_spec.index('HCN')], data_h2o_bot['atm']['zco'][1:]/1.e5, label = r'$KH = 10$')
 plt.plot(data_corrected_high_henrys['variable']['y'][:,vulcan_spec.index('HCN')]-data_h2o_bot['variable']['y'][:,vulcan_spec.index('HCN')], data_h2o_bot['atm']['zco'][1:]/1.e5, label = r'$KH = 100000$')
@@ -118,7 +126,7 @@ plt.plot(data_corrected_high_henrys['variable']['y'][:,vulcan_spec.index('HCN')]
 plt.xlabel(r'$n_{rainout}-n$')
 plt.ylabel('Height [km]')
 plt.legend()
-plt.savefig('../plot/compare_henrys_const_number_dens.png')
+plt.savefig('../plot/compare_henrys_const_number_dens.pdf')
 #%%
 plt.plot(data_corrected_list_use['variable']['ymix'][:,vulcan_spec.index('HCN')]-data_h2o_bot['variable']['ymix'][:,vulcan_spec.index('HCN')], data_h2o_bot['atm']['zco'][1:]/1.e5, label = r'$KH = 10$')
 plt.plot(data_corrected_high_henrys['variable']['ymix'][:,vulcan_spec.index('HCN')]-data_h2o_bot['variable']['ymix'][:,vulcan_spec.index('HCN')], data_h2o_bot['atm']['zco'][1:]/1.e5, label = r'$KH = 100000$')
@@ -126,5 +134,5 @@ plt.plot(data_corrected_high_henrys['variable']['ymix'][:,vulcan_spec.index('HCN
 plt.xlabel(r'$X_{rainout}-X$')
 plt.ylabel('Height [km]')
 plt.legend()
-plt.savefig('../plot/compare_henrys_const_mixing.png')
+plt.savefig('../plot/compare_henrys_const_mixing.pdf')
 # %%
