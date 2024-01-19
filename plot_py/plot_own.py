@@ -52,6 +52,10 @@ with open(vul_data_cor_mod_top, 'rb') as handle:
 vul_data_cor_mod_bot = '/home/s2555875/VULCAN-master/output/mod_with_bot.vul'
 with open(vul_data_cor_mod_bot, 'rb') as handle:
   data_cor_mod_bot = pickle.load(handle)
+
+vul_data_washout = '../output/washout.vul'
+with open(vul_data_washout, 'rb') as handle:
+  data_washout = pickle.load(handle)
 #%%
 for sp in spec:
   plt.plot(data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)]-data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)], data['atm']['zco'][1:]/1.e5, label = sp)
@@ -136,3 +140,15 @@ plt.ylabel('Height [km]')
 plt.legend()
 plt.savefig('../plot/compare_henrys_const_mixing.pdf')
 # %%
+fig, ax1 = plt.subplots()
+
+ax1.plot(data_corrected_list_use['variable']['y'][:,vulcan_spec.index('HCN')], data_h2o_bot['atm']['zco'][1:]/1.e5, label = 'No washout')
+ax1.set_xlabel(r'$n_{scavenging}$')
+ax1.set_ylabel('Height [km]')
+
+ax2 = ax1.twiny()
+ax2.plot(data_corrected_list_use['variable']['y'][:,vulcan_spec.index('HCN')]-data_washout['variable']['y'][:,vulcan_spec.index('HCN')], data_h2o_bot['atm']['zco'][1:]/1.e5, color = 'orange', linestyle = '--', label = 'Difference')
+ax2.set_xlabel(r'$n_{scavenging} - n_{washout}$')
+fig.legend(loc = (0.71,0.76))
+fig.savefig('../plot/hcn_washout_compare.pdf')
+#%%
