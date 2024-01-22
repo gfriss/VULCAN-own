@@ -1465,32 +1465,33 @@ class Integration(object):
         # maybe invert the for cycle and add 0 there but with an if statement so only the washout is worked there
         
         for j in range(1,nz-1):
-            dz_ave = 0.5*(dzi[j-1] + dzi[j])
-            k_h2o = 1./dz_ave * ( Kzz[j]/dzi[j]*(y_h2o[j+1]+y_h2o[j])/2. + Kzz[j-1]/dzi[j-1]*(y_h2o[j]+y_h2o[j-1])/2. ) /y_h2o[j]
-                    
-            for re in var.rainout_re_list:
-                if var.Rf[re] == 'H2O_l_s -> H2O_rain':# and 'H2O' in vulcan_cfg.condense_sp:
-                    var.k[re][j] = k_h2o
-                    var.k[re+1][j] = 0.
-                elif var.Rf[re] == 'HCN -> HCN_rain':
-                    if Tco[j] >= 268:
-                        Retention = 1.
-                    else:
-                        Retention = 0.02 # temporal value, still needs to validate but is around this value for other species
-                    
-                    #Pr = k_h2o * y_h2o_l_s[j] / ysum[j]
-                    f_hcn_L = KH*L[j]*R*Tco[j] / (1 + KH*L[j]*R*Tco[j])
-                    k_hcn = Retention*f_hcn_L*k_h2o
-                    #f = Pr / (k_h2o*L) # don't know how to get Pr from VULCAN...
-                    f = 1.
-                    F = f * (1 - np.exp(-k_hcn*var.dt))
-                    # just checking
-                    if F >= 1.:
-                        print('F is greater than 1')
-                        exit()
-                    else:
-                        var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
+            if y_h2o[j] != 0.:
+                dz_ave = 0.5*(dzi[j-1] + dzi[j])
+                k_h2o = 1./dz_ave * ( Kzz[j]/dzi[j]*(y_h2o[j+1]+y_h2o[j])/2. + Kzz[j-1]/dzi[j-1]*(y_h2o[j]+y_h2o[j-1])/2. ) /y_h2o[j]
+                        
+                for re in var.rainout_re_list:
+                    if var.Rf[re] == 'H2O_l_s -> H2O_rain':# and 'H2O' in vulcan_cfg.condense_sp:
+                        var.k[re][j] = k_h2o
                         var.k[re+1][j] = 0.
+                    elif var.Rf[re] == 'HCN -> HCN_rain':
+                        if Tco[j] >= 268:
+                            Retention = 1.
+                        else:
+                            Retention = 0.02 # temporal value, still needs to validate but is around this value for other species
+                        
+                        #Pr = k_h2o * y_h2o_l_s[j] / ysum[j]
+                        f_hcn_L = KH*L[j]*R*Tco[j] / (1 + KH*L[j]*R*Tco[j])
+                        k_hcn = Retention*f_hcn_L*k_h2o
+                        #f = Pr / (k_h2o*L) # don't know how to get Pr from VULCAN...
+                        f = 1.
+                        F = f * (1 - np.exp(-k_hcn*var.dt))
+                        # just checking
+                        if F >= 1.:
+                            print('F is greater than 1')
+                            exit()
+                        else:
+                            var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
+                            var.k[re+1][j] = 0.
 
         # for testing purposes, washout will be separate although it means more calculations
         for j in range(j_cloud_top-1, -1, -1): # -1 is to include 0
