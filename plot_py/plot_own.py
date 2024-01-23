@@ -56,6 +56,14 @@ with open(vul_data_cor_mod_bot, 'rb') as handle:
 vul_data_washout = '../output/washout.vul'
 with open(vul_data_washout, 'rb') as handle:
   data_washout = pickle.load(handle)
+
+vul_data_Pearce_A_like = '../output/Pearce_A_like.vul'
+with open(vul_data_Pearce_A_like, 'rb') as handle:
+  data_Pearce_A_like = pickle.load(handle)
+
+vul_data_refined_param = '../output/refined_param.vul'
+with open(vul_data_refined_param, 'rb') as handle:
+  data_refined_param = pickle.load(handle)
 #%%
 for sp in spec:
   plt.plot(data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)]-data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)], data['atm']['zco'][1:]/1.e5, label = sp)

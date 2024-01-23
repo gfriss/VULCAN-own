@@ -1462,12 +1462,19 @@ class Integration(object):
                 continue
 
         
-        # maybe invert the for cycle and add 0 there but with an if statement so only the washout is worked there
         
         for j in range(1,nz-1):
             if y_h2o[j] != 0.:
                 dz_ave = 0.5*(dzi[j-1] + dzi[j])
-                k_h2o = 1./dz_ave * ( Kzz[j]/dzi[j]*(y_h2o[j+1]+y_h2o[j])/2. + Kzz[j-1]/dzi[j-1]*(y_h2o[j]+y_h2o[j-1])/2. ) /y_h2o[j]
+                y_tot_plus = (ysum[j+1] + ysum[j]) / 2.
+                y_tot_minus = (ysum[j-1] + ysum[j]) / 2.
+                X_plus = y_h2o[j+1]/ysum[j+1]
+                X_j = y_h2o[j]/ysum[j]
+                X_minus = y_h2o[j-1]/ysum[j-1]
+                phi_plus = Kzz[j] * y_tot_plus * (X_plus - X_j) / dzi[j]
+                phi_minus = Kzz[j-1] * y_tot_minus * (X_j - X_minus) / dzi[j-1]
+                k_h2o = 1/dz_ave * (phi_plus - phi_minus) / y_h2o[j]
+                #k_h2o = 1./dz_ave * ( Kzz[j]/dzi[j]*(y_h2o[j+1]+y_h2o[j])/2. + Kzz[j-1]/dzi[j-1]*(y_h2o[j]+y_h2o[j-1])/2. ) /y_h2o[j]
                         
                 for re in var.rainout_re_list:
                     if var.Rf[re] == 'H2O_l_s -> H2O_rain':# and 'H2O' in vulcan_cfg.condense_sp:
@@ -1493,24 +1500,76 @@ class Integration(object):
                             var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
                             var.k[re+1][j] = 0.
 
-        # for testing purposes, washout will be separate although it means more calculations
-        for j in range(j_cloud_top-1, -1, -1): # -1 is to include 0
-            # initialising k_h2o and dz_ave so can always read the previous value
-            dz_ave = 0.5*(dzi[j_cloud_top-1] + dzi[j_cloud_top])
-            k_h2o = 1./dz_ave * ( Kzz[j_cloud_top]/dzi[j_cloud_top]*(y_h2o[j_cloud_top+1]+y_h2o[j_cloud_top])/2. + Kzz[j_cloud_top-1]/dzi[j_cloud_top-1]*(y_h2o[j_cloud_top]+y_h2o[j_cloud_top-1])/2. ) /y_h2o[j_cloud_top]
-            dz_ave_bot = 0.5*(dzi[j_cloud_bot-1] + dzi[j_cloud_bot])
-            k_h2o_bot = 1./dz_ave_bot * ( Kzz[j_cloud_bot]/dzi[j_cloud_bot]*(y_h2o[j_cloud_bot+1]+y_h2o[j_cloud_bot])/2. + Kzz[j_cloud_bot-1]/dzi[j_cloud_bot-1]*(y_h2o[j_cloud_bot]+y_h2o[j_cloud_bot-1])/2. ) /y_h2o[j_cloud_bot]
-            if j != 0 and j >= j_cloud_bot:
-                dz_ave_new = 0.5*(dzi[j-1] + dzi[j])
-                k_h2o_new = 1./dz_ave_new * ( Kzz[j]/dzi[j]*(y_h2o[j+1]+y_h2o[j])/2. + Kzz[j-1]/dzi[j-1]*(y_h2o[j]+y_h2o[j-1])/2. ) /y_h2o[j]
-                
-                k_wash = Lambda * ( np.min([k_h2o_new*L[j],k_h2o*L[j+1]]) )**b
-                k_h2o = k_h2o_new
-            else: # this is the layers below cloud where there's no clouds
-                k_wash = Lambda * ( k_h2o_bot*L[j_cloud_bot] )**b
+        for j in range(nz-2, -1, -1): # before it went until nz-1 that was exluded, plus i want 0 to be included
+            if y_h2o[j] != 0. and j != 0:
+                dz_ave = 0.5*(dzi[j-1] + dzi[j])
+                y_tot_plus = (ysum[j+1] + ysum[j]) / 2.
+                y_tot_minus = (ysum[j-1] + ysum[j]) / 2.
+                X_plus = y_h2o[j+1]/ysum[j+1]
+                X_j = y_h2o[j]/ysum[j]
+                X_minus = y_h2o[j-1]/ysum[j-1]
+                phi_plus = Kzz[j] * y_tot_plus * (X_plus - X_j) / dzi[j]
+                phi_minus = Kzz[j-1] * y_tot_minus * (X_j - X_minus) / dzi[j-1]
+                k_h2o = 1/dz_ave * (phi_plus - phi_minus) / y_h2o[j]
+                k_wash = 0.
+                if j == j_cloud_top:
+                    k_h2o_top = k_h2o
+                if j == j_cloud_bot:
+                    k_h2o_bot = k_h2o
+                if j < j_cloud_top and j >= j_cloud_bot:
+                    k_wash = Lambda * ( np.min([k_h2o*L[j],k_h2o_top*L[j+1]]) ) ** b
+                    k_h2o_top = k_h2o
+                elif j < j_cloud_bot:
+                    k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
+            elif j == 0:
+                k_h2o = 0. # no rain formation at the surface, probably, previously it caused issues and non-convergence
+                k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
+            
+
             for re in var.rainout_re_list:
-                if var.Rf[re] == 'HCN -> HCN_rain':
-                    var.k[re][j] += k_wash
+                if var.Rf[re] == 'H2O_l_s -> H2O_rain':# and 'H2O' in vulcan_cfg.condense_sp:
+                    var.k[re][j] = k_h2o
+                    var.k[re+1][j] = 0.
+                elif var.Rf[re] == 'HCN -> HCN_rain':
+                    if Tco[j] >= 268:
+                        Retention = 1.
+                    else:
+                        Retention = 0.02 # temporal value, still needs to validate but is around this value for other species
+                    
+                    #Pr = k_h2o * y_h2o_l_s[j] / ysum[j]
+                    f_hcn_L = KH*L[j]*R*Tco[j] / (1 + KH*L[j]*R*Tco[j])
+                    k_hcn = Retention*f_hcn_L*k_h2o
+                    #f = Pr / (k_h2o*L) # don't know how to get Pr from VULCAN...
+                    f = 1.
+                    F = f * (1 - np.exp(-k_hcn*var.dt))
+                    # just checking
+                    if F >= 1.:
+                        print('F is greater than 1')
+                        exit()
+                    else:
+                        var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
+                        var.k[re][j] += k_wash
+                        var.k[re+1][j] = 0.
+
+        # for testing purposes, washout will be separate although it means more calculations
+        # could invert the previous 'for' cycle and add 0 there but with an if statement so only the washout is worked there
+        #for j in range(j_cloud_top-1, -1, -1): # -1 is to include 0
+            # initialising k_h2o and dz_ave so can always read the previous value
+        #    dz_ave = 0.5*(dzi[j_cloud_top-1] + dzi[j_cloud_top])
+        #    k_h2o = 1./dz_ave * ( Kzz[j_cloud_top]/dzi[j_cloud_top]*(y_h2o[j_cloud_top+1]+y_h2o[j_cloud_top])/2. + Kzz[j_cloud_top-1]/dzi[j_cloud_top-1]*(y_h2o[j_cloud_top]+y_h2o[j_cloud_top-1])/2. ) /y_h2o[j_cloud_top]
+        #    dz_ave_bot = 0.5*(dzi[j_cloud_bot-1] + dzi[j_cloud_bot])
+        #    k_h2o_bot = 1./dz_ave_bot * ( Kzz[j_cloud_bot]/dzi[j_cloud_bot]*(y_h2o[j_cloud_bot+1]+y_h2o[j_cloud_bot])/2. + Kzz[j_cloud_bot-1]/dzi[j_cloud_bot-1]*(y_h2o[j_cloud_bot]+y_h2o[j_cloud_bot-1])/2. ) /y_h2o[j_cloud_bot]
+        #    if j != 0 and j >= j_cloud_bot:
+        #        dz_ave_new = 0.5*(dzi[j-1] + dzi[j])
+        #        k_h2o_new = 1./dz_ave_new * ( Kzz[j]/dzi[j]*(y_h2o[j+1]+y_h2o[j])/2. + Kzz[j-1]/dzi[j-1]*(y_h2o[j]+y_h2o[j-1])/2. ) /y_h2o[j]
+                
+        #        k_wash = Lambda * ( np.min([k_h2o_new*L[j],k_h2o*L[j+1]]) )**b
+        #        k_h2o = k_h2o_new
+        #    else: # this is the layers below cloud where there's no clouds
+        #        k_wash = Lambda * ( k_h2o_bot*L[j_cloud_bot] )**b
+        #    for re in var.rainout_re_list:
+        #        if var.Rf[re] == 'HCN -> HCN_rain':
+        #            var.k[re][j] += k_wash
 
         return var
     

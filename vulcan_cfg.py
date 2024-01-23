@@ -22,7 +22,7 @@ vul_ini = 'output/' # the file to initialize the abundances for ini_mix = 'vulca
 output_dir = 'output/'
 plot_dir = 'plot/'
 movie_dir = 'plot/movie/'
-out_name =  'Pearce_A_like.vul' # output file name
+out_name =  'refined_washout.vul' # output file name
 
 # ====== Setting up the elemental abundance ======
 use_solar = False # True: using the solar abundance from Table 10. K.Lodders 2009; False: using the customized elemental abundance. 
@@ -35,8 +35,8 @@ He_H = 0.09692
 ini_mix = 'const_mix' # Options: 'EQ', 'const_mix', 'vulcan_ini', 'table' (for 'vulcan_ini, the T-P grids have to be exactly the same)
 
 # Initialsing uniform (constant with pressure) mixing ratios (only reads when ini_mix = const_mix)
-#const_mix = {'N2':0.78, 'O2':0.20, 'H2O':1e-6,  'CO2':4E-4, 'Ar':9.34e-3, 'SO2': 2e-10} 
-const_mix = {'H2':0.9, 'N2':0.1, 'H2O':1e-4, 'CH4': 2e-6, 'Ar':9.34e-3, 'SO2': 2e-10} # Ar and SO2 left from original
+const_mix = {'N2':0.78, 'O2':0.20, 'H2O':1e-6,  'CO2':4E-4, 'Ar':9.34e-3, 'SO2': 2e-10} 
+#const_mix = {'H2':0.9, 'N2':0.1, 'H2O':1e-4, 'CH4': 2e-6, 'Ar':9.34e-3, 'SO2': 2e-10} # Ar and SO2 left from original
 
 # ====== Setting up photochemistry ======
 use_photo = True
