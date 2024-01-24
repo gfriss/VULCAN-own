@@ -100,6 +100,9 @@ class Variables(object):
         
         # TEST 
         self.v_ratio = np.ones(nz)
+
+        # for tracking rain, could be more general and not so hardcoded but good enough for testing now
+        self.y_rain = {'H2O_rain': np.zeros(nz), 'HCN_rain': np.zeros(nz)}
         
         ### ### ### ### ### ### ### ### ### ### ###
         # List the names variables defined in op here!

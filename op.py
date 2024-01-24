@@ -1463,45 +1463,45 @@ class Integration(object):
 
         
         
-        for j in range(1,nz-1):
-            if y_h2o[j] != 0.:
-                dz_ave = 0.5*(dzi[j-1] + dzi[j])
-                y_tot_plus = (ysum[j+1] + ysum[j]) / 2.
-                y_tot_minus = (ysum[j-1] + ysum[j]) / 2.
-                X_plus = y_h2o[j+1]/ysum[j+1]
-                X_j = y_h2o[j]/ysum[j]
-                X_minus = y_h2o[j-1]/ysum[j-1]
-                phi_plus = Kzz[j] * y_tot_plus * (X_plus - X_j) / dzi[j]
-                phi_minus = Kzz[j-1] * y_tot_minus * (X_j - X_minus) / dzi[j-1]
-                k_h2o = 1/dz_ave * (phi_plus - phi_minus) / y_h2o[j]
+    #    for j in range(1,nz-1):
+    #        if y_h2o[j] != 0.:
+    #            dz_ave = 0.5*(dzi[j-1] + dzi[j])
+    #            y_tot_plus = (ysum[j+1] + ysum[j]) / 2.
+    #            y_tot_minus = (ysum[j-1] + ysum[j]) / 2.
+    #            X_plus = y_h2o[j+1]/ysum[j+1]
+    #            X_j = y_h2o[j]/ysum[j]
+    #            X_minus = y_h2o[j-1]/ysum[j-1]
+    #            phi_plus = Kzz[j] * y_tot_plus * (X_plus - X_j) / dzi[j]
+    #            phi_minus = Kzz[j-1] * y_tot_minus * (X_j - X_minus) / dzi[j-1]
+    #            k_h2o = 1/dz_ave * (phi_plus - phi_minus) / y_h2o[j]
                 #k_h2o = 1./dz_ave * ( Kzz[j]/dzi[j]*(y_h2o[j+1]+y_h2o[j])/2. + Kzz[j-1]/dzi[j-1]*(y_h2o[j]+y_h2o[j-1])/2. ) /y_h2o[j]
                         
-                for re in var.rainout_re_list:
-                    if var.Rf[re] == 'H2O_l_s -> H2O_rain':# and 'H2O' in vulcan_cfg.condense_sp:
-                        var.k[re][j] = k_h2o
-                        var.k[re+1][j] = 0.
-                    elif var.Rf[re] == 'HCN -> HCN_rain':
-                        if Tco[j] >= 268:
-                            Retention = 1.
-                        else:
-                            Retention = 0.02 # temporal value, still needs to validate but is around this value for other species
+    #            for re in var.rainout_re_list:
+    #                if var.Rf[re] == 'H2O_l_s -> H2O_rain':# and 'H2O' in vulcan_cfg.condense_sp:
+    #                    var.k[re][j] = k_h2o
+    #                    var.k[re+1][j] = 0.
+    #                elif var.Rf[re] == 'HCN -> HCN_rain':
+    #                    if Tco[j] >= 268:
+    #                        Retention = 1.
+    #                    else:
+    #                        Retention = 0.02 # temporal value, still needs to validate but is around this value for other species
                         
                         #Pr = k_h2o * y_h2o_l_s[j] / ysum[j]
-                        f_hcn_L = KH*L[j]*R*Tco[j] / (1 + KH*L[j]*R*Tco[j])
-                        k_hcn = Retention*f_hcn_L*k_h2o
+    #                    f_hcn_L = KH*L[j]*R*Tco[j] / (1 + KH*L[j]*R*Tco[j])
+    #                    k_hcn = Retention*f_hcn_L*k_h2o
                         #f = Pr / (k_h2o*L) # don't know how to get Pr from VULCAN...
-                        f = 1.
-                        F = f * (1 - np.exp(-k_hcn*var.dt))
+    #                    f = 1.
+    #                    F = f * (1 - np.exp(-k_hcn*var.dt))
                         # just checking
-                        if F >= 1.:
-                            print('F is greater than 1')
-                            exit()
-                        else:
-                            var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
-                            var.k[re+1][j] = 0.
+    #                    if F >= 1.:
+    #                        print('F is greater than 1')
+    #                        exit()
+    #                    else:
+    #                        var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
+    #                        var.k[re+1][j] = 0.
 
         for j in range(nz-2, -1, -1): # before it went until nz-1 that was exluded, plus i want 0 to be included
-            if y_h2o[j] != 0. and j != 0:
+            if y_h2o[j] != 0.:
                 dz_ave = 0.5*(dzi[j-1] + dzi[j])
                 y_tot_plus = (ysum[j+1] + ysum[j]) / 2.
                 y_tot_minus = (ysum[j-1] + ysum[j]) / 2.
@@ -1521,10 +1521,25 @@ class Integration(object):
                     k_h2o_top = k_h2o
                 elif j < j_cloud_bot:
                     k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
-            elif j == 0:
-                k_h2o = 0. # no rain formation at the surface, probably, previously it caused issues and non-convergence
-                k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
-            
+                elif j == 0:
+                    k_h2o = 0. # no rain formation at the surface, probably, previously it caused issues and non-convergence
+                    k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
+            elif y_h2o[j] != 0. and j == 0:
+                dz_ave = 0.5*(dzi[j_cloud_bot-1] + dzi[j_cloud_bot])
+                y_tot_plus = (ysum[j_cloud_bot+1] + ysum[j_cloud_bot]) / 2.
+                y_tot_minus = (ysum[j_cloud_bot-1] + ysum[j_cloud_bot]) / 2.
+                X_plus = y_h2o[j_cloud_bot+1]/ysum[j_cloud_bot+1]
+                X_j = y_h2o[j_cloud_bot]/ysum[j_cloud_bot]
+                X_minus = y_h2o[j_cloud_bot-1]/ysum[j_cloud_bot-1]
+                phi_plus = Kzz[j_cloud_bot] * y_tot_plus * (X_plus - X_j) / dzi[j_cloud_bot]
+                phi_minus = Kzz[j_cloud_bot-1] * y_tot_minus * (X_j - X_minus) / dzi[j_cloud_bot-1]
+                k_h2o = 1/dz_ave * (phi_plus - phi_minus) / y_h2o[j_cloud_bot]
+                k_wash = Lambda * (k_h2o*L[j_cloud_bot]) ** b
+                k_h2o = 0.
+            elif y_h2o[j] == 0.:
+                k_h2o = 0.
+                k_wash = 0.
+                
 
             for re in var.rainout_re_list:
                 if var.Rf[re] == 'H2O_l_s -> H2O_rain':# and 'H2O' in vulcan_cfg.condense_sp:
@@ -2803,7 +2818,9 @@ class Ros2(ODESolver):
             for sp in var.charge_list:
                 var.y[:,species.index('e')] -= compo[compo_row.index(sp)]['e'] * var.y[:,species.index(sp)]
         
-        
+        # tracking rain but only in the last step:
+        var.y_rain['H2O_rain'] = var.y[:, species.index('H2O_rain')] - var.y_rain['H2O_rain']
+        var.y_rain['HCN_rain'] = var.y[:, species.index('HCN_rain')] - var.y_rain['HCN_rain']
         return var, para
         
     def solver_fix_all_bot(self, var, atm, para):
@@ -2872,6 +2889,9 @@ class Ros2(ODESolver):
             for sp in var.charge_list:
                 var.y[:,species.index('e')] -= compo[compo_row.index(sp)]['e'] * var.y[:,species.index(sp)]
 
+         # tracking rain but only in the last step:
+        var.y_rain['H2O_rain'] = var.y[:, species.index('H2O_rain')] - var.y_rain['H2O_rain']
+        var.y_rain['HCN_rain'] = var.y[:, species.index('HCN_rain')] - var.y_rain['HCN_rain']
         return var, para   
       
     
