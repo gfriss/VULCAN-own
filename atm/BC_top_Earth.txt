@@ -1,0 +1,4 @@
+#species flux [cm-2 s-1] 
+H2            -3.6e8   
+
+# +: inflow; -: outflow     

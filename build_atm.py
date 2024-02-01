@@ -185,7 +185,7 @@ class InitialAbun(object):
             if not len(data_atm.pco) == len(table['Pressure']): 
                 print ("Warning! The initial profile has different layers than the current setting...")
                 raise
-            for sp in species:  
+            for sp in table.dtype.names[1:]: # was species, but my table only has certain molecules... 
                 data_var.y[:,species.index(sp)] = data_atm.n_0 * table[sp]
 
     

@@ -1499,9 +1499,10 @@ class Integration(object):
     #                    else:
     #                        var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
     #                        var.k[re+1][j] = 0.
-
+        k_h2o_top = 0. # initiating and then they will be changed in the for loop
+        k_h2o_bot = 0.
         for j in range(nz-2, -1, -1): # before it went until nz-1 that was exluded, plus i want 0 to be included
-            if y_h2o[j] != 0.:
+            if y_h2o[j] != 0. and j != 0:
                 dz_ave = 0.5*(dzi[j-1] + dzi[j])
                 y_tot_plus = (ysum[j+1] + ysum[j]) / 2.
                 y_tot_minus = (ysum[j-1] + ysum[j]) / 2.
@@ -1521,24 +1522,21 @@ class Integration(object):
                     k_h2o_top = k_h2o
                 elif j < j_cloud_bot:
                     k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
-                elif j == 0:
-                    k_h2o = 0. # no rain formation at the surface, probably, previously it caused issues and non-convergence
-                    k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
-            elif y_h2o[j] != 0. and j == 0:
-                dz_ave = 0.5*(dzi[j_cloud_bot-1] + dzi[j_cloud_bot])
-                y_tot_plus = (ysum[j_cloud_bot+1] + ysum[j_cloud_bot]) / 2.
-                y_tot_minus = (ysum[j_cloud_bot-1] + ysum[j_cloud_bot]) / 2.
-                X_plus = y_h2o[j_cloud_bot+1]/ysum[j_cloud_bot+1]
-                X_j = y_h2o[j_cloud_bot]/ysum[j_cloud_bot]
-                X_minus = y_h2o[j_cloud_bot-1]/ysum[j_cloud_bot-1]
-                phi_plus = Kzz[j_cloud_bot] * y_tot_plus * (X_plus - X_j) / dzi[j_cloud_bot]
-                phi_minus = Kzz[j_cloud_bot-1] * y_tot_minus * (X_j - X_minus) / dzi[j_cloud_bot-1]
-                k_h2o = 1/dz_ave * (phi_plus - phi_minus) / y_h2o[j_cloud_bot]
-                k_wash = Lambda * (k_h2o*L[j_cloud_bot]) ** b
-                k_h2o = 0.
-            elif y_h2o[j] == 0.:
+            elif y_h2o[j] == 0. and j != 0: #above cloud without water vapour
                 k_h2o = 0.
                 k_wash = 0.
+            elif j == 0:
+                #dz_ave = 0.5*(dzi[j_cloud_bot-1] + dzi[j_cloud_bot])
+                #y_tot_plus = (ysum[j_cloud_bot+1] + ysum[j_cloud_bot]) / 2.
+                #y_tot_minus = (ysum[j_cloud_bot-1] + ysum[j_cloud_bot]) / 2.
+                #X_plus = y_h2o[j_cloud_bot+1]/ysum[j_cloud_bot+1]
+                #X_j = y_h2o[j_cloud_bot]/ysum[j_cloud_bot]
+                #X_minus = y_h2o[j_cloud_bot-1]/ysum[j_cloud_bot-1]
+                #phi_plus = Kzz[j_cloud_bot] * y_tot_plus * (X_plus - X_j) / dzi[j_cloud_bot]
+                #phi_minus = Kzz[j_cloud_bot-1] * y_tot_minus * (X_j - X_minus) / dzi[j_cloud_bot-1]
+                #k_h2o = 1/dz_ave * (phi_plus - phi_minus) / y_h2o[j_cloud_bot]
+                k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
+                k_h2o = 0.
                 
 
             for re in var.rainout_re_list:
