@@ -47,7 +47,7 @@ Rp = 6.3781e8 # Planetary radius (cm) (for computing gravity)
 orbit_radius = 1 # planet-star distance in A.U.
 sl_angle = 58 /180.*3.14159 # the zenith angle of the star in degree (usually 58 deg for the dayside average)
 f_diurnal = 0.5 # to account for the diurnal average of solar flux (i.e. 0.5 for Earth; 1 for tidally-locked planets) 
-scat_sp = ['N2', 'O2'] # the bulk gases that contribute to Rayleigh scattering
+scat_sp = ['N2', 'O2', 'CO2'] # the bulk gases that contribute to Rayleigh scattering
 T_cross_sp = ['CO2','H2O','NH3'] # warning: slower start! available atm: 'CO2','H2O','NH3', 'SH','H2S','SO2', 'S2', 'COS', 'CS2'
 
 edd = 0.5 # the Eddington coefficient 
@@ -67,7 +67,7 @@ if use_photo == False and use_ion == True:
 
 
 # ====== Setting up parameters for the atmosphere ======
-atm_base = 'N2' #Options: 'H2', 'N2', 'O2', 'CO2 -- the bulk gas of the atmosphere: changes the molecular diffsion, thermal diffusion factor, and settling velocity
+atm_base = 'CO2' #Options: 'H2', 'N2', 'O2', 'CO2 -- the bulk gas of the atmosphere: changes the molecular diffsion, thermal diffusion factor, and settling velocity
 rocky = True # for the surface gravity
 nz = 120   # number of vertical layers
 P_b = 1e6  # pressure at the bottom (dyne/cm^2)
@@ -114,6 +114,7 @@ rho_p = {'H2O_l_s': 0.9, 'H2SO4_l': 1.8302} # particle density in g cm^-3
 start_conden_time = 0
 condense_sp = ["H2O", "H2SO4"]      
 non_gas_sp = [ 'H2O_l_s', "H2SO4_l"]
+non_gas_rain_sp = ['H2O_rain', 'HCN_rain']
 fix_species = ['H2O','H2O_l_s',"H2SO4","H2SO4_l"]      # fixed the condensable species after condensation-evapoation EQ has reached  
 fix_species_time = 5e8 # ~20 yrs; after this time to fix the condensable species
 use_ini_cold_trap = True

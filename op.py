@@ -862,9 +862,6 @@ class Integration(object):
             if vulcan_cfg.use_condense == True and var.t >= vulcan_cfg.start_conden_time and para.fix_species_start == False:
                 # updating the condensation rates 
                 var = self.conden(var,atm)
-                # similarly updating the rainout rates
-                if vulcan_cfg.use_rainout == True:
-                    var = self.rainout(var, atm)
                 
                 if vulcan_cfg.fix_species and var.t > vulcan_cfg.stop_conden_time:
                     
@@ -908,8 +905,13 @@ class Integration(object):
                     if 'NH3' in vulcan_cfg.use_relax:
                         var = self.nh3_conden_evap_relax(var,atm)
                                           
+            # similarly updating the rainout rates
+            if vulcan_cfg.use_rainout == True:
+                var = self.rainout(var, atm)
+
             if para.count % vulcan_cfg.update_frq == 0: # updating mu and dz (dzi) due to diffusion
                 atm = self.update_mu_dz(var, atm, make_atm)
+                atm = self.update_mol_diff(var, atm)
                 atm = self.update_phi_esc(var, atm) # updating the diffusion-limited flux
                 
             # MAINTAINING HYDROSTATIC BALANCE
@@ -1005,7 +1007,77 @@ class Integration(object):
             
         return atm
     
-    
+    def update_mol_diff(self, var, atm):
+        ''' Function to change the molecular diffusion acording to the bulk molecule in case it changes.'''
+        ymix_average = np.sum(var.ymix, axis = 0) / nz # maybe need weighted average?
+        new_bulk_sp = species[np.where(ymix_average > 0.5)[0][0]]
+
+        Tco = atm.Tco
+        n_0 = atm.n_0 
+        
+        # using the value defined on the interface
+        Tco_i = np.delete((Tco + np.roll(Tco,1))*0.5, 0)
+        n0_i = np.delete((n_0 + np.roll(n_0,1))*0.5, 0)
+
+        if new_bulk_sp != atm.bulk_sp:
+            print('Changing atm base from: ' + atm.bulk_sp + ' to ' + new_bulk_sp)
+            atm.bulk_sp = new_bulk_sp
+            if new_bulk_sp == 'H2':
+                Dzz_gen = lambda T, n_tot, mi: 2.2965E17*T**0.765/n_tot *( 16.04/mi*(mi+2.016)/18.059 )**0.5 # from Moses 2000a
+                
+                # scaling with (15.27) in [Aeronomy part B by Banks & Kockarts(1973)]
+                # *( m_ref/mi*(mi+ m_base)/m_tot )**0.5 (m_ref is the molecular mass of the ref-base e.g. CH4 in CH4-H2 in Moses 2000a)
+                
+                # # thermal diffusion factor (>0 means (heavier) components diffuse toward colder rigions)
+                if 'H' in species: atm.alpha[species.index('H')] = -0.1 # simplified from Moses 2000a
+                if 'He' in species:  atm.alpha[species.index('He')] = 0.145
+                for sp in species:
+                    if self.mol_mass(sp) > 4.: atm.alpha[species.index(sp)] = 0.25
+                
+            elif new_bulk_sp == 'N2': # use CH4-N2 in Aeronomy [Banks ] as a reference to scale by the molecular mass
+                Dzz_gen = lambda T, n_tot, mi: 7.34E16*T**0.75/n_tot *( 16.04/mi*(mi+28.014)/44.054 )**0.5
+                
+                # # thermal diffusion factor (>0 means (heavier) components diffuse toward colder rigions)
+                if 'H' in species: atm.alpha[species.index('H')] = -0.25
+                if 'H2' in species:  atm.alpha[species.index('H2')] = -0.25
+                if 'He' in species:  atm.alpha[species.index('He')] = -0.25
+                if 'Ar' in species:  atm.alpha[species.index('Ar')] = 0.17
+                
+            elif new_bulk_sp == 'O2': # use CH4-O2 in Aeronomy [Banks ] as a reference to scale by the molecular mass
+                Dzz_gen = lambda T, n_tot, mi: 7.51E16*T**0.759/n_tot *( 16.04/mi*(mi+32)/48.04 )**0.5
+                
+                # # thermal diffusion factor (>0 means (heavier) components diffuse toward colder rigions)
+                if 'H' in species: atm.alpha[species.index('H')] = -0.25
+                if 'H2' in species:  atm.alpha[species.index('H2')] = -0.25
+                if 'He' in species:  atm.alpha[species.index('He')] = -0.25
+                if 'Ar' in species:  atm.alpha[species.index('Ar')] = 0.17
+                
+            elif new_bulk_sp == 'CO2': # use H2-CO2 in Hu seager as a reference to scale by the molecular mass
+                Dzz_gen = lambda T, n_tot, mi: 2.15E17*T**0.750/n_tot *( 2.016/mi*(mi+44.001)/46.017 )**0.5
+                
+                # # thermal diffusion factor (>0 means (heavier) components diffuse toward colder rigions)
+                if 'H' in species: atm.alpha[species.index('H')] = -0.25
+                if 'H2' in species:  atm.alpha[species.index('H2')] = -0.25
+                if 'He' in species:  atm.alpha[species.index('He')] = -0.25
+                if 'Ar' in species:  atm.alpha[species.index('Ar')] = 0.17
+                
+            else: raise IOError ('\n Unknow atm_base!')
+            
+            for i in range(len(species)):
+                # input should be float or in the form of nz-long 1D array
+                atm.Dzz[:,i] = Dzz_gen(Tco_i, n0_i, self.mol_mass(species[i]))
+                
+                # constructing the molecular weight for every species
+                # this is required even without molecular weight
+                atm.ms[i] = compo[compo_row.index(species[i])][-1]
+            
+            # setting the molecuar diffusion of the non-gaseous species to zero
+            for sp in [_ for _ in vulcan_cfg.non_gas_sp if _ in species]: atm.Dzz[:,species.index(sp)] = 0
+            for sp in [_ for _ in vulcan_cfg.non_gas_rain_sp if _ in species]: atm.Dzz[:,species.index(sp)] = 0
+                
+
+        return atm
+
     # function calculating the change of y
     def f_dy(self, var, para): # y, y_prev, ymix, yconv, count, dt
         if para.count == 0: 

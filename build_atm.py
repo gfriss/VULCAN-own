@@ -711,6 +711,7 @@ class Atm(object):
         
         # setting the molecuar diffusion of the non-gaseous species to zero
         for sp in [_ for _ in vulcan_cfg.non_gas_sp if _ in species]: atm.Dzz[:,species.index(sp)] = 0
+        for sp in [_ for _ in vulcan_cfg.non_gas_rain_sp if _ in species]: atm.Dzz[:,species.index(sp)] = 0
                 
     
     def BC_flux(self, atm):

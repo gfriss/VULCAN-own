@@ -89,7 +89,7 @@ class Variables(object):
             if vulcan_cfg.T_cross_sp: self.var_save.extend(['cross_J','cross_T'])
             if vulcan_cfg.use_ion == True: self.var_save.extend(['charge_list', 'ion_sp', 'cross_Jion','Jion_sp', 'ion_wavelen','ion_branch','ion_br_ratio'])
         # 'ion_list' stores all the non-neutral species in build.atm whereas 'ion_sp' is for the species that actually have ionisation reactions in the network 
-        self.var_evol_save = ['y_time','t_time', 'vs_time']
+        self.var_evol_save = ['y_time','t_time']#, 'vs_time']
         self.conden_re_list = []
         self.rainout_re_list = []
         
@@ -180,6 +180,8 @@ class AtmData(object):
         # self.rho_p['H2SO4_l'] = 1.8302 #
         # self.rho_p['S8_l_s'] = 2.07 #
         # self.rho_p['S2_l_s'] = 2.0 # estimated
+        
+        self.bulk_sp = vulcan_cfg.atm_base
         
 
 class Parameters(object):
