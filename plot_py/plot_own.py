@@ -9,9 +9,6 @@ vul_data = '../output/Earth.vul'
 with open(vul_data, 'rb') as handle:
   data = pickle.load(handle)
 
-vulcan_spec = data['variable']['species']
-spec = ['HCN', 'H2O_l_s']
-
 vul_data_rainout = '../output/separate.vul'
 
 with open(vul_data_rainout, 'rb') as handle:
@@ -76,6 +73,17 @@ with open(vul_data_Pearce_oxidising, 'rb') as handle:
 vul_data_Pearce_oxidising_mixtable = '../output/Pearce_oxidising_mixtable.vul'
 with open(vul_data_Pearce_oxidising_mixtable, 'rb') as handle:
   data_Pearce_oxidising_mixtable = pickle.load(handle)
+
+vul_data_Pearce_oxidising_mixtable_no_settling = '../output/Pearce_oxidising_mixtable_no_settling.vul'
+with open(vul_data_Pearce_oxidising_mixtable_no_settling, 'rb') as handle:
+  data_Pearce_oxidising_mixtable_no_settling = pickle.load(handle)
+
+vul_data_H2_escape_Pearce_A = '/home/s2555875/VULCAN-master/output/H2_escape_Pearce_A.vul'
+with open(vul_data_H2_escape_Pearce_A, 'rb') as handle:
+  data_H2_escape_Pearce_A = pickle.load(handle)
+
+vulcan_spec = data_Pearce_A_like['variable']['species']
+spec = ['HCN', 'H2O_l_s']
 #%%
 for sp in spec:
   plt.plot(data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)]-data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)], data['atm']['zco'][1:]/1.e5, label = sp)
@@ -172,3 +180,33 @@ ax2.set_xlabel(r'$n_{scavenging} - n_{washout}$')
 fig.legend(loc = (0.71,0.76))
 fig.savefig('../plot/hcn_washout_compare.pdf')
 #%%
+def plot_time_evo(yt, tt, n, mol, xscale = 'log', yscale = 'log', ylim = None):
+  alpha = np.linspace(0.1, 1, n)
+
+  fig, ax = plt.subplots()
+  for layer in range(n):
+    if layer in [0, n//4, n//2, 3*n//4, n-1]:
+      ax.plot(tt, yt[:, layer, vulcan_spec.index(mol)], label = 'layer = {}'.format(layer), alpha = alpha[layer], color = 'red')
+    else:
+      ax.plot(tt, yt[:, layer, vulcan_spec.index(mol)], alpha = alpha[layer], color = 'red')
+
+  ax.set_xlabel('Time [s]')
+  ax.set_ylabel(r'n [cm$^{-3}$]')
+  ax.set_yscale(yscale)
+  ax.set_xscale(xscale)
+  ax.legend()
+  if ylim != None:
+    ax.set_ylim(ylim)
+# %%
+def plot_evo_layer(yt, tt, n, mol, xscale = 'log', yscale = 'log', ylim = None):
+  fig, ax = plt.subplots()
+
+  ax.plot(tt, yt[:, n, vulcan_spec.index(mol)], color = 'red', label = mol)
+  ax.set_xlabel('Time [s]')
+  ax.set_ylabel(r'n [cm$^{-3}$]')
+  ax.set_yscale(yscale)
+  ax.set_xscale(xscale)
+  ax.legend()
+  if ylim != None:
+    ax.set_ylim(ylim)
+# %%

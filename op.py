@@ -829,6 +829,9 @@ class Integration(object):
         if vulcan_cfg.use_condense == True:  
             self.non_gas_sp_index = [species.index(sp) for sp in self.non_gas_sp]
             self.condense_sp_index = [species.index(sp) for sp in vulcan_cfg.condense_sp]
+
+        if vulcan_cfg.use_rainout == True:
+            self.non_gas_rain_sp_index = [species.index(sp) for sp in vulcan_cfg.non_gas_rain_sp]
         
         
     def __call__(self, var, atm, para, make_atm):
@@ -1010,7 +1013,7 @@ class Integration(object):
     def update_mol_diff(self, var, atm):
         ''' Function to change the molecular diffusion acording to the bulk molecule in case it changes.'''
         ymix_average = np.sum(var.ymix, axis = 0) / nz # maybe need weighted average?
-        new_bulk_sp = species[np.where(ymix_average > 0.5)[0][0]]
+        new_bulk_sp = species[np.argmax(ymix_average)]
 
         Tco = atm.Tco
         n_0 = atm.n_0 
@@ -1126,6 +1129,9 @@ class Integration(object):
         
         if vulcan_cfg.use_condense == True:
             longdy[:,self.non_gas_sp_index] = 0
+
+        if vulcan_cfg.use_rainout == True:
+            longdy[:,self.non_gas_rain_sp_index] = 0
         
         with np.errstate(divide='ignore',invalid='ignore'): # ignoring nan when devided by zero
             where_varies_most = longdy/ymix
