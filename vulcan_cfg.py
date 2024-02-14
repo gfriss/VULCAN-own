@@ -13,7 +13,7 @@ use_lowT_limit_rates = False
 gibbs_text = 'thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
 cross_folder = 'thermo/photo_cross/'
 com_file = 'thermo/all_compose.txt'
-atm_file = 'atm/atm_Earth_Jan_Kzz.txt' # TP and Kzz (optional) file
+atm_file = 'atm/T-P_radtrans.txt' # TP and Kzz (optional) file
 sflux_file = 'atm/stellar_flux/Gueymard_solar.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = 'atm/BC_top_Earth.txt' # the file for the top boundary conditions
 bot_BC_flux_file = 'atm/BC_bot_Pearce_A.txt' # the file for the lower boundary conditions
@@ -22,7 +22,7 @@ vul_ini = 'atm/mixing_table.txt' # the file to initialize the abundances for ini
 output_dir = 'output/'
 plot_dir = 'plot/'
 movie_dir = 'plot/movie/'
-out_name =  'test_mixing_oxidising.vul' # output file name
+out_name =  'test_mixing_norain.vul' # output file name
 
 # ====== Setting up the elemental abundance ======
 use_solar = False # True: using the solar abundance from Table 10. K.Lodders 2009; False: using the customized elemental abundance. 
@@ -106,7 +106,7 @@ remove_list = [1286,1287] # in pairs e.g. [1,2]
 # == Condensation ======
 use_condense = True
 use_settling = True
-use_rainout = True
+use_rainout = False
 use_relax = ['H2O', 'H2SO4']
 humidity = 0.25 # only for water
 r_p = {'H2O_l_s': 0.01, 'H2SO4_l': 1e-4}  # particle radius in cm (1e-4 = 1 micron)

@@ -1012,9 +1012,10 @@ class Integration(object):
     
     def update_mol_diff(self, var, atm):
         ''' Function to change the molecular diffusion acording to the bulk molecule in case it changes.'''
-        ymix_average = np.sum(var.ymix, axis = 0) / nz # maybe need weighted average?
-        new_bulk_sp = species[np.argmax(ymix_average)]
-
+        #ymix_average = np.sum(var.ymix, axis = 0) / nz # maybe need weighted average?
+        #new_bulk_sp = species[np.argmax(ymix_average > 0.5)]
+        new_bulk_sp = np.argmax(np.sum(var.y, axis = 0))
+       
         Tco = atm.Tco
         n_0 = atm.n_0 
         
@@ -1022,7 +1023,7 @@ class Integration(object):
         Tco_i = np.delete((Tco + np.roll(Tco,1))*0.5, 0)
         n0_i = np.delete((n_0 + np.roll(n_0,1))*0.5, 0)
 
-        if new_bulk_sp != atm.bulk_sp:
+        if new_bulk_sp != atm.bulk_sp and new_bulk_sp in ['H2', 'CO2', 'N2', 'H2O', 'O2']:
             print('Changing atm base from: ' + atm.bulk_sp + ' to ' + new_bulk_sp)
             atm.bulk_sp = new_bulk_sp
             if new_bulk_sp == 'H2':
@@ -1068,7 +1069,7 @@ class Integration(object):
             
             for i in range(len(species)):
                 # input should be float or in the form of nz-long 1D array
-                atm.Dzz[:,i] = Dzz_gen(Tco_i, n0_i, self.mol_mass(species[i]))
+                atm.Dzz[:,i] = Dzz_gen(Tco_i, n0_i, build_atm.Atm().mol_mass(species[i]))
                 
                 # constructing the molecular weight for every species
                 # this is required even without molecular weight
