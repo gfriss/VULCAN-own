@@ -149,7 +149,7 @@ class AtmData(object):
         self.sat_mix = {}
         
         # excluding non-gaseous species while computing ymix from y
-        self.gas_indx = [_ for _ in range(ni) if spec_list[_] not in vulcan_cfg.non_gas_sp]
+        self.gas_indx = [_ for _ in range(ni) if spec_list[_] not in (vulcan_cfg.non_gas_sp+vulcan_cfg.non_gas_rain_sp)]
                     
         self.fix_sp_indx = {}
         if hasattr(vulcan_cfg, "fix_species"): # if fix_species is defined in vulcan_cfg

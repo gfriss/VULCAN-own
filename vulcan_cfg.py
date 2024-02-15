@@ -19,10 +19,10 @@ top_BC_flux_file = 'atm/BC_top_Earth.txt' # the file for the top boundary condit
 bot_BC_flux_file = 'atm/BC_bot_Pearce_A.txt' # the file for the lower boundary conditions
 vul_ini = 'atm/mixing_table.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
 # output:
-output_dir = 'output/'
-plot_dir = 'plot/'
-movie_dir = 'plot/movie/'
-out_name =  'test_mixing_norain.vul' # output file name
+output_dir = '/tmp/datastore/s2555875/VULCAN-own/output/'
+plot_dir = '/tmp/datastore/s2555875/VULCAN-own/plot/'
+movie_dir = '/tmp/datastore/s2555875/VULCAN-own/plot/movie/'
+out_name =  'test_mixing.vul' # output file name
 
 # ====== Setting up the elemental abundance ======
 use_solar = False # True: using the solar abundance from Table 10. K.Lodders 2009; False: using the customized elemental abundance. 
@@ -106,7 +106,7 @@ remove_list = [1286,1287] # in pairs e.g. [1,2]
 # == Condensation ======
 use_condense = True
 use_settling = True
-use_rainout = False
+use_rainout = True
 use_relax = ['H2O', 'H2SO4']
 humidity = 0.25 # only for water
 r_p = {'H2O_l_s': 0.01, 'H2SO4_l': 1e-4}  # particle radius in cm (1e-4 = 1 micron)

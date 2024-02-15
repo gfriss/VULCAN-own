@@ -3080,7 +3080,8 @@ class Output(object):
         # copy the vulcan_cfg.py file
         with open('vulcan_cfg.py' ,'r') as f:
             cfg_str = f.read()
-        with open(dname + '/' + output_dir + "cfg_" + out_name[:-3] + "txt", 'w') as f: f.write(cfg_str)
+        #with open(dname + '/' + output_dir + "cfg_" + out_name[:-3] + "txt", 'w') as f: f.write(cfg_str)
+        with open(output_dir + "cfg_" + out_name[:-3] + "txt", 'w') as f: f.write(cfg_str) # saving using absolute path
     
     def save_out(self, var, atm, para, dname): 
         output_dir, out_name = vulcan_cfg.output_dir, vulcan_cfg.out_name

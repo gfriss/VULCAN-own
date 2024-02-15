@@ -1,5 +1,0 @@
-/home/s2555875/VULCAN-2/make_chem_funs.py:722: VisibleDeprecationWarning: Reading unicode strings without specifying the encoding argument is deprecated. Set the encoding, use None for the system default.
-  compo = np.genfromtxt(vulcan_cfg.com_file,names=True,dtype=None)
-Including condensation reactions.
-Elements conserved in the network.
-No duplicates in the network.
