@@ -3,26 +3,27 @@
 # ============================================================================= 
 
 # ====== Setting up the elements included in the network ======
-atom_list = ['H', 'O', 'C', 'N', 'Ar', 'S']
+atom_list = ['H', 'O', 'C', 'N']#, 'S'], 'Ar]
 use_lowT_limit_rates = False
 
 # ====== Setting up paths and filenames for the input and output files  ======
 # input:
-network = 'thermo/SNCHO_full_photo_network.txt'
+#network = 'thermo/NCHO_full_photo_network.txt'
+network = '/tmp/datastore/s2555875/VULCAN-CRAHCNO/bp20_clean.txt'
 use_lowT_limit_rates = False
 gibbs_text = 'thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
 cross_folder = 'thermo/photo_cross/'
-com_file = 'thermo/all_compose.txt'
+com_file = '/tmp/datastore/s2555875/VULCAN-CRAHCNO/all_compose.txt'
 atm_file = 'atm/T-P_radtrans.txt' # TP and Kzz (optional) file
-sflux_file = 'atm/stellar_flux/Gueymard_solar.txt' # This is the flux density at the stellar surface
+sflux_file = 'atm/stellar_flux/Pearce_B_solar.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = 'atm/BC_top_Earth.txt' # the file for the top boundary conditions
-bot_BC_flux_file = 'atm/BC_bot_Pearce_A.txt' # the file for the lower boundary conditions
+bot_BC_flux_file = 'atm/BC_bot_Pearce_B.txt' # the file for the lower boundary conditions
 vul_ini = 'atm/mixing_table.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
 # output:
 output_dir = '/tmp/datastore/s2555875/VULCAN-own/output/'
 plot_dir = '/tmp/datastore/s2555875/VULCAN-own/plot/'
 movie_dir = '/tmp/datastore/s2555875/VULCAN-own/plot/movie/'
-out_name =  'test_mixing.vul' # output file name
+out_name =  'CRAHCNO_ox.vul' # output file name
 
 # ====== Setting up the elemental abundance ======
 use_solar = False # True: using the solar abundance from Table 10. K.Lodders 2009; False: using the customized elemental abundance. 
@@ -96,26 +97,26 @@ update_frq = 100
 # Boundary Conditions:
 use_topflux = False
 use_botflux = True
-use_fix_sp_bot = {"H2O":0.00894, "H2O_l_s":0, 'CO2':4E-4} #   0.0143 for 40% humidity 0.0033 for 20% humidity in US standard 1967 # fixed mixing ratios at the lower boundary
+use_fix_sp_bot = {"H2O":0.00894, 'CO2':4E-4}#, "H2O_l_s":0} #   0.0143 for 40% humidity 0.0033 for 20% humidity in US standard 1967 # fixed mixing ratios at the lower boundary
 diff_esc = ['H2', 'H'] # species for diffusion-limit escape at TOA
 max_flux = 1e13  # upper limit for the diffusion-limit fluxes
 
 # ====== Reactions to be switched off  ======
-remove_list = [1286,1287] # in pairs e.g. [1,2]
+remove_list = [] # in pairs e.g. [1,2]
 
 # == Condensation ======
 use_condense = True
 use_settling = True
 use_rainout = True
-use_relax = ['H2O', 'H2SO4']
+use_relax = ['H2O']#, 'H2SO4']
 humidity = 0.25 # only for water
-r_p = {'H2O_l_s': 0.01, 'H2SO4_l': 1e-4}  # particle radius in cm (1e-4 = 1 micron)
-rho_p = {'H2O_l_s': 0.9, 'H2SO4_l': 1.8302} # particle density in g cm^-3
+r_p = {'H2O_l_s': 0.01}#, 'H2SO4_l': 1e-4}  # particle radius in cm (1e-4 = 1 micron)
+rho_p = {'H2O_l_s': 0.9}#, 'H2SO4_l': 1.8302} # particle density in g cm^-3
 start_conden_time = 0
-condense_sp = ["H2O", "H2SO4"]      
-non_gas_sp = [ 'H2O_l_s', "H2SO4_l"]
+condense_sp = ["H2O"]#, "H2SO4"]      
+non_gas_sp = [ 'H2O_l_s']#, "H2SO4_l"]
 non_gas_rain_sp = ['H2O_rain', 'HCN_rain']
-fix_species = ['H2O','H2O_l_s',"H2SO4","H2SO4_l"]      # fixed the condensable species after condensation-evapoation EQ has reached  
+fix_species = ['H2O','H2O_l_s']#,"H2SO4","H2SO4_l"]      # fixed the condensable species after condensation-evapoation EQ has reached  
 fix_species_time = 5e8 # ~20 yrs; after this time to fix the condensable species
 use_ini_cold_trap = True
 stop_conden_time = 1e22
@@ -169,7 +170,7 @@ use_PIL = True
 live_plot_frq = 10
 save_movie_rate = live_plot_frq
 y_time_freq = 1  #  storing data for every 'y_time_freq' step
-plot_spec = ['H2O', 'H2O_l_s', 'O3',  'CH4', 'NH3' ,'HCN']  
+plot_spec = ['H2O', 'CO2', 'CO', 'CH4', 'NH3' ,'HCN', 'C2H2']  
 # output:
 output_humanread = False
 use_shark = False

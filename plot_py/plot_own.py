@@ -4,83 +4,91 @@ import matplotlib.pyplot as plt
 import os, sys
 import pickle
 
-vul_data = '../output/Earth.vul'
+datastore = '/tmp/datastore/s2555875/'
+vul_own = 'VULCAN-own/'
+vul_mas = 'VULCAN-master/'
+
+vul_data = datastore + vul_own + 'output/Earth.vul'
 
 with open(vul_data, 'rb') as handle:
   data = pickle.load(handle)
 
-vul_data_rainout = '../output/separate.vul'
+vul_data_rainout = datastore + vul_own + 'output/separate.vul'
 
 with open(vul_data_rainout, 'rb') as handle:
   data_rainout = pickle.load(handle)
 
-vul_data_h2o_bot = '../output/Earth_h2o_bot.vul'
+vul_data_h2o_bot = datastore + vul_own + 'output/Earth_h2o_bot.vul'
 with open(vul_data_h2o_bot, 'rb') as handle:
   data_h2o_bot = pickle.load(handle)
 
-vul_data_frac_to_rate = '../output/frac_to_rate.vul'
+vul_data_frac_to_rate = datastore + vul_own + 'output/frac_to_rate.vul'
 with open(vul_data_frac_to_rate, 'rb') as handle:
   data_frac_to_rate = pickle.load(handle)
 
-vul_data_low_henrys = '../output/low_henrys.vul'
+vul_data_low_henrys = datastore + vul_own + 'output/low_henrys.vul'
 with open(vul_data_low_henrys, 'rb') as handle:
   data_low_henrys = pickle.load(handle)
 
-vul_data_rain_from_l_s = '../output/rain_from_l_s.vul'
+vul_data_rain_from_l_s = datastore + vul_own + 'output/rain_from_l_s.vul'
 with open(vul_data_rain_from_l_s, 'rb') as handle:
   data_rain_from_l_s = pickle.load(handle)
 
-vul_data_corrected_list_use = '../output/corrected_list_use.vul'
+vul_data_corrected_list_use = datastore + vul_own + 'output/corrected_list_use.vul'
 with open(vul_data_corrected_list_use, 'rb') as handle:
   data_corrected_list_use = pickle.load(handle)
 
-vul_data_corrected_high_henrys = '../output/corrected_high_henrys.vul'
+vul_data_corrected_high_henrys = datastore + vul_own + 'output/corrected_high_henrys.vul'
 with open(vul_data_corrected_high_henrys, 'rb') as handle:
   data_corrected_high_henrys = pickle.load(handle)
 
-vul_data_corrected_mod = '/home/s2555875/VULCAN-master/output/mod_rate_calc.vul'
+vul_data_corrected_mod = datastore + vul_mas + 'output/mod_rate_calc.vul'
 with open(vul_data_corrected_mod, 'rb') as handle:
   data_corrected_mod = pickle.load(handle)
 
-vul_data_cor_mod_top = '/home/s2555875/VULCAN-master/output/mod_with_top.vul'
+vul_data_cor_mod_top = datastore + vul_mas + 'output/mod_with_top.vul'
 with open(vul_data_cor_mod_top, 'rb') as handle:
   data_cor_mod_top = pickle.load(handle)
 
-vul_data_cor_mod_bot = '/home/s2555875/VULCAN-master/output/mod_with_bot.vul'
+vul_data_cor_mod_bot = datastore + vul_mas + 'output/mod_with_bot.vul'
 with open(vul_data_cor_mod_bot, 'rb') as handle:
   data_cor_mod_bot = pickle.load(handle)
 
-vul_data_washout = '../output/washout.vul'
+vul_data_washout = datastore + vul_own + 'output/washout.vul'
 with open(vul_data_washout, 'rb') as handle:
   data_washout = pickle.load(handle)
 
-vul_data_Pearce_A_like = '../output/Pearce_A_like.vul'
+vul_data_Pearce_A_like = datastore + vul_own + 'output/Pearce_A_like.vul'
 with open(vul_data_Pearce_A_like, 'rb') as handle:
   data_Pearce_A_like = pickle.load(handle)
 
-vul_data_refined_param = '../output/refined_param.vul'
+vul_data_refined_param = datastore + vul_own + 'output/refined_param.vul'
 with open(vul_data_refined_param, 'rb') as handle:
   data_refined_param = pickle.load(handle)
 
-vul_data_refined_washout_raintrack = '../output/refined_washout_raintrack.vul'
+vul_data_refined_washout_raintrack = datastore + vul_own + 'output/refined_washout_raintrack.vul'
 with open(vul_data_refined_washout_raintrack, 'rb') as handle:
   data_refined_washout_raintrack = pickle.load(handle)
 
-vul_data_Pearce_oxidising = '../output/Pearce_oxidising.vul'
+vul_data_Pearce_oxidising = datastore + vul_own + 'output/Pearce_oxidising.vul'
 with open(vul_data_Pearce_oxidising, 'rb') as handle:
   data_Pearce_oxidising = pickle.load(handle)
 
-vul_data_Pearce_oxidising_mixtable = '../output/Pearce_oxidising_mixtable.vul'
+vul_data_Pearce_oxidising_mixtable = datastore + vul_own + 'output/Pearce_oxidising_mixtable.vul'
 with open(vul_data_Pearce_oxidising_mixtable, 'rb') as handle:
   data_Pearce_oxidising_mixtable = pickle.load(handle)
 
-vul_data_Pearce_oxidising_mixtable_no_settling = '../output/Pearce_oxidising_mixtable_no_settling.vul'
+vul_data_Pearce_oxidising_mixtable_no_settling = datastore + vul_own + 'output/Pearce_oxidising_mixtable_no_settling.vul'
 with open(vul_data_Pearce_oxidising_mixtable_no_settling, 'rb') as handle:
   data_Pearce_oxidising_mixtable_no_settling = pickle.load(handle)
 
-vul_data_H2_escape_Pearce_A = '/home/s2555875/VULCAN-master/output/H2_escape_Pearce_A.vul'
+vul_data_H2_escape_Pearce_A = datastore + vul_mas + 'output/H2_escape_Pearce_A.vul'
 with open(vul_data_H2_escape_Pearce_A, 'rb') as handle:
   data_H2_escape_Pearce_A = pickle.load(handle)
+
+vul_crahcno_ox_iso = datastore + vul_own + 'output/CRAHCNO_ox_iso.vul'
+with open(vul_crahcno_ox_iso, 'rb') as handle:
+  data_CRAHCNO_ox_iso = pickle.load(handle)
 
 vulcan_spec = data_Pearce_A_like['variable']['species']
 spec = ['HCN', 'H2O_l_s']

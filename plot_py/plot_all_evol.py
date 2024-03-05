@@ -3,7 +3,9 @@ import matplotlib.pyplot as plt
 import os, sys
 import pickle
 
-vul_file = sys.argv[1]
+datastore = '/tmp/datastore/s2555875/'
+folder = datastore + sys.argv[1] + '/'
+vul_file = folder + 'output/' + sys.argv[2]
 
 with open(vul_file, 'rb') as handle:
     data = pickle.load(handle)
@@ -28,7 +30,7 @@ def plot_time_evo(yt, tt, n, mol, xscale = 'linear', yscale = 'log', savefig = F
     ax.legend()
     ax.set_ylim((np.min(yt[-1, :, vulcan_spec.index(mol)]), None))
     if savefig:
-        fig.savefig('../plot/all_evol/{}.png'.format(mol))
+        fig.savefig(folder + 'plot/all_evol/{}.png'.format(mol))
     plt.close(fig)
 # %%
 def plot_evo_layer(yt, tt, n, mol, xscale = 'linear', yscale = 'log', ylim = None):

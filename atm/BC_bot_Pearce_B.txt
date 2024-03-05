@@ -10,18 +10,18 @@ OH            3.5e+3                   1.
 NO            7.4e+3                  0.001
 HCN           2.9e-6                 7.e-3
 # left from original
-NH3           1.5e+9                  1.
-N2O           2.3e+9                 1E-4
-NO2              0                    0.01
-NO3              0                    0.1
-SO2           9.0e+9                   1.
-H2S           2.0e+8                 0.015
-COS           5.4e+7                 0.003
-H2SO4         7.0e+8                   1 
-CH3CN         1.3e+8                 0.13
-HNO3             0                     4.
-H2SO4            0                     1.
-H2SO4_l          0                    0.2
+#NH3           1.5e+9                  1.
+#N2O           2.3e+9                 1E-4
+#NO2              0                    0.01
+#NO3              0                    0.1
+#SO2           9.0e+9                   1.
+#H2S           2.0e+8                 0.015
+#COS           5.4e+7                 0.003
+#H2SO4         7.0e+8                   1 
+#CH3CN         1.3e+8                 0.13
+#HNO3             0                     4.
+#H2SO4            0                     1.
+#H2SO4_l          0                    0.2
 			  
 # tunning
 # N2O before 1e9   now      2e+9

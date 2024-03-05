@@ -1636,7 +1636,7 @@ class Integration(object):
                     F = f * (1 - np.exp(-k_hcn*var.dt))
                     # just checking
                     if F >= 1.:
-                        print('F is greater than 1')
+                        print('F is greater than 1 in layer ' + str(j))
                         exit()
                     else:
                         var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
@@ -3085,7 +3085,8 @@ class Output(object):
     
     def save_out(self, var, atm, para, dname): 
         output_dir, out_name = vulcan_cfg.output_dir, vulcan_cfg.out_name
-        output_file = dname + '/' + output_dir + out_name
+        #output_file = dname + '/' + output_dir + out_name
+        output_file = output_dir + out_name
         
         if not os.path.exists(output_dir):
             print ('The output directory assigned in vulcan_cfg.py does not exist.')
