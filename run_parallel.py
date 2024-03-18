@@ -24,9 +24,31 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
 
 # TO DO:
 #   need something to prepare atmosphere and find a good place to store that, chemistry will be the same
-#   similar for boundary conditions
-#   make a generalised, probably with inputs, script for initial mixing ratios
-#   write general vulcan_cfg generator
-#   do I need to copy vulcan.py for each function or can I call the same file?
+# DONE  similar for boundary conditions
+# DONE  make a generalised, probably with inputs, script for initial mixing ratios
+# AlMOST DONE  write general vulcan_cfg generator -> NEED generic file to start from that has save structure
+# DONE  do I need to copy vulcan.py for each function or can I call the same file? -> can call the same as they run as different processes with their own memory, variables, etc.
 #   after all these can the parallelisation run
 #   plus figure out the output structure: how to name and what groupings should I save them in
+#   so far every bit is in a different script, maybe can be as functions here, THINK about this -> less command line python stuff if they're here as functions...
+    
+
+# collect separate functions here for now, just in case so if I end up using scripts instead, it is easy to delete them
+    
+# ------------------mixing ratios -------------------
+import numpy as np
+import pandas as pd
+
+def is_float(string):
+    try: 
+        float(string)
+        return True
+    except ValueError:
+        return False
+
+def gen_mix(x, p): # need to do general or something, this is only for linear
+    a = (p['X_tropopause'] - p['X_surface']) / (p['p_tropopause'] - pressure[0])
+    b = p['X_surface'] - a*pressure[0]
+    X = a*x + b
+    X[X < 0] = 0.0
+    return X

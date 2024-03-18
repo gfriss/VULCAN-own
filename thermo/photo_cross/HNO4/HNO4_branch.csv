@@ -1,0 +1,6 @@
+# Branching ratios for HNO4 -> (1)NO3 + OH     (2)HO2 + NO2    from PhiDrates
+# lambda , br_ratio_1, br_ratio_2
+1.000e-01,    0.500,    0.500
+6.000e-01,    0.500,    0.500
+1.200e+02,    0.500,    0.500
+7.300e+02,    0.000,    1.000

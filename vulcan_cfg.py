@@ -3,27 +3,28 @@
 # ============================================================================= 
 
 # ====== Setting up the elements included in the network ======
-atom_list = ['H', 'O', 'C', 'N']#, 'S'], 'Ar]
+atom_list = ['H', 'O', 'C', 'N']#, 'S', 'Ar']
 use_lowT_limit_rates = False
 
 # ====== Setting up paths and filenames for the input and output files  ======
 # input:
-#network = 'thermo/NCHO_full_photo_network.txt'
+#network = 'thermo/SNCHO_full_photo_network.txt'
 network = '/tmp/datastore/s2555875/VULCAN-CRAHCNO/bp20_clean.txt'
 use_lowT_limit_rates = False
 gibbs_text = 'thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
 cross_folder = 'thermo/photo_cross/'
+#com_file = 'thermo/all_compose.txt'
 com_file = '/tmp/datastore/s2555875/VULCAN-CRAHCNO/all_compose.txt'
-atm_file = 'atm/T-P_radtrans.txt' # TP and Kzz (optional) file
-sflux_file = 'atm/stellar_flux/Pearce_B_solar.txt' # This is the flux density at the stellar surface
+atm_file = 'atm/T-P-Kzz_Pearce_B.txt' # TP and Kzz (optional) file
+sflux_file = 'atm/stellar_flux/Gueymard_solar.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = 'atm/BC_top_Earth.txt' # the file for the top boundary conditions
 bot_BC_flux_file = 'atm/BC_bot_Pearce_B.txt' # the file for the lower boundary conditions
-vul_ini = 'atm/mixing_table.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
+vul_ini = 'atm/mixing_Pearce_B.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
 # output:
 output_dir = '/tmp/datastore/s2555875/VULCAN-own/output/'
 plot_dir = '/tmp/datastore/s2555875/VULCAN-own/plot/'
 movie_dir = '/tmp/datastore/s2555875/VULCAN-own/plot/movie/'
-out_name =  'CRAHCNO_ox.vul' # output file name
+out_name =  'longrun_B.vul' # output file name
 
 # ====== Setting up the elemental abundance ======
 use_solar = False # True: using the solar abundance from Table 10. K.Lodders 2009; False: using the customized elemental abundance. 
@@ -33,12 +34,12 @@ C_H = 9.5925E+2#2.7761E-4
 N_H = 2.1316E+2#8.1853E-5
 S_H = 2.1527E-7#1.3183E-5
 He_H = 0.09692
-ini_mix = 'table' # Options: 'EQ', 'const_mix', 'vulcan_ini', 'table' (for 'vulcan_ini, the T-P grids have to be exactly the same)
+ini_mix = 'const_mix' # Options: 'EQ', 'const_mix', 'vulcan_ini', 'table' (for 'vulcan_ini, the T-P grids have to be exactly the same)
 
 # Initialsing uniform (constant with pressure) mixing ratios (only reads when ini_mix = const_mix)
 #const_mix = {'N2':0.78, 'O2':0.20, 'H2O':1e-6,  'CO2':4E-4, 'Ar':9.34e-3, 'SO2': 2e-10} 
 #const_mix = {'H2':0.9, 'N2':0.1, 'H2O':1e-4, 'CH4': 2e-6, 'Ar':9.34e-3, 'SO2': 2e-10} # Ar and SO2 left from original
-const_mix = {'CO2':0.9, 'N2':0.1, 'H2O':1e-6, 'CH4':1e-7, 'Ar':9.34e-3, 'SO2':2e-10} 
+const_mix = {'CO2':0.9, 'N2':0.1, 'H2O':1e-5, 'CH4':1e-7}#, 'Ar':9.34e-3, 'SO2':2e-10} 
 
 # ====== Setting up photochemistry ======
 use_photo = True
@@ -48,7 +49,7 @@ Rp = 6.3781e8 # Planetary radius (cm) (for computing gravity)
 orbit_radius = 1 # planet-star distance in A.U.
 sl_angle = 58 /180.*3.14159 # the zenith angle of the star in degree (usually 58 deg for the dayside average)
 f_diurnal = 0.5 # to account for the diurnal average of solar flux (i.e. 0.5 for Earth; 1 for tidally-locked planets) 
-scat_sp = ['N2', 'O2', 'CO2'] # the bulk gases that contribute to Rayleigh scattering
+scat_sp = ['N2', 'CO2'] # the bulk gases that contribute to Rayleigh scattering
 T_cross_sp = ['CO2','H2O','NH3'] # warning: slower start! available atm: 'CO2','H2O','NH3', 'SH','H2S','SO2', 'S2', 'COS', 'CS2'
 
 edd = 0.5 # the Eddington coefficient 
@@ -71,8 +72,8 @@ if use_photo == False and use_ion == True:
 atm_base = 'CO2' #Options: 'H2', 'N2', 'O2', 'CO2 -- the bulk gas of the atmosphere: changes the molecular diffsion, thermal diffusion factor, and settling velocity
 rocky = True # for the surface gravity
 nz = 120   # number of vertical layers
-P_b = 1e6  # pressure at the bottom (dyne/cm^2)
-P_t = 5e-2 # pressure at the top (dyne/cm^2)
+P_b = 2e6  # pressure at the bottom (dyne/cm^2)
+P_t = 1e-2 # pressure at the top (dyne/cm^2)
 use_Kzz = True
 use_moldiff = True
 use_vz = False
@@ -95,9 +96,9 @@ update_frq = 100
 
 # ====== Setting up the boundary conditions ======
 # Boundary Conditions:
-use_topflux = False
+use_topflux = True
 use_botflux = True
-use_fix_sp_bot = {"H2O":0.00894, 'CO2':4E-4}#, "H2O_l_s":0} #   0.0143 for 40% humidity 0.0033 for 20% humidity in US standard 1967 # fixed mixing ratios at the lower boundary
+use_fix_sp_bot = {"H2O":0.00894, 'CO2':4E-4, "H2O_l_s":0} #   0.0143 for 40% humidity 0.0033 for 20% humidity in US standard 1967 # fixed mixing ratios at the lower boundary
 diff_esc = ['H2', 'H'] # species for diffusion-limit escape at TOA
 max_flux = 1e13  # upper limit for the diffusion-limit fluxes
 
@@ -115,6 +116,7 @@ rho_p = {'H2O_l_s': 0.9}#, 'H2SO4_l': 1.8302} # particle density in g cm^-3
 start_conden_time = 0
 condense_sp = ["H2O"]#, "H2SO4"]      
 non_gas_sp = [ 'H2O_l_s']#, "H2SO4_l"]
+rain_sp = ['H2O', 'HCN']
 non_gas_rain_sp = ['H2O_rain', 'HCN_rain']
 fix_species = ['H2O','H2O_l_s']#,"H2SO4","H2SO4_l"]      # fixed the condensable species after condensation-evapoation EQ has reached  
 fix_species_time = 5e8 # ~20 yrs; after this time to fix the condensable species
@@ -139,8 +141,8 @@ dt_max = runtime*1e-5
 dt_var_max = 2.
 dt_var_min = 0.5
 count_min = 120
-count_max = int(1E5)#int(3E4)
-atol = 1.E-1 # Try decreasing this if the solutions are not stable
+count_max = int(5E5)#int(3E4)
+atol = 1.E-3 #1 # Try decreasing this if the solutions are not stable
 mtol = 1.E-22
 mtol_conv = 1.E-16
 pos_cut = 0
@@ -153,7 +155,7 @@ flux_cri = 0.1
 flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)
 
 # ====== Setting up numerical parameters for Ros2 ODE solver ====== 
-rtol = 1.5              # relative tolerence for adjusting the stepsize 
+rtol = 1e-5#1.5              # relative tolerence for adjusting the stepsize 
 post_conden_rtol = 0.2 # switched to this value after fix_species_time
 
 # ====== Setting up for ouwtput and plotting ======

@@ -181,12 +181,21 @@ class InitialAbun(object):
                     if compo[compo_row.index(sp)]['e'] != 0: charge_list.append(sp)
         
         elif vulcan_cfg.ini_mix  == 'table':
-            table = np.genfromtxt(vulcan_cfg.vul_ini, names=True, dtype=None, skip_header=1) 
-            if not len(data_atm.pco) == len(table['Pressure']): 
-                print ("Warning! The initial profile has different layers than the current setting...")
-                raise
-            for sp in table.dtype.names[1:]: # was species, but my table only has certain molecules... 
-                data_var.y[:,species.index(sp)] = data_atm.n_0 * table[sp]
+            table = np.genfromtxt(vulcan_cfg.vul_ini, names=True, dtype=None, skip_header=1, comments = '#') 
+            #if not len(data_atm.pco) == len(table['Pressure']): 
+            #    print ("Warning! The initial profile has different layers than the current setting...")
+            #    raise
+            tab_pres = table['Pressure']
+            tab_pres[0] += 1e-4
+            tab_pres[-1] -= 1e-4 # theese are needed for the interpolatoin to not whine...
+            for sp in table.dtype.names[1:]: # was species, but my table only has certain molecules...  
+                fun_mix = interpolate.interp1d(tab_pres, table[sp])
+                sp_mix = fun_mix(data_atm.pco)
+                if not len(data_atm.pco) == len(sp_mix): 
+                    print ("Warning! The initial profile has different layers than the current setting...")
+                    raise
+                y_ini[:,species.index(sp)] = gas_tot * sp_mix #table[sp]
+                
 
     
         elif vulcan_cfg.ini_mix == 'const_mix':

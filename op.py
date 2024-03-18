@@ -1581,7 +1581,7 @@ class Integration(object):
         k_h2o_top = 0. # initiating and then they will be changed in the for loop
         k_h2o_bot = 0.
         for j in range(nz-2, -1, -1): # before it went until nz-1 that was exluded, plus i want 0 to be included
-            if y_h2o[j] != 0. and j != 0:
+            if y_h2o[j] >= 1.e-30 and j != 0:
                 dz_ave = 0.5*(dzi[j-1] + dzi[j])
                 y_tot_plus = (ysum[j+1] + ysum[j]) / 2.
                 y_tot_minus = (ysum[j-1] + ysum[j]) / 2.
@@ -1601,10 +1601,10 @@ class Integration(object):
                     k_h2o_top = k_h2o
                 elif j < j_cloud_bot:
                     k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
-            elif y_h2o[j] == 0. and j != 0: #above cloud without water vapour
+            elif y_h2o[j] < 1.e-30 and j != 0: #above cloud without water vapour
                 k_h2o = 0.
                 k_wash = 0.
-            elif j == 0:
+            if j == 0:
                 #dz_ave = 0.5*(dzi[j_cloud_bot-1] + dzi[j_cloud_bot])
                 #y_tot_plus = (ysum[j_cloud_bot+1] + ysum[j_cloud_bot]) / 2.
                 #y_tot_minus = (ysum[j_cloud_bot-1] + ysum[j_cloud_bot]) / 2.
@@ -1672,11 +1672,16 @@ class ODESolver(object):
         self.mtol = vulcan_cfg.mtol
         self.atol = vulcan_cfg.atol
         self.non_gas_sp = vulcan_cfg.non_gas_sp
+        self.non_gas_rain_sp = vulcan_cfg.non_gas_rain_sp
         
         if vulcan_cfg.use_condense == True:  
             self.non_gas_sp_index = [species.index(sp) for sp in self.non_gas_sp]
             self.condense_sp_index = [species.index(sp) for sp in vulcan_cfg.condense_sp]
-            
+
+        if vulcan_cfg.use_rainout == True:  
+            self.non_gas_rain_sp_index = [species.index(sp) for sp in self.non_gas_rain_sp]
+            self.rain_sp_index = [species.index(sp) for sp in vulcan_cfg.rain_sp]
+
         self.fix_sp_bot_index = [species.index(sp) for sp in vulcan_cfg.use_fix_sp_bot.keys()]
         self.fix_sp_bot_mix = np.array([vulcan_cfg.use_fix_sp_bot[sp] for sp in vulcan_cfg.use_fix_sp_bot.keys()])
   
@@ -2866,6 +2871,11 @@ class Ros2(ODESolver):
             #     conden_status = sol[:,species.index(sp)] >= atm.n_0 * atm.sat_mix[sp]*0.99
             #     atm.conden_status = conden_status
             # Recorde the condensing levels TEST 2022
+                    
+        # similar for rain 
+        if vulcan_cfg.use_rainout == True:
+            delta[:, self.non_gas_rain_sp_index] = 0
+            delta[:, self.rain_sp_index] = 0
 
         if vulcan_cfg.use_print_delta == True and para.count % vulcan_cfg.print_prog_num==0:
             max_indx = np.nanargmax(delta/sol, axis=1)

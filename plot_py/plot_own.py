@@ -86,11 +86,15 @@ vul_data_H2_escape_Pearce_A = datastore + vul_mas + 'output/H2_escape_Pearce_A.v
 with open(vul_data_H2_escape_Pearce_A, 'rb') as handle:
   data_H2_escape_Pearce_A = pickle.load(handle)
 
-vul_crahcno_ox_iso = datastore + vul_own + 'output/CRAHCNO_ox_iso.vul'
-with open(vul_crahcno_ox_iso, 'rb') as handle:
-  data_CRAHCNO_ox_iso = pickle.load(handle)
+vul_crahcno_ox = datastore + vul_own + 'output/CRAHCNO_ox.vul'
+with open(vul_crahcno_ox, 'rb') as handle:
+  data_CRAHCNO_ox = pickle.load(handle)
 
-vulcan_spec = data_Pearce_A_like['variable']['species']
+vul_crahcno_red = datastore + vul_mas + 'output/CRAHCNO_red.vul'
+with open(vul_crahcno_red, 'rb') as handle:
+  data_CRAHCNO_red = pickle.load(handle)
+
+vulcan_spec = data_CRAHCNO_ox['variable']['species']
 spec = ['HCN', 'H2O_l_s']
 #%%
 for sp in spec:
@@ -206,15 +210,18 @@ def plot_time_evo(yt, tt, n, mol, xscale = 'log', yscale = 'log', ylim = None):
   if ylim != None:
     ax.set_ylim(ylim)
 # %%
-def plot_evo_layer(yt, tt, n, mol, xscale = 'log', yscale = 'log', ylim = None):
+def plot_evo_layer(yt, tt, n, mol, xscale = 'log', yscale = 'log', ylim = None, figname = None):
   fig, ax = plt.subplots()
-
-  ax.plot(tt, yt[:, n, vulcan_spec.index(mol)], color = 'red', label = mol)
-  ax.set_xlabel('Time [s]')
-  ax.set_ylabel(r'n [cm$^{-3}$]')
+  ytot = np.sum(yt[:, n, data_CRAHCNO_ox['atm']['gas_indx']], axis = 1)
+  for molec in mol:
+    ax.plot(tt/(24*365.24*3600), yt[:, n, vulcan_spec.index(molec)]/ytot, label = molec)
+  ax.set_xlabel('Time [yr]')
+  ax.set_ylabel('Mixing ratio')#(r'n [cm$^{-3}$]')
   ax.set_yscale(yscale)
   ax.set_xscale(xscale)
   ax.legend()
   if ylim != None:
     ax.set_ylim(ylim)
+  if figname != None:
+    fig.savefig(figname + '.png')
 # %%
