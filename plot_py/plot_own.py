@@ -7,6 +7,8 @@ import pickle
 datastore = '/tmp/datastore/s2555875/'
 vul_own = 'VULCAN-own/'
 vul_mas = 'VULCAN-master/'
+scratch = '/scratch/s2555875/'
+#%%
 
 vul_data = datastore + vul_own + 'output/Earth.vul'
 
@@ -85,7 +87,7 @@ with open(vul_data_Pearce_oxidising_mixtable_no_settling, 'rb') as handle:
 vul_data_H2_escape_Pearce_A = datastore + vul_mas + 'output/H2_escape_Pearce_A.vul'
 with open(vul_data_H2_escape_Pearce_A, 'rb') as handle:
   data_H2_escape_Pearce_A = pickle.load(handle)
-
+#%%
 vul_crahcno_ox = datastore + vul_own + 'output/CRAHCNO_ox.vul'
 with open(vul_crahcno_ox, 'rb') as handle:
   data_CRAHCNO_ox = pickle.load(handle)
@@ -94,7 +96,36 @@ vul_crahcno_red = datastore + vul_mas + 'output/CRAHCNO_red.vul'
 with open(vul_crahcno_red, 'rb') as handle:
   data_CRAHCNO_red = pickle.load(handle)
 
-vulcan_spec = data_CRAHCNO_ox['variable']['species']
+vul_longrun_B = datastore + vul_own + 'output/longrun_B.vul'
+with open(vul_longrun_B, 'rb') as handle:
+  data_longrun_B = pickle.load(handle)
+
+vul_longrun_B_Earthlike_Kzz = datastore + vul_own + 'output/longrun_B_Earthlike_Kzz.vul'
+with open(vul_longrun_B_Earthlike_Kzz, 'rb') as handle:
+  data_longrun_B_Earthlike_Kzz = pickle.load(handle)
+
+#%%
+vul_B_Pearce = scratch + 'output/B_Pearce.vul'
+with open(vul_B_Pearce, 'rb') as handle:
+  data_B_Pearce = pickle.load(handle)
+
+vul_B_Pearce_long = scratch + 'output/B_Pearce_long.vul'
+with open(vul_B_Pearce_long, 'rb') as handle:
+  data_B_Pearce_long = pickle.load(handle)
+
+vul_B_nofix = scratch + 'output/B_nofix.vul'
+with open(vul_B_nofix, 'rb') as handle:
+  data_B_nofix = pickle.load(handle)
+
+vul_B_nofix_long = scratch + 'output/B_nofix_long.vul'
+with open(vul_B_nofix_long, 'rb') as handle:
+  data_B_nofix_long = pickle.load(handle)
+
+vul_B_nofix_norain = scratch + 'output/B_nofix_norain.vul'
+with open(vul_B_nofix_norain, 'rb') as handle:
+  data_B_nofix_norain = pickle.load(handle)
+
+vulcan_spec = data_B_Pearce['variable']['species']
 spec = ['HCN', 'H2O_l_s']
 #%%
 for sp in spec:
@@ -210,12 +241,24 @@ def plot_time_evo(yt, tt, n, mol, xscale = 'log', yscale = 'log', ylim = None):
   if ylim != None:
     ax.set_ylim(ylim)
 # %%
-def plot_evo_layer(yt, tt, n, mol, xscale = 'log', yscale = 'log', ylim = None, figname = None):
+def plot_evo_layer(dat, n, mol = None, xscale = 'log', yscale = 'log', ylim = None, figname = None, years = False):
   fig, ax = plt.subplots()
-  ytot = np.sum(yt[:, n, data_CRAHCNO_ox['atm']['gas_indx']], axis = 1)
-  for molec in mol:
-    ax.plot(tt/(24*365.24*3600), yt[:, n, vulcan_spec.index(molec)]/ytot, label = molec)
-  ax.set_xlabel('Time [yr]')
+  yt = dat['variable']['y_time']
+  if years:
+    tt = dat['variable']['t_time'] / (24*365.24*3600)
+    ax.set_xlabel('Time [yr]')
+  else:
+    tt = dat['variable']['t_time']
+    ax.set_xlabel('Time [s]')
+  
+  dat_spec = dat['variable']['species']
+  ytot = np.sum(yt[:, n, dat['atm']['gas_indx']], axis = 1)
+  colour = ['r', 'orange', 'b', 'peru', 'c', 'k', 'magenta', 'purple', 'y', 'g']
+  if mol == None:
+    mol = ['H2', 'N2', 'H2O', 'CO2', 'O2', 'CO', 'CH4', 'HCN', 'H2CO', 'OH']
+
+  for molec,c in zip(mol, colour):
+    ax.plot(tt, yt[:, n, dat_spec.index(molec)]/ytot, label = molec, color = c)
   ax.set_ylabel('Mixing ratio')#(r'n [cm$^{-3}$]')
   ax.set_yscale(yscale)
   ax.set_xscale(xscale)
@@ -223,5 +266,46 @@ def plot_evo_layer(yt, tt, n, mol, xscale = 'log', yscale = 'log', ylim = None, 
   if ylim != None:
     ax.set_ylim(ylim)
   if figname != None:
-    fig.savefig(figname + '.png')
+    fig.savefig(scratch + 'plot/' + figname + '.png')
+
+def plot_many_layers(dat, n, mol = None, xscale = 'log', yscale = 'log', ylim = None, figname = None, years = False):
+  fig, ax = plt.subplots(nrows = len(n), sharex = True, sharey = True, figsize = (8,4*len(n)), tight_layout = True)
+  yt = dat['variable']['y_time']
+  if years:
+    tt = dat['variable']['t_time'] / (24*365.24*3600)
+    ax[-1].set_xlabel('Time [yr]')
+  else:
+    tt = dat['variable']['t_time']
+    ax[-1].set_xlabel('Time [s]')
+  
+  dat_spec = dat['variable']['species']
+  colour = ['r', 'orange', 'b', 'peru', 'c', 'k', 'magenta', 'purple', 'y', 'g']
+  lab = []
+  if mol == None:
+    mol = ['H2', 'N2', 'H2O', 'CO2', 'O2', 'CO', 'CH4', 'HCN', 'H2CO', 'OH']
+  for i in range(len(ax)):
+    ytot = np.sum(yt[:, n[-(i+1)], dat['atm']['gas_indx']], axis = 1)
+    for molec,c in zip(mol, colour):
+      if i == len(ax) - 1:
+        ax[-1].plot(tt, yt[:, n[-(i+1)], dat_spec.index(molec)]/ytot, label = molec, color = c)
+        lab.append(molec)
+      else:
+        ax[i].plot(tt, yt[:, n[-(i+1)], dat_spec.index(molec)]/ytot, color = c)
+    ax[i].set_ylabel('Mixing ratio')#(r'n [cm$^{-3}$]')
+    ax[i].set_yscale(yscale)
+    ax[i].set_xscale(xscale)
+    ax[i].set_title('Layer ' + str(n[-(i+1)]))
+  if ylim != None:
+      ax[0].set_ylim(ylim)
+  fig.legend(labels = lab, bbox_to_anchor = (1.12, 0.65))
+  if figname != None:
+    fig.savefig(scratch + 'plot/' + figname + '.png', bbox_inches = 'tight')
+# %%
+# calc rain out rate # below gives 1.23e-8 which is much higher than for Ben...
+hcn_rain_rate = np.sum(data_B_nofix['variable']['y'][:-1,vulcan_spec.index('HCN_rain')] * data_B_nofix['atm']['dzi']) # 1/cm2s
+print(hcn_rain_rate * 1.24e-14) # kg/m2yr
+#%%
+# rain similar to Pearce et al (2022) without my rain, using the deposition velocity
+hcn_rain_rate = np.sum(data_B_nofix_norain['variable']['y'][:,vulcan_spec.index('HCN')]) * data_B_nofix_norain['atm']['bot_vdep'][vulcan_spec.index('HCN')] # 1/cm2s
+print(hcn_rain_rate * 1.24e-14) # kg/m2yr
 # %%

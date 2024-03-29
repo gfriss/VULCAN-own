@@ -998,16 +998,29 @@ class Integration(object):
     def update_phi_esc(self, var, atm): # updating diffusion-mimited escape
     
         # Diffusion limited escape 
-        for sp in vulcan_cfg.diff_esc:
+        #for sp in vulcan_cfg.diff_esc:
 
             #atm.top_flux[species.index(sp)] = - atm.Dzz[-1,species.index(sp)] *var.y[-1,species.index(sp)] /atm.Hp[-1]
-            atm.top_flux[species.index(sp)] = - atm.Dzz[-1,species.index(sp)]*var.y[-1,species.index(sp)]*( 1./atm.Hp[-1] -atm.ms[species.index(sp)]* atm.g[-1]/(Navo*kb*atm.Tco[-1])     )            
-            atm.top_flux[species.index(sp)] = max(atm.top_flux[species.index(sp)], vulcan_cfg.max_flux*(-1))
+        #    atm.top_flux[species.index(sp)] = - atm.Dzz[-1,species.index(sp)]*var.y[-1,species.index(sp)]*( 1./atm.Hp[-1] -atm.ms[species.index(sp)]* atm.g[-1]/(Navo*kb*atm.Tco[-1])     )            
+        #    atm.top_flux[species.index(sp)] = max(atm.top_flux[species.index(sp)], vulcan_cfg.max_flux*(-1))
             
             # print ("Escape flux of " + sp + "{:>10.2e}".format(atm.top_flux[species.index(sp)]))
             # print ("diffusion-limite value: " + "{:>10.2e}".format(- atm.Dzz[-1,species.index(sp)]*var.y[-1,species.index(sp)]*( 1./atm.Hp[-1] -atm.ms[species.index(sp)]* atm.g[-1]/(Navo*kb*atm.Tco[-1])     )) )
             #print ("Test  " + sp + "{:>10.2e}".format(atm.Dzz[-1,species.index(sp)] *var.y[-1,species.index(sp)] /atm.Hp[-1]) )
-            
+
+        # energy and diffusion limited fro Pearce (2022)
+        A = 2e12
+        B2 = 0.006
+        S = 30 # for red and 9 for ox
+        y = var.y.copy()
+        dz = atm.dz.copy()
+        N_tot = np.sum(np.sum(y[:,atm.gas_indx], axis=1) * dz)
+        for sp in vulcan_cfg.diff_esc:
+            N_i = np.sum(np.sum(y[:,species.index(sp)]) * dz)
+            fl = -1. * (A*S / (np.sqrt(1+B2*np.power(S,2)))) * (N_i/N_tot)
+            atm.top_flux[species.index(sp)] = fl
+        #    print(str(sp) + " escape flux is {:.2e} cm2/s".format(fl))
+                
         return atm
     
     def update_mol_diff(self, var, atm):
@@ -1508,7 +1521,7 @@ class Integration(object):
         return var
     
     def rainout(self, var, atm):
-        KH = 10. # efficient Henry's law constant, only for HCN for now..
+        KH = vulcan_cfg.Henrys # efficient Henry's law constant, only for HCN for now.., M/atm
         #L = 1 # cloud water content, gm^-3, I guess could convert y_h20_l_s?
         # rather define L according to curent water content (could use constant but convert to cm3 water/cm3 air....)
         #R = 8.314 # gas constant, J/molK
@@ -2086,7 +2099,7 @@ class ODESolver(object):
         if vulcan_cfg.diff_esc: # not empty list
             diff_lim = np.zeros(ni)
             for sp in vulcan_cfg.diff_esc:
-                if y[-1,species.index(sp)] > 0:
+                if y[-1,species.index(sp)] > 1.e-30:
                     diff_lim[species.index(sp)] += atm.top_flux[species.index(sp)] /y[-1,species.index(sp)]
             dfdy[j_indx[-1], j_indx[-1]] -= diff_lim # negative
             
@@ -2207,7 +2220,7 @@ class ODESolver(object):
         if vulcan_cfg.diff_esc: # not empty list
             diff_lim = np.zeros(ni)
             for sp in vulcan_cfg.diff_esc:
-                if y[-1,species.index(sp)] > 0:
+                if y[-1,species.index(sp)] > 1.e-30:
                     diff_lim[species.index(sp)] += atm.top_flux[species.index(sp)] /y[-1,species.index(sp)]
             dfdy[j_indx[-1], j_indx[-1]] -= diff_lim # negative
             
@@ -2339,7 +2352,7 @@ class ODESolver(object):
         if vulcan_cfg.diff_esc: # not empty list
             diff_lim = np.zeros(ni)
             for sp in vulcan_cfg.diff_esc:
-                if y[-1,species.index(sp)] > 0:
+                if y[-1,species.index(sp)] > 1.e-30:
                     diff_lim[species.index(sp)] += atm.top_flux[species.index(sp)] /y[-1,species.index(sp)]
             dfdy[j_indx[-1], j_indx[-1]] -= diff_lim # negative
             
@@ -3135,6 +3148,10 @@ class Output(object):
                 # the protocol must be <= 2 for python 2.X
                 pickle.dump( {'variable': var_save, 'atm': vars(atm), 'parameter': vars(para) }, outfile, protocol=4)
                 # how to add  'config': vars(vulcan_cfg) ?
+
+        if vulcan_cfg.save_if_converged:
+            with open('/scratch/s2555875/converged.txt', 'a') as f:
+                f.write('\n' + vulcan_cfg.out_name)
         
             
     def plot_update(self, var, atm, para):
