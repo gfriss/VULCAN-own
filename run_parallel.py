@@ -76,16 +76,16 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     wd = os.getcwd()
     os.chdir(sim_folder)
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/build_atm.py', 'build_atm.py'])
-    subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/chem_funs.py', 'chem_funs.py'])
+    subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/make_chem_funs.py', 'make_chem_funs.py'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/op.py', 'op.py'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/phy_const.py', 'phy_const.py'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/store.py', 'store.py'])
-    subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/vulcan.py', 'vulcan.py'])
+    subprocess.check_call(['cp', '-p', '/home/s2555875/VULCAN-2/vulcan.py', 'vulcan.py'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/thermo', 'thermo'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/atm', 'atm'])
     
     # then run vulcan.py
-    subprocess.check_call(['python', 'vulcan.py', '-n'])
+    subprocess.check_call(['python', 'vulcan.py'])
     # then exit simulation folder and delete it
     os.chdir(wd)
     subprocess.check_call(['rm', '-rf', sim_folder])
