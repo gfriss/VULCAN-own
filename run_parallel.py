@@ -37,20 +37,21 @@ def dict_to_input(d):
 rank = CW.Get_rank()
 size = CW.Get_size()
 
-nsim = 15
+nsim = 8
 sim_per_rank = int(nsim / size) # this is needed to distribure the tasks between tha CPUs
 
 main_folder = '/scratch/s2555875/' # place to store outputs
-bomb_rate = np.linspace(3e23, 1e25, nsim) # values from Pearce et al. (2022) Fig A4 min and max
-vdep = '1.,1.e-4,0.,1.' # deposition velocity for H2, CO2, CH4, NH3 (CO from lighning too so have to adjust later...)
-prod_sp = {'H2':0.65, 'CO2':1.32, 'CH4':1e-6, 'NH3':7e-5} # produced amount per impactor os m_mass from Zahnle et al (2020)
+bomb_rate = np.linspace(3.5e23, 9e23, nsim) # values from Pearce et al. (2022) Fig A4 min and max
+# it was: np.linspace(3e23, 1e25, nsim)
+vdep = '1.'#,1.e-4,0.,1.' # deposition velocity for H2, CO2, CH4, NH3 (CO from lighning too so have to adjust later...)
+prod_sp = {'H2':0.65}#, 'CO2':1.32, 'CH4':1e-6, 'NH3':7e-5} # produced amount per impactor os m_mass from Zahnle et al (2020)
 m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
 
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
                                                             # this is the magic, after this just think of it as a normal, sequential loop
     sim = ''
     if i < 10:
-        sim = 'sim_0' + str(i)
+        sim = 'sim_00' + str(i)
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim) # my folder naming conventions
     else:
@@ -67,7 +68,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     subprocess.check_call(['python', 'gen_BC.py', sp_names, sp_fluxes, vdep, BC_bot_file])
     # then use the new BC file in cfg file with output name
     BC_bot_change = 'bot_BC_flux_file,'+BC_bot_file+',str'
-    out_file = sim + '.vul'
+    out_file = sim + '_onlyH2.vul'
     out_change = 'out_name,'+out_file+',str'
     new_cfg = sim_folder + '/vulcan_cfg.py'
     subprocess.check_call(['python', 'gen_cfg.py', new_cfg, BC_bot_change, out_change])
@@ -76,7 +77,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     wd = os.getcwd()
     os.chdir(sim_folder)
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/build_atm.py', 'build_atm.py'])
-    subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/make_chem_funs.py', 'make_chem_funs.py'])
+    subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/chem_funs.py', 'chem_funs.py'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/op.py', 'op.py'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/phy_const.py', 'phy_const.py'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/store.py', 'store.py'])
@@ -85,7 +86,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/atm', 'atm'])
     
     # then run vulcan.py
-    subprocess.check_call(['python', 'vulcan.py'])
+    subprocess.check_call(['python', 'vulcan.py', '-n'])
     # then exit simulation folder and delete it
     os.chdir(wd)
     subprocess.check_call(['rm', '-rf', sim_folder])

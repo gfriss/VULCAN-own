@@ -1169,6 +1169,9 @@ class Integration(object):
             print ('Integration successful with ' + str(para.count) + ' steps and long dy, long dydt = ' + str(var.longdy) + ' ,' + str(var.longdydt) + '\nActinic flux change: ' + '{:.2E}'.format(var.aflux_change)) 
             self.output.print_end_msg(var, para)
             para.end_case = 1
+            if vulcan_cfg.save_if_converged:
+                with open('/scratch/s2555875/converged.txt', 'a') as f:
+                    f.write('\n' + vulcan_cfg.out_name)
             return True
         elif var.t > vulcan_cfg.runtime:
             print ("After ------- %s seconds -------" % ( time.time()- para.start_time ) + ' s CPU time')
@@ -3149,9 +3152,7 @@ class Output(object):
                 pickle.dump( {'variable': var_save, 'atm': vars(atm), 'parameter': vars(para) }, outfile, protocol=4)
                 # how to add  'config': vars(vulcan_cfg) ?
 
-        if vulcan_cfg.save_if_converged:
-            with open('/scratch/s2555875/converged.txt', 'a') as f:
-                f.write('\n' + vulcan_cfg.out_name)
+        
         
             
     def plot_update(self, var, atm, para):

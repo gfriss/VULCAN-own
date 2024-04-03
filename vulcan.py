@@ -74,12 +74,7 @@ try: import chem_funs
 except: 
     raise IOError ('\nThe module "chem_funs" does not exist.\nPlease run prepipe.py first to create the module...')
      
-# import the configuration inputs
-if len(sys.argv) >= 2 and 'cfg' in sys.argv[-1]: # for custom cfg file as last argument
-    sys.path.insert(0, os.path.abspath('../scratch/'))
-    vulcan_cfg = __import__(sys.argv[-1])
-else:
-    import vulcan_cfg
+import vulcan_cfg
 from phy_const import kb, Navo
 
 # Setting the current working directory to the script location
