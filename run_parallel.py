@@ -34,10 +34,22 @@ def dict_to_input(d):
     val_str = ','.join(v)
     return k, val_str
 
+def gen_mixing(co2_mix, output):
+    og_mixing = np.genfromtxt('atm/mixing_Pearce_B.txt', dtype = None, comments = '#', skip_header = 1, names = True)
+    N2 = og_mixing['N2']
+    H2O = og_mixing['H2O']
+    CH4 = og_mixing['CH4']
+    CO2 = np.ones_like(N2) * co2_mix
+    CO = np.ones_like(N2) * (0.9 - co2_mix) # max 90 %
+    with open(output, 'w') as f:
+        f.write('# (dyne/cm2)\nPressure  CO2  CO  N2  CH4  H2O\n')
+        for i in range(len(N2)):
+            f.write('{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\n'.format(og_mixing['Pressure'][i],CO2[i],CO[i],N2[i],CH4[i],H2O[i]))
+
 rank = CW.Get_rank()
 size = CW.Get_size()
 
-nsim = 8
+nsim = 15
 sim_per_rank = int(nsim / size) # this is needed to distribure the tasks between tha CPUs
 
 main_folder = '/scratch/s2555875/' # place to store outputs
@@ -47,31 +59,38 @@ vdep = '1.'#,1.e-4,0.,1.' # deposition velocity for H2, CO2, CH4, NH3 (CO from l
 prod_sp = {'H2':0.65}#, 'CO2':1.32, 'CH4':1e-6, 'NH3':7e-5} # produced amount per impactor os m_mass from Zahnle et al (2020)
 m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
 
+co2_for_CtoO_range = np.linspace(0,0.9,nsim, endpoint = True)
+
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
                                                             # this is the magic, after this just think of it as a normal, sequential loop
     sim = ''
     if i < 10:
-        sim = 'sim_00' + str(i)
+        sim = 'sim_CtoO_0' + str(i)
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim) # my folder naming conventions
     else:
-        sim = 'sim_' + str(i)
+        sim = 'sim_CtoO_' + str(i)
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim)
     # build files for simulation
     # first create simulation folder
     subprocess.check_call(['mkdir', sim_folder])
     # then BC because of meteorite and outgassing and lightning
-    sp_names, sp_fluxes = dict_to_input(bombardment(bomb_rate[i], m_mass, prod_sp))
+    #sp_names, sp_fluxes = dict_to_input(bombardment(bomb_rate[i], m_mass, prod_sp))
     # need: species, flux, vdep and name of txt file
-    BC_bot_file = main_folder + 'BC_files/' + 'BC_bot_' + sim + '.txt'
-    subprocess.check_call(['python', 'gen_BC.py', sp_names, sp_fluxes, vdep, BC_bot_file])
+    #BC_bot_file = main_folder + 'BC_files/' + 'BC_bot_' + sim + '.txt'
+    #subprocess.check_call(['python', 'gen_BC.py', sp_names, sp_fluxes, vdep, BC_bot_file])
     # then use the new BC file in cfg file with output name
-    BC_bot_change = 'bot_BC_flux_file,'+BC_bot_file+',str'
-    out_file = sim + '_onlyH2.vul'
-    out_change = 'out_name,'+out_file+',str'
+    #BC_bot_change = 'bot_BC_flux_file,'+BC_bot_file+',str'
+    out_file = sim + '.vul'
+    out_change = 'out_name,' + out_file + ',str'
     new_cfg = sim_folder + '/vulcan_cfg.py'
-    subprocess.check_call(['python', 'gen_cfg.py', new_cfg, BC_bot_change, out_change])
+    # generate new mixing file
+    new_mixing_file = sim_folder + 'mixing.txt'
+    mixing_change = 'vul_ini,' + new_mixing_file + ',str'
+    gen_mixing(co2_for_CtoO_range[i], new_mixing_file)
+    #subprocess.check_call(['python', 'gen_cfg.py', new_cfg, BC_bot_change, out_change])
+    subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     #subprocess.check_call(['cp', '-p', 'build_atm.py', 'chem_funs.py', 'op.py', 'phy_const.py', 'store.py', 'vulcan.py', sim_folder])
     wd = os.getcwd()

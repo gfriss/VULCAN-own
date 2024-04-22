@@ -138,3 +138,34 @@ plt.plot(Kzz, press_new[::-1], '--', label = 'new')
 plt.yscale('log')
 plt.gca().invert_yaxis()
 # %%
+# scaling the current Earth eddy diffusion profile according to Hu et al. (2012)
+# and using the T-P profile from Pearce et al. (2022)
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
+scale = 6.3 # for H2 dominated atmosphere, 0.68 for CO2 dominated
+
+vulcan_atm = np.genfromtxt('atm/atm_Earth_Jan_Kzz.txt', dtype = None, comments = '#', skip_header = 1, names = True)
+Kzz_vulcan = vulcan_atm['Kzz']
+pressure_vulcan = vulcan_atm['Pressure']
+pearce_atm = np.genfromtxt('atm/T-P-Kzz_Pearce_A.txt', dtype = None, comments = '#', skip_header = 1, names = True) # already has vulcan format, but eddy diffusion is weird
+pressure_pearce = pearce_atm['Pressure']
+temperature_pearce = pearce_atm['Temp']
+
+kzz_fun = interp1d(pressure_vulcan, Kzz_vulcan*scale)
+Kzz_scaled_overlap = kzz_fun(pressure_pearce[(pressure_pearce > np.min(pressure_vulcan))*(pressure_pearce < np.max(pressure_vulcan))])
+Kzz_scaled_high_pressure = np.ones_like(pressure_pearce[pressure_pearce > np.max(pressure_vulcan)]) * Kzz_scaled_overlap[0] # by structure it starts at ground so max pressure
+Kzz_scaled_low_pressure = np.ones_like(pressure_pearce[pressure_pearce < np.min(pressure_vulcan)]) * Kzz_scaled_overlap[-1] # by structure it ends at TOA so min pressure
+Kzz_scaled = np.concatenate((np.concatenate((Kzz_scaled_high_pressure, Kzz_scaled_overlap)), Kzz_scaled_low_pressure))
+
+# visual test
+plt.plot(Kzz_scaled, pressure_pearce)
+plt.gca().invert_yaxis()
+plt.xscale('log')
+plt.yscale('log')
+
+with open('atm/T-P-Kzz_scaled_A.txt', 'w') as f:
+    f.write('# (dyne/cm2) (K)     (cm2/s)\nPressure\tTemp\tKzz\n')
+    for i in range(len(temperature_pearce)):
+        f.write('{:.3e}\t{:.1f}\t{:.3e}\n'.format(pressure_pearce[i], temperature_pearce[i], Kzz_scaled[i]))
+# %%
