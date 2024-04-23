@@ -65,11 +65,11 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
                                                             # this is the magic, after this just think of it as a normal, sequential loop
     sim = ''
     if i < 10:
-        sim = 'sim_CtoO_0' + str(i)
+        sim = 'sim_0' + str(i) + '_CtoO'
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim) # my folder naming conventions
     else:
-        sim = 'sim_CtoO_' + str(i)
+        sim = 'sim_' + str(i) + '_CtoO'
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim)
     # build files for simulation
@@ -86,7 +86,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     out_change = 'out_name,' + out_file + ',str'
     new_cfg = sim_folder + '/vulcan_cfg.py'
     # generate new mixing file
-    new_mixing_file = sim_folder + 'mixing.txt'
+    new_mixing_file = main_folder + 'mixing_files/' + sim + 'mixing.txt'
     mixing_change = 'vul_ini,' + new_mixing_file + ',str'
     gen_mixing(co2_for_CtoO_range[i], new_mixing_file)
     #subprocess.check_call(['python', 'gen_cfg.py', new_cfg, BC_bot_change, out_change])

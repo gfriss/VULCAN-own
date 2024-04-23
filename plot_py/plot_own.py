@@ -343,7 +343,7 @@ def plot_many_layers(dat, n, mol = None, xscale = 'log', yscale = 'log', ylim = 
     fig.savefig(scratch + 'plot/' + figname + '.png', bbox_inches = 'tight')
 # %%
 # calc rain out rate # below gives 1.23e-8 which is much higher than for Ben...
-hcn_rain_rate = np.sum(data_B_nofix['variable']['y'][:-1,vulcan_spec.index('HCN_rain')] * data_B_nofix['atm']['dzi']) # 1/cm2s
+hcn_rain_rate = np.sum(data_B_nofix['variable']['y_rain']['HCN_rain'][:-1] * data_B_nofix['atm']['dzi']) / data_B_nofix['variable']['dt'] # 1/cm2s
 print(hcn_rain_rate * 1.24e-14) # kg/m2yr
 #%%
 # rain similar to Pearce et al (2022) without my rain, using the deposition velocity
