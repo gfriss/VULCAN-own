@@ -8,14 +8,10 @@ import sys
 
 import pickle
 #%%
-def rainout(dat):
-    hcn_rain_rate = np.sum(dat['variable']['y'][:-1,dat['variable']['species'].index('HCN_rain')] * dat['atm']['dzi']) # 1/cm2s
-    return hcn_rain_rate * 1.24e-14 # kg/m2yr
-
-def prec_vulcan(dat):
-    prec_rate = np.sum(dat['variable']['y'][:-1,dat['variable']['species'].index('H2O_rain')] * dat['atm']['dzi']) # 1/cm2s
-    prec_rate = prec_rate * 1.24e-14 # kg/m2yr
-    return prec_rate / 1000 # div by density in kg/m3 ot get m/yr
+def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
+    rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
+    rain_rate = rain_rate * 2.259e-13 # mol/m2yr
+    return rain_rate * (g_per_mol/1000.) # kg/m2yr
 
 nsim = 15 # hardcoded for now, change later...
 out_folder = '/scratch/s2555875/output/'
@@ -23,7 +19,7 @@ bc_folder= '/scratch/s2555875/BC_files/'
 plot_folder = '/scratch/s2555875/plot/'
 hcn_influx = [] # list to store the results
 prec = []
-
+#%%
 for i in range(nsim):
     sim = 'sim_' # setting up the names of files
     if i < 10:
@@ -35,7 +31,7 @@ for i in range(nsim):
     with open(out_folder+sim, 'rb') as handle: # reading in files
         data = pickle.load(handle)
         hcn_influx.append(rainout(data))
-        prec.append(prec_vulcan(data))
+        prec.append(rainout(data, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 
 # post simulations...
@@ -53,7 +49,7 @@ for i in range(nsim_extra):
     with open(out_folder+sim, 'rb') as handle: # reading in files
         data = pickle.load(handle)
         hcn_influx_extra.append(rainout(data))
-        prec_extra.append(prec_vulcan(data))
+        prec_extra.append(rainout(data, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 
 #hcn_influx = [hcn_influx[0]] + hcn_influx_extra[::4] + hcn_influx[1:][::6] # to have bombardment rates in order
@@ -61,7 +57,16 @@ hcn_influx_new = [hcn_influx[0]] + [hcn_influx_extra[3]] + [hcn_influx[2]]
 hcn_influx = np.array(hcn_influx_new)
 prec = [prec[0]] + prec_extra + prec[1:]
 prec = np.array(prec)
-
+#%%
+sims = [out_folder + 'sim_07_onlyH2.vul', out_folder + 'sim_07_CtoO.vul']
+hcn_influx.append(3.4e-12)
+for s in sims:
+    with open(s, 'rb') as handle:
+        sim_data = pickle.load(handle)
+    hcn_influx.append(rainout(sim_data))
+hcn_influx = np.array(hcn_influx)
+lab = ['Pearce et al. (2022)', 'Mass delivery rate = 5.15e+24 g/Gyr', 'C/O ratio = 0.664']
+#%%
 plt.clf()
 
 #Variable Declarations
@@ -293,13 +298,13 @@ f, ax1 = plt.subplots(figsize = (12,10))
 #f, (ax1, ax2) = plt.subplots(1, 2, figsize=(28,10))
         
 for i in range(len(hcn_influx)):
-    p1 = ax1.fill_between(t, values['C_adenine'][i]*Adenine_lower*1e6/constants_and_rates['adenine']['mu'], values['C_adenine'][i]*Adenine_upper*1e6/constants_and_rates['adenine']['mu'], linestyle='-', lw=3.5, alpha=.40, label = r'$k_{HCN rain} = $' + '{:.2e}'.format(hcn_influx[i]) + r' kg m$^{-2}$ yr$^{-1}$')
+    p1 = ax1.fill_between(t, values['C_adenine'][i]*Adenine_lower*1e6/constants_and_rates['adenine']['mu'], values['C_adenine'][i]*Adenine_upper*1e6/constants_and_rates['adenine']['mu'], linestyle='-', lw=3.5, alpha=.40, label = lab[i])#r'$k_{HCN rain} = $' + '{:.2e}'.format(hcn_influx[i]) + r' kg m$^{-2}$ yr$^{-1}$')
               
 secax = ax1.secondary_yaxis('right', functions=(molar2mass, mass2molar))
 
 secax.set_ylabel("Adenine Mass Fraction (ppb)",fontsize=22)
 
-ax1.set_ylim(5e-8,1e-1)
+#ax1.set_ylim(5e-8,1e-1)
 
 ax1.set_yscale('log')
 ax1.legend(ncol = 2, fontsize = '16', loc = 'lower center')
@@ -316,6 +321,6 @@ ax1.tick_params(which='both', direction='out', length=6, width=2)
 secax.tick_params(which='both', direction='out', length=6, width=2)
 secax.tick_params(axis='both',labelsize=22)
 
-f.savefig('/scratch/s2555875/plot/adenine_meteor.png', bbox_inches = 'tight')
+f.savefig('/scratch/s2555875/plot/adenine_pres.pdf', bbox_inches = 'tight')
 
 # %%

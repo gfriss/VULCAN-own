@@ -147,27 +147,28 @@ with open(vul_Earth_nofix_medium_henries, 'rb') as handle:
 vulcan_spec = data_Earth_nofix_norain['variable']['species']
 spec = ['HCN', 'H2O_l_s']
 #%%
-fig, ax = plt.subplots(tight_layout = True)
+fig, ax = plt.subplots(tight_layout = True, figsize = (10,6))
 ax.plot(data_Earth_nofix_with_rain['variable']['y'][:,vulcan_spec.index('HCN')]-data_Earth_nofix_norain['variable']['y'][:,vulcan_spec.index('HCN')], data_Earth_nofix_with_rain['atm']['zco'][1:]/1.e5, label = r'$H = 10$')
 ax.plot(data_Earth_nofix_high_henries['variable']['y'][:,vulcan_spec.index('HCN')]-data_Earth_nofix_norain['variable']['y'][:,vulcan_spec.index('HCN')], data_Earth_nofix_high_henries['atm']['zco'][1:]/1.e5, label = r'$H = 100000$')
-ax.set_xlabel(r'$n_{rainout}-n_{original}$', fontsize = 14)
+ax.set_xlabel(r'$n_{rainout}-n_0$', fontsize = 18)
 #ax.set_xscale('symlog')
-ax.set_ylabel('Height [km]', fontsize = 14)
-ax.tick_params(axis = 'y', labelsize = 13)
+ax.set_ylabel('Height [km]', fontsize = 18)
+ax.tick_params(axis = 'y', labelsize = 17)
 for tick in ax.xaxis.get_major_ticks():
-    tick.label1.set_fontsize(13) 
-ax.legend(fontsize = '12')
+    tick.label1.set_fontsize(17) 
+ax.legend(fontsize = '16')
 ax1 = ax.twinx()
-ax1.set_ylabel('Pressure [bar]', fontsize = 14)
+ax1.set_ylabel('Pressure [bar]', fontsize = 18)
 ax1.set_ylim(2, 1e-8)
 ax1.set_yscale('log')
 for tick in ax1.xaxis.get_major_ticks():
-    tick.label1.set_fontsize(13) 
+    tick.label1.set_fontsize(17) 
 
 ax.tick_params(which='both', direction='out', width=1, length = 4)
 ax1.tick_params(which='both', direction='out', width=1, length = 4)
-ax1.tick_params(axis='y',labelsize=13)
-ax.tick_params(axis='x',labelsize=12)
+ax1.tick_params(axis='y',labelsize=17)
+ax.tick_params(axis='x',labelsize=17)
+fig.savefig(scratch+'plot/hcn_rain_chem.pdf')
 #%%
 for sp in spec:
   plt.plot(data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)]-data_rainout['variable']['ymix'][:,vulcan_spec.index(sp)], data['atm']['zco'][1:]/1.e5, label = sp)

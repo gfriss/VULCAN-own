@@ -17,6 +17,7 @@ bc_linestyle = '-'
 
 # setting up the C/O case
 co2_for_CtoO_range = np.linspace(0,0.9,nsim, endpoint = True)
+#%%
 
 def calc_C_to_O(dat):
     ''' For simplicity and fewer calculations this funtion uses initial abundances, knowing the initial species that are none zero.'''
@@ -67,7 +68,7 @@ def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
 def create_dummy_line(**kwds):
     return Line2D([], [], **kwds)
 
-def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, l_size = 12, bc_flux_list = []):
+def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, l_size = 12, bc_flux_list = [], mol = 'HCN'):
     with open(out_folder+'B_nofix.vul', 'rb') as handle: # for comparison
         data_B = pickle.load(handle)
     hcn_rain_B = 3.4e-12 #rainout(data_B)
@@ -76,13 +77,15 @@ def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, 
     C_to_O_B = calc_C_to_O(data_B)
     colour_b = 'tab:blue'
     fig, ax = plt.subplots(tight_layout = True)
-    ax.plot(param_list, hcn_rain_list, label = 'own', color = colour_b)
+    ax.plot(param_list, hcn_rain_list, color = colour_b, label = 'own')
     if sim_type == 'BC': # plotting comparison and H2 flux
         ax.plot(bomb_B, hcn_rain_B, marker = '*', linestyle = '', label = 'Pearce et al. (2022)')
         ax.set_xscale('log')
         ax.set_xlabel(r'Mass delivery rate [g Gyr$^{-1}$]', fontsize = f_size)
         ax.tick_params(axis = 'y', labelcolor = colour_b, labelsize = l_size)
-
+        ax.set_ylabel(mol + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', color = colour_b, fontsize = f_size)
+        ax.tick_params(which='both', direction='out', width=1, length = 4)
+        ax.tick_params(axis = 'both', labelsize = l_size)
         ax1 = ax.twinx()
         colour = 'tab:orange'
         ax1.tick_params(axis = 'y', labelcolor = colour)
@@ -97,13 +100,13 @@ def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, 
         ax1.tick_params(axis = 'both', labelsize = l_size)
 
     elif sim_type == 'C_to_O': # plotting comparison
-        ax.plot(C_to_O_B, hcn_rain_B, linestyle = '', marker = '*', color = colour_b, label = 'Pearce et al. (2022)')
+        #ax.plot(C_to_O_B, hcn_rain_B, linestyle = '', marker = '*', color = colour_b, label = 'Pearce et al. (2022)')
         ax.set_xlabel('C/O', fontsize = f_size)
+        ax.set_ylabel(mol + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', fontsize = f_size)
+        ax.tick_params(which='both', direction='out', width=1, length = 4)
+        ax.tick_params(axis = 'both', labelsize = l_size)
     
     ax.set_yscale('log')
-    ax.set_ylabel(r'HCN rain-out rate [kg m$^{-2}$ yr$^{-1}$]', color = colour_b, fontsize = f_size)
-    ax.tick_params(which='both', direction='out', width=1, length = 4)
-    ax.tick_params(axis = 'both', labelsize = l_size)
     for tick in ax.xaxis.get_major_ticks():
         tick.label1.set_fontsize(l_size) 
     ax.legend()
@@ -118,19 +121,23 @@ def calc_rate(dat, spec_list, re_id, n):
             rate *= dat['variable']['y'][n, dat['variable']['species'].index(sp)]
     return rate
 
+def get_species(eq_side):
+    side_split = eq_side.split('+')
+    if len(side_split) == 1: # stripping them from white spaces
+        side_split = np.array([side_split[0].strip()]) # with array length 1 the other method fails so doing it separately
+    else:
+        side_split = np.array([r.strip() for r in side_split])
+    return side_split
+
 def print_max_re(dat, mol, n = 0, prod = False):
     reaction = ''
-    reagents_spec, products_spec = [], []
     k_rea = 0
-    re_rate = 0
     for k,v in dat['variable']['Rf'].items():
+        reagents_spec, products_spec = [], []
+        re_rate = 0
         reagents_products = v.split('->') # separating production and destruction
-        reagents = reagents_products[0]
-        reagents_spec = reagents.split('+')
-        reagents_spec = [r.strip() for r in reagents_spec] # stripping them from white spaces
-        products = reagents_products[1].strip()
-        products_spec = products.split('+')
-        products_spec = [p.strip() for p in products_spec] # stripping them from white spaces
+        reagents_spec = get_species(reagents_products[0])
+        products_spec = get_species(reagents_products[1])
         if prod == False and mol in reagents_spec: # destruction so it is on the reagents side
             re_rate = calc_rate(dat, reagents_spec, k, n)
         elif prod == True and mol in products_spec: # production side
@@ -138,13 +145,37 @@ def print_max_re(dat, mol, n = 0, prod = False):
         if re_rate > k_rea:
             k_rea = re_rate
             reaction = v
-    print('The highest reaction rate in layer {} is k = {:.3e} cm-3s-1 for the reaction {}.'.format(n, k_rea, reaction))
+    print('The highest reaction rate in layer {} is\nk = {:.3e} cm-3s-1\nfor the reaction {}.'.format(n, k_rea, reaction))
 
+def print_max_n_re(dat, mol, first_n, n = 0, prod = False):
+    reaction = np.empty(first_n, dtype = np.dtype('U42')) # extended the allowed character number to 42...
+    reaction = np.array(reaction)
+    k_rea = np.zeros(first_n)
+    for k,v in dat['variable']['Rf'].items():
+        re_rate = 0.
+        reagents_spec, products_spec = [], []
+        reagents_products = v.split('->') # separating production and destruction
+        reagents_spec = get_species(reagents_products[0]) 
+        products_spec = get_species(reagents_products[1])
+        if (prod == False) and np.any(reagents_spec == mol): # destruction so it is on the reagents side
+            re_rate = calc_rate(dat, reagents_spec, k, n)
+        elif (prod == True) and np.any(products_spec == mol): # production side
+            re_rate = calc_rate(dat, products_spec, k, n)
+        if np.any(re_rate > k_rea):
+            position = np.where(re_rate > k_rea)[0][0] # k_re should be decreasing, so need first intance when new reaction rate is greater
+            k_roll = np.roll(k_rea[position:], 1) # shifting value to the right starting from position of new value
+            k_roll[0] = re_rate # replace the new first one (previous lowest) with the new rate
+            k_rea = np.concatenate((k_rea[:position], k_roll))
+            reaction_roll = np.roll(reaction[position:], 1)
+            reaction_roll[0] = v
+            reaction = np.concatenate((reaction[:position], reaction_roll))
+    print('The highest {} reaction rates in layer {} are k = {} cm-3s-1 for the reaction {}.'.format(first_n, n, k_rea, reaction))
+    
 def plot_vertical_n(dat_list, spec, param_list, sim_type, figname = None, f_size = 13, l_size = 12):
-    fig, ax = plt.subplots(tight_layout = True)
+    fig, ax = plt.subplots(tight_layout = True, figsize = (10,6))
     for i in range(len(dat_list)):
         if sim_type == 'BC':
-            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'M${_del}% = ' + '{:.2e} g/Gyr'.format(param_list[i]))
+            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'$\dot{M}_{del}$ = ' + '{:.2e} g/Gyr'.format(param_list[i]))
         elif sim_type == 'C_to_O':
             ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = 'C/O = {:.2f}'.format(param_list[i]))
         
@@ -153,9 +184,9 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figname = None, f_size
     ax.set_ylabel('Height [km]', fontsize = f_size)
     ax.tick_params(which='both', direction='out', width=1, length = 4)
     ax.tick_params(axis = 'both', labelsize = l_size)
-    ax.legend()
+    ax.legend(bbox_to_anchor = (1.1, 0.95), fontsize = str(l_size-4))
     if figname != None:
-        fig.savefig(plot_folder + figname)
+        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
 
 def plot_end_time(dat_list, figname = None, f_size = 13, l_size = 12):
     fig, ax = plt.subplots(tight_layout = True)
@@ -220,8 +251,15 @@ hcn_rain = [] # storing the rainout rates
 for d in data_bc:
     hcn_rain.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
 
+rain = [] # storing the rainout rates
+for d in data_bc:
+    rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+
 # plot rainout rates and BC conditions as a function of meteoritic mass delivery rate
 # plus include results from Pearce at al. (2022)
+#%%
+plot_rain(rain, bomb_rate, 'BC', figname = 'H2O_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux, mol = 'Water')
+#%%
 plot_rain(hcn_rain, bomb_rate, 'BC', figname = 'HCN_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux)
 plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'HCN_air_meteoritic.pdf')
 plot_end_time(data_bc, figname = 'end_time_meteor.pdf')
@@ -239,11 +277,19 @@ for d in data_CtoO:
     hcn_rain_CtoO.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
     C_to_O.append(calc_C_to_O(d))
 
+rain_CtoO = [] # storing the rainout rates
+for d in data_CtoO:
+    rain_CtoO.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+
 # do all the ploting
 plot_rain(hcn_rain_CtoO, C_to_O, 'C_to_O', figname = 'HCN_rainout_C_to_O.pdf')
-plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'C_to_O', figname = 'HCN_air_C_to_O.pdf')
+plot_rain(rain_CtoO, C_to_O, 'C_to_O', figname = 'H2O_rainout_C_to_O.pdf', mol = 'Water')
+plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'C_to_O', figname = 'HCN_air_C_to_O.pdf', f_size = 19, l_size = 18)
 plot_end_time(data_CtoO, figname = 'end_time_C_to_O.pdf')
 plot_evo_layer(data_CtoO, 'HCN', figname = 'hcn_evo_C_to_O.pdf')
 plot_convergence(data_CtoO, figname = 'convergence_C_to_O.pdf')
 
+# %%
+for d in data_bc:
+    print_max_re(d, 'H2')
 # %%
