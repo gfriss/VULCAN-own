@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import plot_reset as ps
 
 def calc_rate(dat, spec_list, re_id, n):
     ''' Calculates the reaction rate for a reaction that is given by
@@ -133,18 +134,21 @@ def plot_reactions(dat, mol, height = False, figname = None):
         y = dat['atm']['pco']/1e6 # pressure in bar
         ylab = 'p [bar]'
         yscale = 'log'
-    fig, ax = plt.subplots(tight_layout = True, figsize = (16,8))
+    ps.reset_plt(23, 18)
+    fig, ax = plt.subplots(tight_layout = True, figsize = (20,12))
     reaction_rates = all_layer_walker(dat, mol)
-    for rea in reaction_rates.keys():
+    colours = plt.cm.gist_ncar(np.linspace(0,1,len(reaction_rates.keys())))
+    ls = ['-', '--', ':', '-.']
+    for i,rea in enumerate(reaction_rates.keys()):
         if len(reaction_rates[rea]) == len(y): # until one small bug is found in all_layer_walker...
-            ax.plot(reaction_rates[rea], y, label = rea, marker = 's', markersize = 1)
+            ax.plot(reaction_rates[rea], y, label = rea, marker = 's', markersize = 4, color = colours[i], linestyle = ls[i%4])
     ax.set_xlabel(r'k [cm$^{-3}$ s$^{-1}$]')
     ax.set_ylabel(ylab)
     ax.set_xscale('log')
     ax.set_yscale(yscale)
     ax.legend(bbox_to_anchor = (1, 1), ncol = 2)
     ax.invert_yaxis()
-    ax.set_xlim((1e-10,None))
+    ax.set_xlim((1e-10,1e26))
     if figname != None:
         fig.savefig(figname, bbox_inches = 'tight')
 
