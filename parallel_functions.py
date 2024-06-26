@@ -1,6 +1,11 @@
+#%%
 import numpy as np
-from astropy.constants import au,N_A
-
+from astropy.constants import au,N_A,sigma_sb,L_sun,R_sun
+from astropy import units as u
+import pandas as pd
+from collections import defaultdict
+import matplotlib.pyplot as plt
+#%%
 # BC from meteorite bombardment rate:
 def bar_to_number(x): # 100 bar is 2300 mol/cm-2 according to Zahnler et al. (2020)
     return x * 2300 * N_A / 100
@@ -27,6 +32,7 @@ def dict_to_input(d):
     val_str = ','.join(v)
     return k, val_str
 
+# initial mixing ratio for C/O tests
 def gen_mixing(co2_mix, output):
     og_mixing = np.genfromtxt('atm/mixing_Pearce_B.txt', dtype = None, comments = '#', skip_header = 1, names = True)
     N2 = og_mixing['N2']
@@ -39,6 +45,79 @@ def gen_mixing(co2_mix, output):
         for i in range(len(N2)):
             f.write('{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\n'.format(og_mixing['Pressure'][i],CO2[i],CO[i],N2[i],CH4[i],H2O[i]))
 
+# functions for different stellar type tests
+def read_stellar_data(file):
+    types = defaultdict(lambda: 'float', Name = 'str', Type = 'str', T_eff_source = 'str', L_R_source = 'str')
+    return pd.read_csv(file, dtype = types)
+
+def calc_T_eq(L_star, albedo = 0.06, a = au): # to know standard sim's T_eq from SI, something is wrong gives too high value...proceed with R and T eq. for now
+    return np.power((1-albedo)*L_star / (4*np.pi*sigma_sb*(a**2)), 1/4)
+
 def semi_major_axis(T_star, R_star, T_eq = 1, albedo = 0.06):
-    a = (np.power(T_star, 2)/np.power(T_eq, 2)) * np.sqrt(1-albedo) * (R_star/2) # cm
-    return a / (au/1000.) # cm to AU
+    a = (np.power(T_star, 2)/np.power(T_eq, 2)) * np.sqrt(1-albedo) * (R_star/2)
+    return a / au # m to AU
+#%%
+def test_semi_major_axis(df):
+    T_sun_ee = np.power(L_sun / (4*np.pi*(R_sun**2)*sigma_sb), 0.25)
+    T_eq_ee = T_sun_ee * np.power(1-0.06, 0.25) * np.sqrt(R_sun/(2*au))
+    a_list = []
+    s_eff_list = []
+    for t,r,l in zip(df.T_eff,df.R,df.L_log):
+        d = semi_major_axis(t*u.K, r*R_sun, T_eq=T_eq_ee)
+        #print(t*u.K, '->', d*u.au)
+        #print('S_eff: ', t*u.K, '->', np.power( np.power(10, l) / d, 2) )
+        a_list.append(d)
+        s_eff_list.append(np.power( np.power(10, l) / d, 2))
+    
+    return a_list, s_eff_list
+
+def hz_inner_s_eff(temp_star):
+    return 1.014 + 8.1774e-5*temp_star + 1.7063e-9*(temp_star**2) - 4.3241e-12*(temp_star**3) - 6.6462e-16*(temp_star**4)
+
+def hz_outer_s_eff(temp_star):
+    return 0.3438 + 5.8942e-5*temp_star + 1.6558e-9*(temp_star**2) - 3.0045e-12*(temp_star**3) - 5.2983e-16*(temp_star**4)
+
+def plot_hz_for_test(df, s_eff, figname = None):
+    ''' Following Kopprapau et al. (2013)'''
+    T_star = np.linspace(2500,7000,42) - 5780
+    s_eff_inner = hz_inner_s_eff(T_star)
+    s_eff_outer = hz_outer_s_eff(T_star)
+    fig, ax = plt.subplots(tight_layout = True)
+    ax.plot(s_eff_inner, T_star+5780, 'r', label = 'Moist greenhouse')
+    ax.plot(s_eff_outer, T_star+5780, 'b--', label = 'Maximum greenhouse')
+    ax.plot(s_eff, df.T_eff, 'go', linestyle = '', label = 'Planets')
+    ax.invert_xaxis()
+    ax.set_xlabel(r'Effective flux incident on planet (S/S$_0$)')
+    ax.set_ylabel(r'T$_{eff}$ [K]')
+    ax.legend()
+    if figname != None:
+        fig.savefig('/scratch/s2555875/plot/' + figname)
+
+def test_semi_major_from_S_eff(df, f = 0.542):
+    a_list, s_eff_list = [], []
+    for l,t in zip(df.L_log,df.T_eff):
+        s_moist_gh = hz_inner_s_eff(t-5780)
+        s_eff = f * s_moist_gh
+        s_eff_list.append(s_eff)
+        d = np.sqrt( np.power(10, l) / s_eff )
+        a_list.append(d)
+    return a_list, s_eff_list
+
+def semi_major_from_S_eff(df, name, f = 0.542):
+    t_eff = df.loc[df.Name == name].T_eff.iloc[0]
+    Llog = df.loc[df.Name == name].L_log.iloc[0]
+    s_moist_gh = hz_inner_s_eff(t_eff - 5780)
+    s_eff = f * s_moist_gh
+    a = np.sqrt( np.power(10, Llog) / s_eff )
+    return a
+
+# %%
+def get_rad_prof(star):
+    rad_file = ''
+    if star == 'Early Sun':
+        rad_file = 'atm/stellar_flux/Pearce_B_solar.txt'
+    elif star == 'Sun':
+        rad_file = 'atm/stellar_flux/Gueymard_solar.txt'
+    else:
+        rad_file = '/scratch/s2555875/stellar_flux/' + star.lower() + '.txt' # just to make sure it is lower case
+    return rad_file

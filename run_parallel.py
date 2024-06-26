@@ -3,8 +3,6 @@ import subprocess # to run bash commands like in a terminal
 import sys
 import numpy as np
 import parallel_functions as pf
-# this is how to use it:
-# subprocess.run(['everything', 'you', 'would', 'type', 'word', 'by', 'word'], check = True, text = True)
 from mpi4py.MPI import COMM_WORLD as CW # for paralellisation
 
 run_type = sys.argv[1] # 'meteor' or 'CtoO' or 'star' according to which experiment we run, used to make loop at end more readable
@@ -28,18 +26,20 @@ m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
 # C/O ratio
 co2_for_CtoO_range = np.linspace(0,0.9,nsim, endpoint = True)
 # star type
-temp_star = [2600, 3800, 4800, 5800, 7200] # or temp_star = np.linspace(2600, 7200, nsim, endpoint = True)
-# need radius... could just get every info from MUSCLES? OR use luminosity instead of temp and rad
+star_df = pf.read_stellar_data(main_folder + 'stellar_flux/stellar_params.csv') # NOT necessarily nsim long...
+
 # ------end of parameter set up-----
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
                                                             # this is the magic, after this just think of it as a normal, sequential loop
+    if i >= len(star_df.Name): # fewer stars than 15...
+        continue
     sim = ''
     if i < 10:
-        sim = 'sim_0' + str(i) + '_CtoO'
+        sim = 'sim_0' + str(i) + '_' + run_type
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim) # my folder naming conventions
     else:
-        sim = 'sim_' + str(i) + '_CtoO'
+        sim = 'sim_' + str(i) + '_' + run_type
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim)
     # build files for simulation
@@ -55,18 +55,26 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         BC_bot_file = main_folder + 'BC_files/' + 'BC_bot_' + sim + '.txt'
         subprocess.check_call(['python', 'gen_BC.py', sp_names, sp_fluxes, vdep, BC_bot_file])
         # then use the new BC file in cfg file with output name
-        BC_bot_change = 'bot_BC_flux_file,'+BC_bot_file+',str'
+        BC_bot_change = 'bot_BC_flux_file' + ',' + BC_bot_file + ',' + 'str'
         # then change vulcan_cfg.py file
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, BC_bot_change, out_change])
     elif run_type == 'CtoO':
         # generate new mixing file
         new_mixing_file = main_folder + 'mixing_files/' + sim + 'mixing.txt'
-        mixing_change = 'vul_ini,' + new_mixing_file + ',str'
+        mixing_change = 'vul_ini' + ',' + new_mixing_file + ',' + 'str'
         pf.gen_mixing(co2_for_CtoO_range[i], new_mixing_file)
         # then change vulcan_cfg.py file
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
     elif run_type == 'star':
-        ...    
+        # new stellar radiation files already created, need to update vulcan_cfg with filename and r_star and orbit_radius
+        star_name = star_df.Name.iloc[i]
+        new_rad_file = pf.get_rad_prof(star_name)
+        rad_file_change = 'sflux_file' + ',' + new_rad_file + ',' + 'str'
+        new_r_star = str(star_df.loc[star_df.Name == star_name].R.iloc[0])
+        r_star_change = 'r_star' + ',' + new_r_star + ',' + 'val'
+        new_orbit_radius = str(pf.semi_major_from_S_eff(star_df, star_name))
+        orbit_radius_change = 'orbit_radius' + ',' + new_orbit_radius + ',' + 'val'
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     #subprocess.check_call(['cp', '-p', 'build_atm.py', 'chem_funs.py', 'op.py', 'phy_const.py', 'store.py', 'vulcan.py', sim_folder])
     wd = os.getcwd()

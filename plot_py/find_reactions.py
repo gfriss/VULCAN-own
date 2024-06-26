@@ -141,7 +141,7 @@ def plot_reactions(dat, mol, height = False, figname = None):
     ls = ['-', '--', ':', '-.']
     for i,rea in enumerate(reaction_rates.keys()):
         if len(reaction_rates[rea]) == len(y): # until one small bug is found in all_layer_walker...
-            ax.plot(reaction_rates[rea], y, label = rea, marker = 's', markersize = 4, color = colours[i], linestyle = ls[i%4])
+            ax.plot(reaction_rates[rea], y, label = rea, marker = 's', markersize = 1, color = colours[i], linestyle = ls[i%4])
     ax.set_xlabel(r'k [cm$^{-3}$ s$^{-1}$]')
     ax.set_ylabel(ylab)
     ax.set_xscale('log')
