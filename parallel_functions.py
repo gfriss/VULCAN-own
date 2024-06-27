@@ -7,10 +7,12 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 #%%
 # BC from meteorite bombardment rate:
-def bar_to_number(x): # 100 bar is 2300 mol/cm-2 according to Zahnler et al. (2020)
-    return x * 2300 * N_A / 100
+def bar_to_number(x): 
+    ''' Converts partial pressure of a species to number density.'''
+    return x * 2300 * N_A / 100 # 100 bar is 2300 mol/cm-2 according to Zahnler et al. (2020)
 
 def gpergyr_to_gpers(x):
+    ''' g/yr to g/s.'''
     return x / 3.154e16
 
 def bombardment(rate, mass, prod):
@@ -25,6 +27,8 @@ def bombardment(rate, mass, prod):
     return bc
 
 def dict_to_input(d):
+    ''' Converts a dictionary into input for a python script, namely gen_cfg.py that take
+        the input as key1,key2,etc. val1,val2,etc.'''
     k = ','.join(d.keys())
     v = []
     for val in d.values():
@@ -34,6 +38,9 @@ def dict_to_input(d):
 
 # initial mixing ratio for C/O tests
 def gen_mixing(co2_mix, output):
+    ''' Generates new initial mixing ratios and write them into a file compatable with VULCAN.
+        It takes a base mixing ratio than changes the value for CO2, swapping it to CO
+        which will change the C/O ratio.'''
     og_mixing = np.genfromtxt('atm/mixing_Pearce_B.txt', dtype = None, comments = '#', skip_header = 1, names = True)
     N2 = og_mixing['N2']
     H2O = og_mixing['H2O']
@@ -47,17 +54,23 @@ def gen_mixing(co2_mix, output):
 
 # functions for different stellar type tests
 def read_stellar_data(file):
-    types = defaultdict(lambda: 'float', Name = 'str', Type = 'str', T_eff_source = 'str', L_R_source = 'str')
+    ''' Stellar data is saved in a csv file and has str and float values. This read in function
+        makes sure that every read in value has the correct type.'''
+    types = defaultdict(lambda: 'float', Name = 'str', Type = 'str', T_eff_source = 'str', L_R_source = 'str', Dist_source = 'str')
     return pd.read_csv(file, dtype = types)
 
-def calc_T_eq(L_star, albedo = 0.06, a = au): # to know standard sim's T_eq from SI, something is wrong gives too high value...proceed with R and T eq. for now
-    return np.power((1-albedo)*L_star / (4*np.pi*sigma_sb*(a**2)), 1/4)
+def calc_T_eq(L_star, albedo = 0.06, a = au): 
+    ''' Calculates standard sim's T_eq.'''
+    return np.power((1-albedo)*L_star / (4*np.pi*sigma_sb*(a**2)), 1/4) #something is wrong gives too high value...proceed with R and T eq. for now
 
 def semi_major_axis(T_star, R_star, T_eq = 1, albedo = 0.06):
+    ''' Calculates the semi major axis given the stellar effective temperature and the planets equilibrium temperature.'''
     a = (np.power(T_star, 2)/np.power(T_eq, 2)) * np.sqrt(1-albedo) * (R_star/2)
     return a / au # m to AU
 #%%
 def test_semi_major_axis(df):
+    ''' Test function to calculate the semi major axis and recieved flux for all planets in 
+        simulations with the equilibrium temperature approach.'''
     T_sun_ee = np.power(L_sun / (4*np.pi*(R_sun**2)*sigma_sb), 0.25)
     T_eq_ee = T_sun_ee * np.power(1-0.06, 0.25) * np.sqrt(R_sun/(2*au))
     a_list = []
@@ -72,13 +85,16 @@ def test_semi_major_axis(df):
     return a_list, s_eff_list
 
 def hz_inner_s_eff(temp_star):
+    ''' Calculates the inner edge of the habitable zone (moist greenhouse limit) described in Kopprapau et al. (2013).'''
     return 1.014 + 8.1774e-5*temp_star + 1.7063e-9*(temp_star**2) - 4.3241e-12*(temp_star**3) - 6.6462e-16*(temp_star**4)
 
 def hz_outer_s_eff(temp_star):
+    '''  Calculates the outer edge of the habitable zone (mximum greenhouse limit) described in Kopprapau et al. (2013).'''
     return 0.3438 + 5.8942e-5*temp_star + 1.6558e-9*(temp_star**2) - 3.0045e-12*(temp_star**3) - 5.2983e-16*(temp_star**4)
 
 def plot_hz_for_test(df, s_eff, figname = None):
-    ''' Following Kopprapau et al. (2013)'''
+    ''' Following Kopprapau et al. (2013) it ests whether the given approach puts the planets into similar part of 
+        habitable zone around various stars using the effective flux (normalised by current Earth value).'''
     T_star = np.linspace(2500,7000,42) - 5780
     s_eff_inner = hz_inner_s_eff(T_star)
     s_eff_outer = hz_outer_s_eff(T_star)
@@ -93,7 +109,12 @@ def plot_hz_for_test(df, s_eff, figname = None):
     if figname != None:
         fig.savefig('/scratch/s2555875/plot/' + figname)
 
-def test_semi_major_from_S_eff(df, f = 0.542):
+def test_semi_major_from_S_eff(df, f = 0.744):
+    ''' Test function to calculate the semi major axis and recieved flux for all planets in 
+        simulations with the effective flux approach. This approach takes the ratio of the
+        effective flux of the base reaction and the moist greenhouse limit (f) and places
+        every planet such that they all share this ratio which keeps them in the same
+        part of the habitable zone.'''
     a_list, s_eff_list = [], []
     for l,t in zip(df.L_log,df.T_eff):
         s_moist_gh = hz_inner_s_eff(t-5780)
@@ -103,7 +124,8 @@ def test_semi_major_from_S_eff(df, f = 0.542):
         a_list.append(d)
     return a_list, s_eff_list
 
-def semi_major_from_S_eff(df, name, f = 0.542):
+def semi_major_from_S_eff(df, name, f = 0.744):
+    ''' Same as before, but only for one planet. To be used in run_parallel.py.'''
     t_eff = df.loc[df.Name == name].T_eff.iloc[0]
     Llog = df.loc[df.Name == name].L_log.iloc[0]
     s_moist_gh = hz_inner_s_eff(t_eff - 5780)
@@ -113,6 +135,8 @@ def semi_major_from_S_eff(df, name, f = 0.542):
 
 # %%
 def get_rad_prof(star):
+    ''' To be used in run_parallel.py. Gives back the location of the needed stellar radiation profile
+        file for a given star.'''
     rad_file = ''
     if star == 'Early Sun':
         rad_file = 'atm/stellar_flux/Pearce_B_solar.txt'
