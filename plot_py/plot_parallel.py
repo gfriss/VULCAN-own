@@ -36,6 +36,8 @@ def read_in(sim_type, number_of_sim, start_number = '0'):
         extra_str = '_onlyH2.vul'
     elif sim_type == 'CtoO':
         extra_str = '_CtoO.vul'
+    elif sim_type == 'star':
+        extra_str = '_star.vul'
     for i in range(number_of_sim):
         sim = 'sim_' # setting up the names of files
         if i < 10:
@@ -57,7 +59,7 @@ def read_in(sim_type, number_of_sim, start_number = '0'):
 
     if sim_type == 'BC':
         return dat_list, H2_flux
-    elif sim_type == 'CtoO':
+    else:
         return dat_list
 
 def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
@@ -102,6 +104,12 @@ def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, 
     elif sim_type == 'C_to_O': # plotting comparison
         #ax.plot(C_to_O_B, hcn_rain_B, linestyle = '', marker = '*', color = colour_b, label = 'Pearce et al. (2022)')
         ax.set_xlabel('C/O', fontsize = f_size)
+        ax.set_ylabel(mol + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', fontsize = f_size)
+        ax.tick_params(which='both', direction='out', width=1, length = 4)
+        ax.tick_params(axis = 'both', labelsize = l_size)
+
+    elif sim_type == 'star':
+        ax.set_xlabel(r'T$_{eff}$ [K]', fontsize = f_size)
         ax.set_ylabel(mol + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', fontsize = f_size)
         ax.tick_params(which='both', direction='out', width=1, length = 4)
         ax.tick_params(axis = 'both', labelsize = l_size)
@@ -178,6 +186,8 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figname = None, f_size
             ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'$\dot{M}_{del}$ = ' + '{:.2e} g/Gyr'.format(param_list[i]))
         elif sim_type == 'C_to_O':
             ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = 'C/O = {:.2f}'.format(param_list[i]))
+        elif sim_type == 'star':
+            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'T$_{eff}$'+'= {:.2f} K'.format(param_list[i]))
         
     ax.set_xscale('log')
     ax.set_xlabel(r'n [cm$^{-3}$]', fontsize = f_size)
@@ -292,4 +302,22 @@ plot_convergence(data_CtoO, figname = 'convergence_C_to_O.pdf')
 # %%
 for d in data_bc:
     print_max_re(d, 'H2')
+# %%
+# star case
+import pandas as pd
+data_star = read_in('star', number_of_sim = 13)
+hcn_rain_star, rain_star = [], []
+T_eff = pd.read_csv('/scratch/s2555875/stellar_flux/stellar_params.csv').T_eff
+
+for d in data_star:
+    hcn_rain_star.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_star.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+
+# do all the ploting
+plot_rain(hcn_rain_star, T_eff, 'star', figname = 'HCN_rainout_star.pdf')
+plot_rain(rain_star, T_eff, 'star', figname = 'H2O_rainout_star.pdf', mol = 'Water')
+plot_vertical_n(data_star, 'HCN', T_eff, 'star', figname = 'HCN_air_star.pdf', f_size = 19, l_size = 18)
+plot_end_time(data_star, figname = 'end_time_star.pdf')
+plot_evo_layer(data_star, 'HCN', figname = 'hcn_evo_star.pdf')
+plot_convergence(data_star, figname = 'convergence_star.pdf')
 # %%
