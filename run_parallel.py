@@ -35,11 +35,11 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         continue
     sim = ''
     if i < 10:
-        sim = 'sim_0' + str(i) + '_' + run_type
+        sim = 'helios_tp_' + 'sim_0' + str(i) + '_' + run_type
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim) # my folder naming conventions
     else:
-        sim = 'sim_' + str(i) + '_' + run_type
+        sim = 'helios_tp_' + 'sim_' + str(i) + '_' + run_type
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim)
     # build files for simulation
