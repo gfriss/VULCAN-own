@@ -2898,7 +2898,7 @@ class Ros2(ODESolver):
             max_lev_indx = np.nanargmax(delta/sol)
             print ('Largest delta (truncation error) from nz = ' + str(int(max_lev_indx/ni) ) )
             print ( np.array(species)[max_indx] )
-            print ('Largest delta (truncation error) from ' + species[max_indx%ni] + " at nz = "   + str(int(max_indx/ni) ) ) 
+            #print ('Largest delta (truncation error) from ' + species[max_indx%ni] + " at nz = "   + str(int(max_lev_indx/ni) ) ) 
 
         delta = np.amax( delta[sol>0]/sol[sol>0] )
         

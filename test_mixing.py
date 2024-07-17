@@ -1,7 +1,7 @@
 #%%
 import numpy as np
 import matplotlib.pyplot as plt
-
+#%%
 og_mixing = np.genfromtxt('atm/mixing_Pearce_B.txt', dtype = None, comments = '#', skip_header = 1, names = True)
 #og_CtoO = np.sum(og_mixing['CO2'] + og_mixing['CH4']) / np.sum(2*og_mixing['CO2'] + og_mixing['H2O'])
 
@@ -17,4 +17,4 @@ for mix in CO2_mix:
     c_to_o.append(np.sum(CO2 + CH4 + CO) / np.sum(CO + H2O + 2*CO2))
 
 plt.plot(CO2_mix, c_to_o)
-# %%
+

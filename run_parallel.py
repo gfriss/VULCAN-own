@@ -16,6 +16,7 @@ nsim = 15
 sim_per_rank = int(nsim / size) # this is needed to distribure the tasks between tha CPUs
 
 main_folder = '/scratch/s2555875/' # place to store outputs
+output_folder = main_folder + 'output/'
 # ------setting up parameterspace for all runs------
 # meteoritic bombardment
 bomb_rate = np.linspace(3.5e23, 9e23, nsim) # values from Pearce et al. (2022) Fig A4 min and max
@@ -27,19 +28,24 @@ m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
 co2_for_CtoO_range = np.linspace(0,0.9,nsim, endpoint = True)
 # star type
 star_df = pf.read_stellar_data(main_folder + 'stellar_flux/stellar_params.csv') # NOT necessarily nsim long...
+# distance case
+a_list = np.linspace(0.723, 2, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
+# in case new sims with HELIOS TP
+helios_tp = ''
+#helios_tp = 'helios_tp_'
 
 # ------end of parameter set up-----
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
                                                             # this is the magic, after this just think of it as a normal, sequential loop
-    if i >= len(star_df.Name): # fewer stars than 15...
+    if run_type == 'star' and i >= len(star_df.Name): # fewer stars than 15...
         continue
     sim = ''
     if i < 10:
-        sim = 'helios_tp_' + 'sim_0' + str(i) + '_' + run_type
+        sim = helios_tp + 'sim_0' + str(i) + '_' + run_type
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim) # my folder naming conventions
     else:
-        sim = 'helios_tp_' + 'sim_' + str(i) + '_' + run_type
+        sim = helios_tp + 'sim_' + str(i) + '_' + run_type
         sim_folder = main_folder + sim
         #new_folder = os.path.join(main_folder, sim)
     # build files for simulation
@@ -75,6 +81,13 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         new_orbit_radius = str(pf.semi_major_from_S_eff(star_df, star_name))
         orbit_radius_change = 'orbit_radius' + ',' + new_orbit_radius + ',' + 'val'
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, out_change])
+    elif run_type == 'dist':
+        # new TP files are already created with HELIOS, need to update vulcan_cfg with filename and orbit_radius
+        tp_file = main_folder + 'TP_files/' + sim + '.txt'
+        tp_change = 'atm_file' + ',' + tp_file + ',' + 'str'
+        new_orbit_radius = str(a_list[i])
+        orbit_radius_change = 'orbit_radius' + ',' + new_orbit_radius + ',' + 'val'
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, tp_change, orbit_radius_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     #subprocess.check_call(['cp', '-p', 'build_atm.py', 'chem_funs.py', 'op.py', 'phy_const.py', 'store.py', 'vulcan.py', sim_folder])
     wd = os.getcwd()

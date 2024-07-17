@@ -28,18 +28,19 @@ def calc_C_to_O(dat):
     H2O = dat['variable']['y_ini'][:, dat_species.index('H2O')]
     return np.sum(CO2+CO+CH4) / np.sum(H2O+CO+2*CO2)
 
-def read_in(sim_type, number_of_sim, start_number = '0'):
+def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
     dat_list = [] # list to store the results (dicts)
     H2_flux = []
     extra_str = '' # to get the proper output
     if sim_type == 'BC':
-        extra_str = '_onlyH2.vul'
+        #extra_str = '_onlyH2.vul'
+        extra_str = '_meteor.vul'
     elif sim_type == 'CtoO':
         extra_str = '_CtoO.vul'
     elif sim_type == 'star':
         extra_str = '_star.vul'
     for i in range(number_of_sim):
-        sim = 'sim_' # setting up the names of files
+        sim = start_str + 'sim_' # setting up the names of files
         if i < 10:
             sim += start_number + str(i)
         else:
@@ -50,7 +51,7 @@ def read_in(sim_type, number_of_sim, start_number = '0'):
             dat_list.append(pickle.load(handle))
 
         if sim_type == 'BC':
-            with open(bc_folder+'BC_bot_'+sim[:-11]+'.txt') as f: # vas sim[:-3]+'txt
+            with open(bc_folder+'BC_bot_'+sim[:-4]+'.txt') as f: # vas sim[:-11]+'.txt
                 for line in f:
                     lin = line.split()
                     if line[0] != '#' and lin[0] == bc_spec:
@@ -265,16 +266,30 @@ rain = [] # storing the rainout rates
 for d in data_bc:
     rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
-# plot rainout rates and BC conditions as a function of meteoritic mass delivery rate
-# plus include results from Pearce at al. (2022)
-#%%
 plot_rain(rain, bomb_rate, 'BC', figname = 'H2O_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux, mol = 'Water')
-#%%
 plot_rain(hcn_rain, bomb_rate, 'BC', figname = 'HCN_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux)
 plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'HCN_air_meteoritic.pdf')
 plot_end_time(data_bc, figname = 'end_time_meteor.pdf')
 plot_evo_layer(data_bc, 'HCN', figname = 'hcn_evo_meteor.pdf')
 plot_convergence(data_bc, figname = 'convergence_meteor.pdf')
+#%%
+# BC case with helios TP
+data_bc, bc_flux = read_in('BC', 13, start_str = 'helios_tp_')
+
+hcn_rain = [] # storing the rainout rates
+for d in data_bc:
+    hcn_rain.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+
+rain = [] # storing the rainout rates
+for d in data_bc:
+    rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+
+plot_rain(rain, bomb_rate[:13], 'BC', figname = 'helios_tp_H2O_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux, mol = 'Water')
+plot_rain(hcn_rain, bomb_rate[:13], 'BC', figname = 'helios_tp_HCN_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux)
+plot_vertical_n(data_bc, 'HCN', bomb_rate[:13], 'BC', figname = 'helios_tp_HCN_air_meteoritic.pdf')
+plot_end_time(data_bc, figname = 'helios_tp_end_time_meteor.pdf')
+plot_evo_layer(data_bc, 'HCN', figname = 'helios_tp_hcn_evo_meteor.pdf')
+plot_convergence(data_bc, figname = 'helios_tp_convergence_meteor.pdf')
 
 # %%
 # C/O case
@@ -298,6 +313,29 @@ plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'C_to_O', figname = 'HCN_air_C_to_O.pd
 plot_end_time(data_CtoO, figname = 'end_time_C_to_O.pdf')
 plot_evo_layer(data_CtoO, 'HCN', figname = 'hcn_evo_C_to_O.pdf')
 plot_convergence(data_CtoO, figname = 'convergence_C_to_O.pdf')
+
+#%%
+# C/O case with HELIOS tP
+
+data_CtoO = read_in('CtoO', 13, start_str = 'helios_tp_')
+
+hcn_rain_CtoO = []
+C_to_O = []
+for d in data_CtoO:
+    hcn_rain_CtoO.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    C_to_O.append(calc_C_to_O(d))
+
+rain_CtoO = [] # storing the rainout rates
+for d in data_CtoO:
+    rain_CtoO.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+
+# do all the ploting
+plot_rain(hcn_rain_CtoO, C_to_O[:13], 'C_to_O', figname = 'helios_tp_HCN_rainout_C_to_O.pdf')
+plot_rain(rain_CtoO, C_to_O[:13], 'C_to_O', figname = 'helios_tp_H2O_rainout_C_to_O.pdf', mol = 'Water')
+plot_vertical_n(data_CtoO, 'HCN', C_to_O[:13], 'C_to_O', figname = 'helios_tp_HCN_air_C_to_O.pdf', f_size = 19, l_size = 18)
+plot_end_time(data_CtoO, figname = 'helios_tp_end_time_C_to_O.pdf')
+plot_evo_layer(data_CtoO, 'HCN', figname = 'helios_tp_hcn_evo_C_to_O.pdf')
+plot_convergence(data_CtoO, figname = 'helios_tp_convergence_C_to_O.pdf')
 
 # %%
 for d in data_bc:

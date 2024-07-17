@@ -1,18 +1,83 @@
 #%%
 import numpy as np
-from petitRADTRANS import Radtrans
-from petitRADTRANS import nat_cst as nc
-from petitRADTRANS.physics import guillot_global
+from petitRADTRANS.radtrans import Radtrans
+#from petitRADTRANS import nat_cst as nc
+#from petitRADTRANS.physics import guillot_global
+import petitRADTRANS.physical_constants as cst
+from petitRADTRANS.spectral_model import SpectralModel
+import matplotlib.pyplot as plt
+import petitRADTRANS.chemistry.utils as cu
+from scipy.interpolate import interp1d
+#%%
+mixing_file = np.genfromtxt('atm/mixing_Pearce_B.txt', dtype = None, comments = '#', skip_header = 1, names = True)
+mixing = {}
+pres = np.logspace(-8, np.log10(2), 100, endpoint = True)
+for name in mixing_file.dtype.names:
+    if name != 'Pressure':
+        int_mix = interp1d(mixing_file['Pressure']/1e6, mixing_file[name])
+        mixing[name] = int_mix(pres)
 
+mass_ratios = cu.volume_mixing_ratios2mass_fractions(mixing)
+#%%
+spectral_model = SpectralModel(
+    # Radtrans parameters
+    pressures=np.logspace(-8, np.log10(2), 100),
+    line_species=[
+        'H2O',
+        'CH4',
+        'CO2',
+    ],
+    rayleigh_species=['N2', 'CO2'],
+    wavelength_boundaries=[0.2, 500],
+    scattering_in_emission=True,  # replace do_scat_emis from pRT2
+    # SpectralModel parameters
+    # Planet parameters
+    planet_radius=1 * cst.r_earth,
+    reference_gravity=980,
+    reference_pressure=2,
+    # Star, system, orbit
+    is_observed=False,  # return the flux observed at system_distance
+    is_around_star=True,  # if True, calculate a PHOENIX stellar spectrum and add it to the emission spectrum
+    #system_distance=10 * cst.s_cst.light_year * 1e2,  # m to cm, used to scale the spectrum
+    star_effective_temperature=5332,  # used to get the PHOENIX stellar spectrum model
+    star_radius=1 * cst.r_sun,  # used to get the star flux irradiating the planet
+    orbit_semi_major_axis=1 * cst.au,  # used to get the star flux irradiating the planet
+    # Temperature profile parameters
+    temperature_profile_mode='guillot',
+    temperature = 253.15,
+    intrinsic_temperature=43.3,
+    guillot_temperature_profile_gamma=0.4,
+    guillot_temperature_profile_kappa_ir_z0=0.01,
+    #metallicity = 1,
+    #co_ratio = 0.47,
+    # Mass fractions
+    use_equilibrium_chemistry=True,
+    imposed_mass_fractions=mass_ratios,
+    filling_species={  # automatically fill the atmosphere with H2 and He, such that the sum of MMRs is equal to 1 and H2/He = 37/12, H2/Ne = 37/0.06
+        'H2': 37,
+        'He': 12,
+        'Ne': 0.06
+    }
+)
+
+fig, ax = plt.subplots(figsize = (10,6))
+
+ax.plot(spectral_model.temperatures, spectral_model.pressures * 1e-6)
+ax.set_yscale('log')
+ax.set_ylim([2, 1e-8])
+ax.set_xlabel('T [K]')
+ax.set_ylabel('P [bar]')
+#%%
 atmosphere = Radtrans(line_species = ['H2O_HITEMP',
                                       'CH4',
                                       'CO2',
                                       'Na_allard',
                                       'K_allard',
                                       'N2'],
-                      rayleigh_species = ['H2', 'He', 'N2'],
-                      continuum_opacities = ['H2-H2', 'H2-He'],
-                      wlen_bords_micron = [0.3, 15])
+                      rayleigh_species = ['H2', 'He', 'N2']#,
+                      #continuum_opacities = ['H2-H2', 'H2-He'],
+                      #wlen_bords_micron = [0.3, 15]
+                      )
 
 pressures = np.logspace(-1.301, 6, 120)
 atmosphere.setup_opa_structure(pressures)
@@ -27,6 +92,7 @@ T_int = 43.3
 T_equ = 2534.5
 
 temperature = guillot_global(pressures, kappa_IR, gamma, gravity, T_int, T_equ)
+#%%
 
 #%%
 import matplotlib.pyplot as plt

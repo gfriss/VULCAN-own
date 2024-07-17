@@ -61,7 +61,7 @@ def read_stellar_data(file):
 
 def calc_T_eq(L_star, albedo = 0.06, a = au): 
     ''' Calculates standard sim's T_eq.'''
-    return np.power((1-albedo)*L_star / (4*np.pi*sigma_sb*(a**2)), 1/4) #something is wrong gives too high value...proceed with R and T eq. for now
+    return np.power((1-albedo)*L_star / (16*np.pi*sigma_sb*(a**2)), 1/4) #something is wrong gives too high value...proceed with R and T eq. for now
 
 def semi_major_axis(T_star, R_star, T_eq = 1, albedo = 0.06):
     ''' Calculates the semi major axis given the stellar effective temperature and the planets equilibrium temperature.'''
