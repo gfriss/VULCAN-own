@@ -14,7 +14,12 @@ output = os.path.join(helios_folder, 'output')
 #star_df = pf.read_stellar_data('/scratch/s2555875/stellar_flux/stellar_params.csv')
 #star_names = star_df['Name'][:]
 
-def create_param_file(dist, sim_name, sname = 'early_sun'):
+def change_line(line, bit_id, new_val):
+    bits = line.split()
+    bits[bit_id] = new_val
+    return ' '.join(bits) + '\n'
+
+def create_param_file(sim_name, dist = None, sname = None):
     ''' Function to loop through the origianl HELIOS parameter file and change
         needed lines. For now these lines are: name and orbital distance.
         Future lines might contain: stellar spectrum file, stellar spectrum dataset,
@@ -23,13 +28,21 @@ def create_param_file(dist, sim_name, sname = 'early_sun'):
     with open(og_param, 'r') as og:
         for line in og.readlines():
             if line.strip() and line.split()[0] == 'name':
-                bits = line.split()
-                bits[2] = sim_name
-                new_str += ' '.join(bits) + '\n'
-            elif 'orbital distance' in line:
-                bits = line.split()
-                bits[6] = str(dist)
-                new_str += ' '.join(bits) + '\n'
+                new_str += change_line(line, 2, sim_name)
+            elif 'realtime plotting' in line:
+                new_str += change_line(line, 3, 'no')
+            elif dist != None and 'orbital distance' in line:
+                new_str += change_line(line, 6, str(dist))
+            elif sname != None and sname == 'EARLY_SUN' and 'stellar spectral model' in line:
+                new_str += change_line(line, 4, 'file')
+            elif sname != None and 'path to stellar spectrum file' in line:
+                new_str += change_line(line, 8, './star_tool/output/{}.h5'.format(sname.lower()))
+            elif sname != None and sname not in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
+                new_str += change_line(line, 8, '/r50_kdistr/muscles/{}'.format(sname.lower()))
+            elif sname != None and sname in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
+                new_str += change_line(line, 8, '/r50_kdistr/ascii/{}'.format(sname.lower()))
+            elif sname != None and 'planet =' in line:
+                new_str += change_line(line, 2, sname.upper() + '_own')
             else:
                 new_str += line
     new_param_file = 'param_{}.dat'.format(sim_name)
@@ -46,9 +59,9 @@ def read_helios_tp(sim_name):
 
 def create_new_vulcan_pt(sim_name):
     T_h, P_h = read_helios_tp(sim_name)
-    T_P_interp = interpolate.interp1d(P_h, T_h)
+    T_P_interp = interpolate.interp1d(P_h, T_h, bounds_error = False, fill_value = "extrapolate")
 
-    vulcan_atm = np.genfromtxt('atm/T-P-Kzz_Pearce_B.txt', dtype = None, comments = '#', skip_header = 1, names = True)
+    vulcan_atm = np.genfromtxt('atm/atm_Earth_Jan_Kzz.txt', dtype = None, comments = '#', skip_header = 1, names = True)
     P_vulcan = vulcan_atm['Pressure']
     Kzz_vulcan = vulcan_atm['Kzz']
     T_vulcan_helios = T_P_interp(P_vulcan)
@@ -58,23 +71,45 @@ def create_new_vulcan_pt(sim_name):
         for p,t,z in zip(P_vulcan,T_vulcan_helios,Kzz_vulcan):
             f.write('{:.3e}\t{:.1f}\t{:.3e}\n'.format(p,t,z))
 #%%
-create_new_vulcan_pt('3')
+#create_new_vulcan_pt('1')
 #%%
-a_list = np.linspace(0.723, 2, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
+a_list = np.linspace(0.82, 1.4, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, keep surface temp between 0 and 100 Celsius after trial
 
-for i,a in enumerate(a_list):
-    sim = ''
-    if i < 10:
-        sim = 'sim_0{}_dist'.format(str(i))
-    else:
-        sim = 'sim_{}_dist'.format(str(i))
+def run_many_dist(dist_list):
+    for i,a in enumerate(dist_list):
+        sim = ''
+        if i < 10:
+            sim = 'sim_0{}_dist'.format(str(i))
+        else:
+            sim = 'sim_{}_dist'.format(str(i))
 
-    wd = os.getcwd()
-    os.chdir(helios_folder)
-    new_p = create_param_file(a, sim)
-    subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
-    os.chdir(wd)
-    create_new_vulcan_pt(sim)
+        wd = os.getcwd()
+        os.chdir(helios_folder)
+        new_p = create_param_file(sim, dist = a)
+        subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
+        os.chdir(wd)
+        create_new_vulcan_pt(sim)
+
+#run_many_dist(a_list)
+#%%
+import pandas as pd
+star_df = pd.read_csv(os.path.join(scratch, 'stellar_flux', 'stellar_params.csv'))
+def run_many_planets(star_table):
+    name_list = star_table.Name[:]
+    for i,name in enumerate(name_list):
+        sim = ''
+        if i < 10:
+            sim = 'sim_0{}_star'.format(str(i))
+        else:
+            sim = 'sim_{}_star'.format(str(i))
+        
+        wd = os.getcwd()
+        os.chdir(helios_folder)
+        new_p = create_param_file(sim, sname = name)
+        subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
+        os.chdir(wd)
+        create_new_vulcan_pt(sim)
+run_many_planets(star_df)
 #%%
 # creating fastchem styled mixing ratio file for HELIOS
 location_early = '/scratch/s2555875/HELIOS/input/chemistry/early_earth/chem.dat'
@@ -94,7 +129,7 @@ def change_spec_name(sp_name):
     return new_name
 
 
-def create_helios_vmr_from_vulcan(vul_vmr_file, vul_tp_file, filename):
+def create_fastchem_like_vmr_from_vulcan(vul_vmr_file, vul_tp_file, filename):
     vul_vmr = np.genfromtxt(vul_vmr_file, dtype = None, comments = '#', skip_header = 1, names = True)
     vul_tp = np.genfromtxt(vul_tp_file, dtype = None, comments = '#', skip_header = 1, names = True)
     vmr_dict = {'P(bar)':vul_vmr['Pressure']/1e6, 'T(K)':vul_tp['Temp']}
@@ -119,4 +154,26 @@ def create_helios_vmr_from_vulcan(vul_vmr_file, vul_tp_file, filename):
     with open(filename, 'w') as f:
         f.write(new_str)
     
+# %%
+import pickle
+def create_helios_vmr_from_vulcan(vul_file, filename, species):
+    with open(vul_file, 'rb') as handle:
+        data = pickle.load(handle)
+    spec_list = data['variable']['species']
+    pressure = data['atm']['pco'] # in cgs
+    new_str = '# (dyne/cm2)\nPressure\t'
+    vmrs = {'Pressure': pressure}
+    for sp in species:
+        vmrs[sp] = data['variable']['ymix'][:, spec_list.index(sp)]
+        new_str += '{}\t'.format(sp)
+    
+    new_str += '\n'
+    for i in range(len(pressure)):
+        for k in vmrs.keys():
+            new_str += '{:.3e}\t'.format(vmrs[k][i])
+        new_str += '\n'
+
+    with open(filename, 'w') as f:
+        f.write(new_str)
+
 # %%

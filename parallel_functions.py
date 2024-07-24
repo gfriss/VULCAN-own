@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # BC from meteorite bombardment rate:
 def bar_to_number(x): 
     ''' Converts partial pressure of a species to number density.'''
-    return x * 2300 * N_A / 100 # 100 bar is 2300 mol/cm-2 according to Zahnler et al. (2020)
+    return x * 2300 * N_A*u.mol / 100 # 100 bar is 2300 mol/cm-2 according to Zahnler et al. (2020)
 
 def gpergyr_to_gpers(x):
     ''' g/yr to g/s.'''

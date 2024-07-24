@@ -8,23 +8,21 @@ use_lowT_limit_rates = False
 
 # ====== Setting up paths and filenames for the input and output files  ======
 # input:
-#network = '/home/s2555875/scratch/VULCAN-CRAHCNO/bp20_clean.txt'
-network = '/home/s2555875/VULCAN-2/thermo/SNCHO_full_photo_network.txt'
+network = '/home/s2555875/scratch/VULCAN-CRAHCNO/bp20_clean.txt'
 use_lowT_limit_rates = False
 gibbs_text = '/home/s2555875/VULCAN-2/thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
 cross_folder = '/home/s2555875/VULCAN-2/thermo/photo_cross/'
 com_file = '/home/s2555875/scratch/VULCAN-CRAHCNO/all_compose.txt'
-#atm_file = '/home/s2555875/VULCAN-2/atm/T-P-Kzz_Pearce_B.txt' # TP and Kzz (optional) file
-atm_file = '/home/s2555875/VULCAN-2/atm/atm_Earth_Jan_Kzz.txt' # TP and Kzz (optional) file
-sflux_file = '/home/s2555875/VULCAN-2/atm/stellar_flux/Gueymard_solar.txt' # This is the flux density at the stellar surface
+atm_file = '/home/s2555875/VULCAN-2/atm/TP_helios.txt' # TP and Kzz (optional) file
+sflux_file = '/home/s2555875/VULCAN-2/atm/stellar_flux/Pearce_B_solar.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_top_Earth.txt' # the file for the top boundary conditions
-bot_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_bot_Earth.txt' # the file for the lower boundary conditions
-vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_Pearce_B.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
+bot_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_bot_Pearce_B.txt' # the file for the lower boundary conditions
+vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
 # output:
 output_dir = '/home/s2555875/scratch/output/'
 plot_dir = '/home/s2555875/scratch/plot/'
 movie_dir = '/home/s2555875/scratch/plot/movie/'
-out_name = 'Earth.vul' # output file name
+out_name = 'B_nofix_.vul' # output file name
 
 
 # ====== Setting up the elemental abundance ======
@@ -35,12 +33,12 @@ C_H = 9.5925E+2#2.7761E-4
 N_H = 2.1316E+2#8.1853E-5
 S_H = 2.1527E-7#1.3183E-5
 He_H = 0.09692
-ini_mix = 'const_mix' # Options: 'EQ', 'const_mix', 'vulcan_ini', 'table' (for 'vulcan_ini, the T-P grids have to be exactly the same)
+ini_mix = 'table' # Options: 'EQ', 'const_mix', 'vulcan_ini', 'table' (for 'vulcan_ini, the T-P grids have to be exactly the same)
 
 # Initialsing uniform (constant with pressure) mixing ratios (only reads when ini_mix = const_mix)
-const_mix = {'N2':0.78, 'O2':0.20, 'H2O':1e-6,  'CO2':4E-4, 'Ar':9.34e-3, 'SO2': 2e-10} 
+#const_mix = {'N2':0.78, 'O2':0.20, 'H2O':1e-6,  'CO2':4E-4, 'Ar':9.34e-3, 'SO2': 2e-10} 
 #const_mix = {'H2':0.9, 'N2':0.1, 'H2O':1e-4, 'CH4': 2e-6, 'Ar':9.34e-3, 'SO2': 2e-10} # Ar and SO2 left from original
-#const_mix = {'CO2':0.9, 'N2':0.1, 'H2O':1e-5, 'CH4':1e-7}#, 'Ar':9.34e-3, 'SO2':2e-10} 
+const_mix = {'CO2':0.9, 'N2':0.1, 'H2O':1e-5, 'CH4':1e-7}#, 'Ar':9.34e-3, 'SO2':2e-10} 
 
 # ====== Setting up photochemistry ======
 use_photo = True
@@ -50,7 +48,7 @@ Rp = 6.3781e8 # Planetary radius (cm) (for computing gravity)
 orbit_radius = 1 # planet-star distance in A.U.
 sl_angle = 58 /180.*3.14159 # the zenith angle of the star in degree (usually 58 deg for the dayside average)
 f_diurnal = 0.5 # to account for the diurnal average of solar flux (i.e. 0.5 for Earth; 1 for tidally-locked planets) 
-scat_sp = ['N2', 'O2'] # the bulk gases that contribute to Rayleigh scattering
+scat_sp = ['N2', 'CO2'] # the bulk gases that contribute to Rayleigh scattering
 T_cross_sp = ['CO2','H2O','NH3'] # warning: slower start! available atm: 'CO2','H2O','NH3', 'SH','H2S','SO2', 'S2', 'COS', 'CS2'
 
 edd = 0.5 # the Eddington coefficient 
@@ -70,11 +68,11 @@ if use_photo == False and use_ion == True:
 
 
 # ====== Setting up parameters for the atmosphere ======
-atm_base = 'N2' #Options: 'H2', 'N2', 'O2', 'CO2 -- the bulk gas of the atmosphere: changes the molecular diffsion, thermal diffusion factor, and settling velocity
+atm_base = 'CO2' #Options: 'H2', 'N2', 'O2', 'CO2 -- the bulk gas of the atmosphere: changes the molecular diffsion, thermal diffusion factor, and settling velocity
 rocky = True # for the surface gravity
 nz = 120   # number of vertical layers
 P_b = 1e6  # pressure at the bottom (dyne/cm^2)
-P_t = 5e-2 # pressure at the top (dyne/cm^2)
+P_t = 1e-2 # pressure at the top (dyne/cm^2)
 use_Kzz = True
 use_moldiff = True
 use_vz = False
@@ -97,9 +95,9 @@ update_frq = 100
 
 # ====== Setting up the boundary conditions ======
 # Boundary Conditions:
-use_topflux = False
+use_topflux = True
 use_botflux = True
-use_fix_sp_bot = {"H2O":0.00894, "H2O_l_s":0, 'CO2':4E-4} #{"H2O":0.00894, 'CO2':4E-4, "H2O_l_s":0} #   0.0143 for 40% humidity 0.0033 for 20% humidity in US standard 1967 # fixed mixing ratios at the lower boundary
+use_fix_sp_bot = {} #{"H2O":0.00894, 'CO2':4E-4, "H2O_l_s":0} #   0.0143 for 40% humidity 0.0033 for 20% humidity in US standard 1967 # fixed mixing ratios at the lower boundary
 diff_esc = ['H2', 'H'] # species for diffusion-limit escape at TOA
 max_flux = 1e13  # upper limit for the diffusion-limit fluxes
 
@@ -110,17 +108,17 @@ remove_list = [] # in pairs e.g. [1,2]
 use_condense = True
 use_settling = True
 use_rainout = True
-use_relax = ['H2O', 'H2SO4']
+use_relax = ['H2O']
 humidity = 0.25 # only for water
-r_p = {'H2O_l_s': 0.01, 'H2SO4_l': 1e-4}  # particle radius in cm (1e-4 = 1 micron)
-rho_p = {'H2O_l_s': 0.9, 'H2SO4_l': 1.8302}  # particle density in g cm^-3
+r_p = {'H2O_l_s': 0.01}  # particle radius in cm (1e-4 = 1 micron)
+rho_p = {'H2O_l_s': 0.9}  # particle density in g cm^-3
 start_conden_time = 0
-condense_sp = ["H2O", "H2SO4"]      
-non_gas_sp = [ 'H2O_l_s', "H2SO4_l"]
+condense_sp = ["H2O"]      
+non_gas_sp = [ 'H2O_l_s']
 rain_sp = ['H2O', 'HCN']
 non_gas_rain_sp = ['H2O_rain', 'HCN_rain']
 Henrys = 7.498
-fix_species = ['H2O','H2O_l_s',"H2SO4","H2SO4_l"] # fixed the condensable species after condensation-evapoation EQ has reached  
+fix_species = ['H2O','H2O_l_s'] # fixed the condensable species after condensation-evapoation EQ has reached  
 fix_species_time = 1e2 # after this time to fix the condensable species
 use_ini_cold_trap = True
 stop_conden_time = 1e22
@@ -157,7 +155,7 @@ flux_cri = 0.1
 flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)
 
 # ====== Setting up numerical parameters for Ros2 ODE solver ====== 
-rtol = 9e-2 #1.5              # relative tolerence for adjusting the stepsize 
+rtol = 9e-2#1.5              # relative tolerence for adjusting the stepsize 
 post_conden_rtol = 0.2 # switched to this value after fix_species_time
 
 # ====== Setting up for ouwtput and plotting ======

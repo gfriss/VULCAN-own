@@ -17,6 +17,9 @@ bc_linestyle = '-'
 
 # setting up the C/O case
 co2_for_CtoO_range = np.linspace(0,0.9,nsim, endpoint = True)
+
+# setting up the distance case
+helios_output_folder = '/scratch/s2555875/HELIOS/output/'
 #%%
 
 def calc_C_to_O(dat):
@@ -31,6 +34,7 @@ def calc_C_to_O(dat):
 def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
     dat_list = [] # list to store the results (dicts)
     H2_flux = []
+    T_surface = []
     extra_str = '' # to get the proper output
     if sim_type == 'BC':
         #extra_str = '_onlyH2.vul'
@@ -39,6 +43,8 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         extra_str = '_CtoO.vul'
     elif sim_type == 'star':
         extra_str = '_star.vul'
+    elif sim_type == 'dist':
+        extra_str = '_dist.vul'
     for i in range(number_of_sim):
         sim = start_str + 'sim_' # setting up the names of files
         if i < 10:
@@ -57,9 +63,14 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
                     if line[0] != '#' and lin[0] == bc_spec:
                         H2_flux.append(float(lin[1]))
                         break
+        elif sim_type == 'dist':
+            surface_temp = np.genfromtxt(helios_output_folder + sim[:-4] + '/{}_tp.dat'.format(sim[:-4]), dtype = None, skip_header = 2, usecols = (1))[0]
+            T_surface.append(surface_temp)
 
     if sim_type == 'BC':
         return dat_list, H2_flux
+    elif sim_type == 'dist':
+        return dat_list, T_surface
     else:
         return dat_list
 
@@ -71,7 +82,7 @@ def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
 def create_dummy_line(**kwds):
     return Line2D([], [], **kwds)
 
-def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, l_size = 12, bc_flux_list = [], mol = 'HCN'):
+def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, l_size = 12, bc_flux_list = [], surf_temp = [], mol = 'HCN'):
     with open(out_folder+'B_nofix.vul', 'rb') as handle: # for comparison
         data_B = pickle.load(handle)
     hcn_rain_B = 3.4e-12 #rainout(data_B)
@@ -91,16 +102,17 @@ def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, 
         ax.tick_params(axis = 'both', labelsize = l_size)
         ax1 = ax.twinx()
         colour = 'tab:orange'
-        ax1.tick_params(axis = 'y', labelcolor = colour)
         ax1.plot(param_list, bc_flux_list, color = colour, linestyle = bc_linestyle)
         ax1.plot(bomb_B, bc_B, marker = '*', color = colour, linestyle = bc_linestyle, label = bc_spec)
         ax1.set_ylabel(r'H2 flux from surface [cm$^{-2}$ s$^{-1}$]', color = colour, fontsize = f_size)
         ax1.set_yscale('log')
+        #ax1.set_xscale('log')
         #ax1.legend(loc = 'center right')
         for tick in ax1.xaxis.get_major_ticks():
             tick.label1.set_fontsize(l_size)
         ax1.tick_params(which = 'both', direction = 'out', width = 1, length = 4)
         ax1.tick_params(axis = 'both', labelsize = l_size)
+        ax1.tick_params(axis = 'y', labelcolor = colour)
 
     elif sim_type == 'C_to_O': # plotting comparison
         #ax.plot(C_to_O_B, hcn_rain_B, linestyle = '', marker = '*', color = colour_b, label = 'Pearce et al. (2022)')
@@ -114,6 +126,16 @@ def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, 
         ax.set_ylabel(mol + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', fontsize = f_size)
         ax.tick_params(which='both', direction='out', width=1, length = 4)
         ax.tick_params(axis = 'both', labelsize = l_size)
+    
+    elif sim_type == 'dist':
+        ax.plot(1, hcn_rain_B, marker = '*', linestyle = '', label = 'Pearce et al. (2022)')
+        ax.set_xlabel('Distance [AU]', fontsize = f_size)
+        ax.set_ylabel(mol + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', fontsize = f_size)
+        ax.tick_params(which='both', direction='out', width=1, length = 4)
+        ax.tick_params(axis = 'both', labelsize = l_size)
+        ax1 = ax.twiny()
+        ax1.plot(surf_temp, hcn_rain_list, linestyle = '')
+        ax1.set_xlabel(r'T$_{surf}$ [K]')
     
     ax.set_yscale('log')
     for tick in ax.xaxis.get_major_ticks():
@@ -274,7 +296,7 @@ plot_evo_layer(data_bc, 'HCN', figname = 'hcn_evo_meteor.pdf')
 plot_convergence(data_bc, figname = 'convergence_meteor.pdf')
 #%%
 # BC case with helios TP
-data_bc, bc_flux = read_in('BC', 13, start_str = 'helios_tp_')
+data_bc, bc_flux = read_in('BC', nsim, start_str = 'helios_tp_')
 
 hcn_rain = [] # storing the rainout rates
 for d in data_bc:
@@ -284,9 +306,9 @@ rain = [] # storing the rainout rates
 for d in data_bc:
     rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
-plot_rain(rain, bomb_rate[:13], 'BC', figname = 'helios_tp_H2O_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux, mol = 'Water')
-plot_rain(hcn_rain, bomb_rate[:13], 'BC', figname = 'helios_tp_HCN_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux)
-plot_vertical_n(data_bc, 'HCN', bomb_rate[:13], 'BC', figname = 'helios_tp_HCN_air_meteoritic.pdf')
+plot_rain(rain, bomb_rate, 'BC', figname = 'helios_tp_H2O_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux, mol = 'Water')
+plot_rain(hcn_rain, bomb_rate, 'BC', figname = 'helios_tp_HCN_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux)
+plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'helios_tp_HCN_air_meteoritic.pdf')
 plot_end_time(data_bc, figname = 'helios_tp_end_time_meteor.pdf')
 plot_evo_layer(data_bc, 'HCN', figname = 'helios_tp_hcn_evo_meteor.pdf')
 plot_convergence(data_bc, figname = 'helios_tp_convergence_meteor.pdf')
@@ -358,4 +380,22 @@ plot_vertical_n(data_star, 'HCN', T_eff, 'star', figname = 'HCN_air_star.pdf', f
 plot_end_time(data_star, figname = 'end_time_star.pdf')
 plot_evo_layer(data_star, 'HCN', figname = 'hcn_evo_star.pdf')
 plot_convergence(data_star, figname = 'convergence_star.pdf')
+# %%
+# distance case
+a_list = np.linspace(0.723, 2, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
+
+data_dist, T_surf = read_in('dist', 15)
+hcn_rain_dist, rain_dist = [], []
+
+for d in data_dist:
+    hcn_rain_dist.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_dist.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+
+# do all the ploting
+plot_rain(hcn_rain_dist, a_list, 'dist', figname = 'HCN_rainout_dist.pdf', surf_temp = T_surf)
+plot_rain(rain_dist, a_list, 'dist', figname = 'H2O_rainout_dist.pdf', mol = 'Water', surf_temp = T_surf)
+plot_vertical_n(data_dist, 'HCN', a_list, 'dist', figname = 'HCN_air_dist.pdf', f_size = 19, l_size = 18)
+plot_end_time(data_dist, figname = 'end_time_dist.pdf')
+plot_evo_layer(data_dist, 'HCN', figname = 'hcn_evo_dist.pdf')
+plot_convergence(data_dist, figname = 'convergence_dist.pdf')
 # %%

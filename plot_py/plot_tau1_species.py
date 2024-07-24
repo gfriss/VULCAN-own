@@ -12,9 +12,9 @@ except ImportError:
 import os, sys
 import pickle
        
-plot_name = 'T1400-S'
-vul_data = '../output/T1400-K7-5XM-noDzz-dbin10.vul'
-plot_dir = '../' + vulcan_cfg.plot_dir
+plot_name = 'Earth_tau'
+vul_data = '/scratch/s2555875/output/Earth.vul'
+plot_dir = '/scratch/s2555875/plot/'
 
 color_index = 0
 colors = ['c','b','g','r','m','y','chocolate','orange','pink','grey','darkred','salmon','steelblue','hotpink','k','c','b','g','r','m','y']
@@ -33,11 +33,11 @@ tau1 = 1.
 # photosphere of each species
 tau_sp= {}
 
-photo_sp = [ 'H2O','CO', 'CO2','H2', 'SH', 'H2S', 'CH4', 'S2'] # , 'H2', 'CH4', 'CO2'   
-#photo_sp = ['H2CO', 'HCO',  'O2',  'HCN', 'NH3', 'NO', 'N2',  'NO2', 'N2O', 'O3', 'HO2', 'H2O2', 'NO3', 'HNO3', 'HNO2'  ]
+#photo_sp = [ 'H2O','CO', 'CO2','H2', 'SH', 'H2S', 'CH4', 'S2'] # , 'H2', 'CH4', 'CO2'   
+photo_sp = ['H2CO', 'HCO',  'O2',  'HCN', 'NH3', 'NO', 'N2',  'NO2', 'N2O', 'O3', 'HO2', 'H2O2', 'NO3', 'HNO3', 'HNO2'  ]
 #, 'N2', 'C2H4', 'C2H2','C2H6', 'CH3', 'CO2', 'HCO','HCN'  ,'CH3CHO','NO' , 'NO2'
-scat_sp = ['H2','He']
-#scat_sp = ['N2', 'O2']
+#scat_sp = ['H2','He']
+scat_sp = ['N2', 'O2']
 
 bins = data['variable']['bins']
 dz = data['atm']['dz']

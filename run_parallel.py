@@ -19,8 +19,8 @@ main_folder = '/scratch/s2555875/' # place to store outputs
 output_folder = main_folder + 'output/'
 # ------setting up parameterspace for all runs------
 # meteoritic bombardment
-bomb_rate = np.linspace(3.5e23, 9e23, nsim) # values from Pearce et al. (2022) Fig A4 min and max
-# it was: np.linspace(3e23, 1e25, nsim)
+bomb_rate = np.linspace(3e23, 1e25, nsim) # values from Pearce et al. (2022) Fig A4 min and max
+# for extra sims: np.linspace(3.5e23, 9e23, nsim)
 vdep = '1.'#,1.e-4,0.,1.' # deposition velocity for H2, CO2, CH4, NH3 (CO from lighning too so have to adjust later...)
 prod_sp = {'H2':0.65}#, 'CO2':1.32, 'CH4':1e-6, 'NH3':7e-5} # produced amount per impactor os m_mass from Zahnle et al (2020)
 m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
@@ -29,7 +29,7 @@ co2_for_CtoO_range = np.linspace(0,0.9,nsim, endpoint = True)
 # star type
 star_df = pf.read_stellar_data(main_folder + 'stellar_flux/stellar_params.csv') # NOT necessarily nsim long...
 # distance case
-a_list = np.linspace(0.723, 2, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
+a_list = np.linspace(0.82, 1.4, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, keep surface temp between 0 and 100 Celsius after trial
 # in case new sims with HELIOS TP
 helios_tp = ''
 #helios_tp = 'helios_tp_'

@@ -17,7 +17,7 @@ atm_file = '/home/s2555875/VULCAN-2/atm/TP_helios.txt' # TP and Kzz (optional) f
 sflux_file = '/home/s2555875/VULCAN-2/atm/stellar_flux/Pearce_B_solar.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_top_Earth.txt' # the file for the top boundary conditions
 bot_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_bot_Pearce_B.txt' # the file for the lower boundary conditions
-vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_Pearce_B.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
+vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
 # output:
 output_dir = '/home/s2555875/scratch/output/'
 plot_dir = '/home/s2555875/scratch/plot/'
@@ -71,7 +71,7 @@ if use_photo == False and use_ion == True:
 atm_base = 'CO2' #Options: 'H2', 'N2', 'O2', 'CO2 -- the bulk gas of the atmosphere: changes the molecular diffsion, thermal diffusion factor, and settling velocity
 rocky = True # for the surface gravity
 nz = 120   # number of vertical layers
-P_b = 2e6  # pressure at the bottom (dyne/cm^2)
+P_b = 1e6  # pressure at the bottom (dyne/cm^2)
 P_t = 1e-2 # pressure at the top (dyne/cm^2)
 use_Kzz = True
 use_moldiff = True
