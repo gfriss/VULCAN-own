@@ -4,22 +4,22 @@ import os
 import sys
 import subprocess
 from scipy import interpolate
-#import parallel_functions as pf
-#%%
+import parallel_functions as pf
+import pandas as pd
+
 scratch = '/scratch/s2555875'
 helios_folder = os.path.join(scratch, 'HELIOS')
 og_param = os.path.join(helios_folder, 'param.dat')
 output = os.path.join(helios_folder, 'output')
-
-#star_df = pf.read_stellar_data('/scratch/s2555875/stellar_flux/stellar_params.csv')
-#star_names = star_df['Name'][:]
-
+star_df = pd.read_csv(os.path.join(scratch, 'stellar_flux', 'stellar_params.csv'))
+nsim_dist = 15
+#%%
 def change_line(line, bit_id, new_val):
     bits = line.split()
     bits[bit_id] = new_val
     return ' '.join(bits) + '\n'
 
-def create_param_file(sim_name, dist = None, sname = None):
+def create_param_file(sim_name, dist = None, sname = None, subfolder = ''):
     ''' Function to loop through the origianl HELIOS parameter file and change
         needed lines. For now these lines are: name and orbital distance.
         Future lines might contain: stellar spectrum file, stellar spectrum dataset,
@@ -33,7 +33,7 @@ def create_param_file(sim_name, dist = None, sname = None):
                 new_str += change_line(line, 3, 'no')
             elif dist != None and 'orbital distance' in line:
                 new_str += change_line(line, 6, str(dist))
-            elif sname != None and sname == 'EARLY_SUN' and 'stellar spectral model' in line:
+            elif sname != None and sname != 'EARLY_SUN' and 'stellar spectral model' in line: # used blackbody for early sun, set as default
                 new_str += change_line(line, 4, 'file')
             elif sname != None and 'path to stellar spectrum file' in line:
                 new_str += change_line(line, 8, './star_tool/output/{}.h5'.format(sname.lower()))
@@ -45,7 +45,7 @@ def create_param_file(sim_name, dist = None, sname = None):
                 new_str += change_line(line, 2, sname.upper() + '_own')
             else:
                 new_str += line
-    new_param_file = 'param_{}.dat'.format(sim_name)
+    new_param_file = os.path.join(subfolder,'param_{}.dat'.format(sim_name))
     with open(new_param_file, 'w') as f:
         f.write(new_str)
     return new_param_file
@@ -57,16 +57,16 @@ def read_helios_tp(sim_name):
     P_helios = tp_helios_val['press106bar']
     return T_helios, P_helios
 
-def create_new_vulcan_pt(sim_name):
+def create_new_vulcan_pt(sim_name, subfolder = ''):
     T_h, P_h = read_helios_tp(sim_name)
     T_P_interp = interpolate.interp1d(P_h, T_h, bounds_error = False, fill_value = "extrapolate")
 
-    vulcan_atm = np.genfromtxt('atm/atm_Earth_Jan_Kzz.txt', dtype = None, comments = '#', skip_header = 1, names = True)
+    vulcan_atm = np.genfromtxt('/home/s2555875/VULCAN-2/atm/atm_Earth_Jan_Kzz.txt', dtype = None, comments = '#', skip_header = 1, names = True)
     P_vulcan = vulcan_atm['Pressure']
     Kzz_vulcan = vulcan_atm['Kzz']
     T_vulcan_helios = T_P_interp(P_vulcan)
 
-    with open(os.path.join(scratch, 'TP_files', '{}.txt'.format(sim_name)), 'w') as f:
+    with open(os.path.join(scratch, 'TP_files', subfolder, '{}.txt'.format(sim_name)), 'w') as f:
         f.write('# (dyne/cm2) (K)     (cm2/s)\nPressure\tTemp\tKzz\n')
         for p,t,z in zip(P_vulcan,T_vulcan_helios,Kzz_vulcan):
             f.write('{:.3e}\t{:.1f}\t{:.3e}\n'.format(p,t,z))
@@ -92,8 +92,6 @@ def run_many_dist(dist_list):
 
 #run_many_dist(a_list)
 #%%
-import pandas as pd
-star_df = pd.read_csv(os.path.join(scratch, 'stellar_flux', 'stellar_params.csv'))
 def run_many_planets(star_table):
     name_list = star_table.Name[:]
     for i,name in enumerate(name_list):
@@ -109,7 +107,29 @@ def run_many_planets(star_table):
         subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
         os.chdir(wd)
         create_new_vulcan_pt(sim)
-run_many_planets(star_df)
+#run_many_planets(star_df)
+#%%
+def run_star_dist(star_table, factor = 1.1):
+    param_matrix = []
+    for star in star_table.Name:
+        dist = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = factor)
+        for d in dist:
+            param_matrix.append([star, d])
+
+    for i,sim_i in enumerate(param_matrix):
+        i_dist = i%nsim_dist
+        sim = 'star_{}_'.format(sim_i[0]) # param matrix first goes through the distances
+        if i_dist < 10:
+            sim += 'dist_0{}'.format(i_dist)
+        else:
+            sim += 'dist_{}'.format(i_dist)
+        wd = os.getcwd()
+        os.chdir(helios_folder)
+        new_p = create_param_file(sim, sname = sim_i[0], dist = sim_i[1])
+        subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
+        os.chdir(wd)
+        create_new_vulcan_pt(sim, subfolder = 'star_dist')
+run_star_dist(star_df)
 #%%
 # creating fastchem styled mixing ratio file for HELIOS
 location_early = '/scratch/s2555875/HELIOS/input/chemistry/early_earth/chem.dat'

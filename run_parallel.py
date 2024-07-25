@@ -25,9 +25,10 @@ vdep = '1.'#,1.e-4,0.,1.' # deposition velocity for H2, CO2, CH4, NH3 (CO from l
 prod_sp = {'H2':0.65}#, 'CO2':1.32, 'CH4':1e-6, 'NH3':7e-5} # produced amount per impactor os m_mass from Zahnle et al (2020)
 m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
 # C/O ratio
-co2_for_CtoO_range = np.linspace(0,0.9,nsim, endpoint = True)
+co2_for_CtoO_range = np.linspace(0,0.1,nsim, endpoint = True)
 # star type
 star_df = pf.read_stellar_data(main_folder + 'stellar_flux/stellar_params.csv') # NOT necessarily nsim long...
+a_star_list  = [0.0296, 0.0770, 0.0780, 0.1550, 0.1780, 0.3840, 0.4945, 0.6295, 0.6976, 1., 1.1623, 1.9047, 2.3155]
 # distance case
 a_list = np.linspace(0.82, 1.4, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, keep surface temp between 0 and 100 Celsius after trial
 # in case new sims with HELIOS TP
@@ -78,9 +79,14 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         rad_file_change = 'sflux_file' + ',' + new_rad_file + ',' + 'str'
         new_r_star = str(star_df.loc[star_df.Name == star_name].R.iloc[0])
         r_star_change = 'r_star' + ',' + new_r_star + ',' + 'val'
-        new_orbit_radius = str(pf.semi_major_from_S_eff(star_df, star_name))
+        #new_orbit_radius = str(pf.semi_major_from_S_eff(star_df, star_name))
+        new_orbit_radius = str(a_star_list[i])
         orbit_radius_change = 'orbit_radius' + ',' + new_orbit_radius + ',' + 'val'
-        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, out_change])
+        # new TP files are already created with HELIOS, need to update vulcan_cfg with filename and orbit_radius
+        # surf temps are similar, but better to use corresponding ones
+        tp_file = main_folder + 'TP_files/' + sim + '.txt'
+        tp_change = 'atm_file' + ',' + tp_file + ',' + 'str'
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change])
     elif run_type == 'dist':
         # new TP files are already created with HELIOS, need to update vulcan_cfg with filename and orbit_radius
         tp_file = main_folder + 'TP_files/' + sim + '.txt'
