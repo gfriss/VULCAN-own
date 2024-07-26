@@ -19,7 +19,7 @@ def change_line(line, bit_id, new_val):
     bits[bit_id] = new_val
     return ' '.join(bits) + '\n'
 
-def create_param_file(sim_name, dist = None, sname = None, subfolder = ''):
+def create_param_file(sim_name, dist = None, sname = None, manual = False, r_star = None, T_star = None, subfolder = ''):
     ''' Function to loop through the origianl HELIOS parameter file and change
         needed lines. For now these lines are: name and orbital distance.
         Future lines might contain: stellar spectrum file, stellar spectrum dataset,
@@ -42,7 +42,14 @@ def create_param_file(sim_name, dist = None, sname = None, subfolder = ''):
             elif sname != None and sname in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
                 new_str += change_line(line, 8, '/r50_kdistr/ascii/{}'.format(sname.lower()))
             elif sname != None and 'planet =' in line:
-                new_str += change_line(line, 2, sname.upper() + '_own')
+                if manual:
+                    new_str += change_line(line, 2, 'manual')
+                else:
+                    new_str += change_line(line, 2, sname.upper() + '_own')
+            elif r_star != None and 'radius star [R_Sun]' in line:
+                new_str += change_line(line, 6, str(r_star))
+            elif T_star != None and 'temperature star [K]' in line:
+                new_str += change_line(line, 6, str(T_star))
             else:
                 new_str += line
     new_param_file = os.path.join(subfolder,'param_{}.dat'.format(sim_name))
@@ -118,6 +125,8 @@ def run_star_dist(star_table, factor = 1.1):
 
     for i,sim_i in enumerate(param_matrix):
         i_dist = i%nsim_dist
+        T = star_table.loc[star_table.Name == sim_i[0]].T_eff.iloc[0]
+        R = star_table.loc[star_table.Name == sim_i[0]].R.iloc[0]
         sim = 'star_{}_'.format(sim_i[0]) # param matrix first goes through the distances
         if i_dist < 10:
             sim += 'dist_0{}'.format(i_dist)
@@ -125,7 +134,7 @@ def run_star_dist(star_table, factor = 1.1):
             sim += 'dist_{}'.format(i_dist)
         wd = os.getcwd()
         os.chdir(helios_folder)
-        new_p = create_param_file(sim, sname = sim_i[0], dist = sim_i[1])
+        new_p = create_param_file(sim, sname = sim_i[0], dist = sim_i[1], manual = True, T_star = T, r_star = R)
         subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
         os.chdir(wd)
         create_new_vulcan_pt(sim, subfolder = 'star_dist')

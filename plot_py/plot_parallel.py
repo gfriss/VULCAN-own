@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from matplotlib.lines import Line2D
+from scipy.optimize import curve_fit
 
 # general parameters
 nsim = 15 # hardcoded for now, change later...
@@ -21,7 +22,14 @@ mixing_folder = '/scratch/s2555875/mixing_files/'
 
 # setting up the distance case
 helios_output_folder = '/scratch/s2555875/HELIOS/output/'
+
+# base simulation of Archean
+with open(out_folder+'archean.vul', 'rb') as handle:
+    data_archean = pickle.load(handle)
 #%%
+def lin(x, a, b):
+    return a*x + b
+
 def get_element_number(species, element):
     ''' Gets the number of an element in a given species. Used to calculate C/O ratio later.'''
     char_list = list(species)
@@ -245,15 +253,19 @@ def print_max_n_re(dat, mol, first_n, n = 0, prod = False):
     
 def plot_vertical_n(dat_list, spec, param_list, sim_type, figname = None, f_size = 13, l_size = 12):
     fig, ax = plt.subplots(tight_layout = True, figsize = (10,6))
+    cm = plt.get_cmap('nipy_spectral')
+    n_colours = len(dat_list)
+    lstyles = ['-', '--', '-.', ':']
+    ax.set_prop_cycle(color=[cm(1.*i/n_colours) for i in range(n_colours)])
     for i in range(len(dat_list)):
         if sim_type == 'BC':
-            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'$\dot{M}_{del}$ = ' + '{:.2e} g/Gyr'.format(param_list[i]))
+            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'$\dot{M}_{del}$ = ' + '{:.2e} g/Gyr'.format(param_list[i]), linestyle = lstyles[i%len(lstyles)])
         elif sim_type == 'C_to_O':
-            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = 'C/O = {:.2f}'.format(param_list[i]))
+            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = 'C/O = {:.2f}'.format(param_list[i]), linestyle = lstyles[i%len(lstyles)])
         elif sim_type == 'star':
-            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'T$_{eff}$'+'= {:.2f} K'.format(param_list[i]))
+            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'T$_{eff}$'+'= {:.2f} K'.format(param_list[i]), linestyle = lstyles[i%len(lstyles)])
         elif sim_type == 'dist':
-            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = 'd = {:.2f} AU'.format(param_list[i]))
+            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = 'd = {:.2f} AU'.format(param_list[i]), linestyle = lstyles[i%len(lstyles)])
         
     ax.set_xscale('log')
     ax.set_xlabel(r'n [cm$^{-3}$]', fontsize = f_size)
@@ -313,6 +325,78 @@ def plot_convergence(dat_list, figname = None, f_size = 13, l_size = 12):
     if figname != None:
         fig.savefig(plot_folder + figname)
 
+def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = None, f_size = 13, l_size = 12, rain_spec = 'HCN_rain', extra_list = []):
+    yconv_cri = 0.01
+    yconv_min = 0.1
+    slope_cri = 1.e-4
+    conv_rain_list = []
+    conv_param_list = []
+    conv_extra_list = []
+    for i in range(len(dat_list)):
+        longdy = dat_list[i]['variable']['longdy']
+        longdydt = dat_list[i]['variable']['longdydt']
+        slope_min = min( np.amin(dat_list[i]['atm']['Kzz']/(0.1*dat_list[i]['atm']['Hp'][:-1])**2) , 1.e-8)
+        slope_min = max(slope_min, 1.e-10)
+        if (longdy < yconv_cri and longdydt < slope_cri or longdy < yconv_min and longdydt < slope_min):
+            conv_rain_list.append(rain_list[i])
+            conv_param_list.append(param_list[i])
+            if extra_list:
+                conv_extra_list.append(extra_list[i])
+    gpm = 0.
+    if rain_spec == 'HCN_rain':
+        gpm = 27
+    elif rain_spec == 'H2O_rain':
+        gpm = 18
+    rain_archean = rainout(data_archean, rain_spec = rain_spec, g_per_mol = gpm)
+    param_archean = 0.
+    if sim_type == 'BC':
+        param_archean = 1.2e24 * 2.3/3.42 # scaled bomb rate
+    elif sim_type == 'CtoO':
+        param_archean = calc_C_to_O(data_archean, '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt')
+    elif sim_type == 'star':
+        param_archean = 5600.
+    elif sim_type == 'dist':
+        param_archean = 1.
+
+    popt, pcov = curve_fit(lin, conv_param_list, conv_rain_list)
+    param_x = np.linspace(conv_param_list[0], conv_param_list[-1], 42, endpoint = True)
+    fig, ax = plt.subplots(tight_layout = True)
+    ax.plot(conv_param_list, conv_rain_list, color = 'navy', linestyle = '', marker = '.')
+    ax.plot(param_archean, rain_archean, color = 'darkorange', marker = '*')
+    ax.plot(param_x, lin(param_x, popt[0], popt[1]), linestyle = '--', alpha = 0.4, color = 'r')
+    ax.set_yscale('log')
+    if sim_type == 'BC':
+        ax.set_xscale('log')
+        ax.set_xlabel(r'Mass delivery rate [g Gyr$^{-1}$]', fontsize = f_size)
+        ax1 = ax.twiny()
+        ax1.plot(conv_extra_list, conv_rain_list, linestyle = '')
+        ax1.set_xlabel(r'H$_2$ flux [cm$^{-2}$ s$^{-1}$]', fontsize = f_size)
+        ax1.set_xscale('log')
+        ax1.tick_params(which = 'both', direction='out', width=1, length = 4)
+        ax1.tick_params(axis = 'both', labelsize = l_size)
+        #for tick in ax1.xaxis.get_major_ticks():
+        #    tick.label1.set_fontsize(l_size)
+    elif sim_type == 'CtoO':
+        ax.set_xlabel('C/O', fontsize = f_size)
+    elif sim_type == 'star':
+        ax.set_xlabel(r'T$_{eff}$ [K]', fontsize = f_size)
+    elif sim_type == 'dist':
+        ax.set_xlabel('Distance [AU]', fontsize = f_size)
+        ax1 = ax.twiny()
+        ax1.plot(conv_extra_list, conv_rain_list, linestyle = '')
+        ax1.set_xlabel(r'T$_{surf}$ [K]')
+        ax1.invert_xaxis()
+        for tick in ax1.xaxis.get_major_ticks():
+            tick.label1.set_fontsize(l_size)
+
+    ax.set_ylabel(rain_spec[:-5] + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', fontsize = f_size)
+    ax.tick_params(which='both', direction='out', width=1, length = 4)
+    ax.tick_params(axis = 'both', labelsize = l_size)
+
+    if figname != None:
+        fig.savefig(plot_folder + figname)
+    
+
 #%%
 # BC case
 data_bc, bc_flux = read_in('BC', nsim)
@@ -349,13 +433,14 @@ rain = [] # storing the rainout rates
 for d in data_bc:
     rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
-plot_rain(rain, bomb_rate, 'BC', figname = 'helios_tp_H2O_rainout_meteor.pdf', bc_flux_list = bc_flux, mol = 'Water', plot_Pearce = False, yscale = 'linear')
-plot_rain(hcn_rain, bomb_rate, 'BC', figname = 'helios_tp_HCN_rainout_meteor.pdf', bc_flux_list = bc_flux, plot_Pearce = False, yscale = 'linear')
-plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'helios_tp_HCN_air_meteor.pdf')
-plot_end_time(data_bc, figname = 'helios_tp_end_time_meteor.pdf')
-plot_evo_layer(data_bc, 'HCN', figname = 'helios_tp_hcn_evo_meteor.pdf')
-plot_convergence(data_bc, figname = 'helios_tp_convergence_meteor.pdf')
-
+#plot_rain(rain, bomb_rate, 'BC', figname = 'helios_tp_H2O_rainout_meteor.pdf', bc_flux_list = bc_flux, mol = 'Water', plot_Pearce = False, yscale = 'linear')
+#plot_rain(hcn_rain, bomb_rate, 'BC', figname = 'helios_tp_HCN_rainout_meteor.pdf', bc_flux_list = bc_flux, plot_Pearce = False, yscale = 'linear')
+#plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'helios_tp_HCN_air_meteor.pdf')
+#plot_end_time(data_bc, figname = 'helios_tp_end_time_meteor.pdf')
+#plot_evo_layer(data_bc, 'HCN', figname = 'helios_tp_hcn_evo_meteor.pdf')
+#plot_convergence(data_bc, figname = 'helios_tp_convergence_meteor.pdf')
+plot_rain_converged(data_bc, hcn_rain, bomb_rate, 'BC', figname = 'conv_BC_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = bc_flux)
+plot_rain_converged(data_bc, rain, bomb_rate, 'BC', figname = 'conv_BC_rain.pdf', rain_spec = 'H2O_rain', extra_list = bc_flux)
 # %%
 # C/O case
 
@@ -391,13 +476,14 @@ for d in data_CtoO:
     rain_CtoO.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
-plot_rain(hcn_rain_CtoO, C_to_O, 'C_to_O', figname = 'helios_tp_HCN_rainout_C_to_O.pdf')
-plot_rain(rain_CtoO, C_to_O, 'C_to_O', figname = 'helios_tp_H2O_rainout_C_to_O.pdf', mol = 'Water')
-plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'C_to_O', figname = 'helios_tp_HCN_air_C_to_O.pdf', f_size = 19, l_size = 18)
-plot_end_time(data_CtoO, figname = 'helios_tp_end_time_C_to_O.pdf')
-plot_evo_layer(data_CtoO, 'HCN', figname = 'helios_tp_hcn_evo_C_to_O.pdf')
-plot_convergence(data_CtoO, figname = 'helios_tp_convergence_C_to_O.pdf')
-
+#plot_rain(hcn_rain_CtoO, C_to_O, 'C_to_O', figname = 'helios_tp_HCN_rainout_C_to_O.pdf', plot_Pearce = False)
+#plot_rain(rain_CtoO, C_to_O, 'C_to_O', figname = 'helios_tp_H2O_rainout_C_to_O.pdf', mol = 'Water', plot_Pearce = False)
+#plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'C_to_O', figname = 'helios_tp_HCN_air_C_to_O.pdf', f_size = 19, l_size = 18)
+#plot_end_time(data_CtoO, figname = 'helios_tp_end_time_C_to_O.pdf')
+#plot_evo_layer(data_CtoO, 'HCN', figname = 'helios_tp_hcn_evo_C_to_O.pdf')
+#plot_convergence(data_CtoO, figname = 'helios_tp_convergence_C_to_O.pdf')
+plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_hcn_rain.pdf', rain_spec = 'HCN_rain')
+plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_rain.pdf', rain_spec = 'H2O_rain')
 # %%
 for d in data_bc:
     print_max_re(d, 'H2')
@@ -413,17 +499,19 @@ for d in data_star:
     rain_star.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
-plot_rain(hcn_rain_star, T_eff, 'star', figname = 'HCN_rainout_star.pdf')
-plot_rain(rain_star, T_eff, 'star', figname = 'H2O_rainout_star.pdf', mol = 'Water')
-plot_vertical_n(data_star, 'HCN', T_eff, 'star', figname = 'HCN_air_star.pdf', f_size = 19, l_size = 18)
-plot_end_time(data_star, figname = 'end_time_star.pdf')
-plot_evo_layer(data_star, 'HCN', figname = 'hcn_evo_star.pdf')
-plot_convergence(data_star, figname = 'convergence_star.pdf')
+#plot_rain(hcn_rain_star, T_eff, 'star', figname = 'HCN_rainout_star.pdf', plot_Pearce = False)
+#plot_rain(rain_star, T_eff, 'star', figname = 'H2O_rainout_star.pdf', mol = 'Water', plot_Pearce = False)
+#plot_vertical_n(data_star, 'HCN', T_eff, 'star', figname = 'HCN_air_star.pdf', f_size = 19, l_size = 18)
+#plot_end_time(data_star, figname = 'end_time_star.pdf')
+#plot_evo_layer(data_star, 'HCN', figname = 'hcn_evo_star.pdf')
+#plot_convergence(data_star, figname = 'convergence_star.pdf')
+plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_star_hcn_rain.pdf', rain_spec = 'HCN_rain')
+plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain.pdf', rain_spec = 'H2O_rain')
 # %%
 # distance case
-a_list = np.linspace(0.82, 1.4, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
+a_list = np.linspace(0.82, 1.4, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
 
-data_dist, T_surf = read_in('dist', 15)
+data_dist, T_surf = read_in('dist', nsim)
 hcn_rain_dist, rain_dist = [], []
 
 for d in data_dist:
@@ -431,10 +519,12 @@ for d in data_dist:
     rain_dist.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
-plot_rain(hcn_rain_dist, a_list, 'dist', figname = 'HCN_rainout_dist.pdf', surf_temp = T_surf, plot_Pearce = False)
-plot_rain(rain_dist, a_list, 'dist', figname = 'H2O_rainout_dist.pdf', mol = 'Water', surf_temp = T_surf, plot_Pearce = False)
-plot_vertical_n(data_dist, 'HCN', a_list, 'dist', figname = 'HCN_air_dist.pdf', f_size = 19, l_size = 18)
-plot_end_time(data_dist, figname = 'end_time_dist.pdf')
-plot_evo_layer(data_dist, 'HCN', figname = 'hcn_evo_dist.pdf')
-plot_convergence(data_dist, figname = 'convergence_dist.pdf')
+#plot_rain(hcn_rain_dist, a_list, 'dist', figname = 'HCN_rainout_dist.pdf', surf_temp = T_surf, plot_Pearce = False)
+#plot_rain(rain_dist, a_list, 'dist', figname = 'H2O_rainout_dist.pdf', mol = 'Water', surf_temp = T_surf, plot_Pearce = False)
+#plot_vertical_n(data_dist, 'HCN', a_list, 'dist', figname = 'HCN_air_dist.pdf', f_size = 19, l_size = 18)
+#plot_end_time(data_dist, figname = 'end_time_dist.pdf')
+#plot_evo_layer(data_dist, 'HCN', figname = 'hcn_evo_dist.pdf')
+#plot_convergence(data_dist, figname = 'convergence_dist.pdf')
+plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf)
+plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf)
 # %%

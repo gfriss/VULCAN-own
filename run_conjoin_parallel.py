@@ -5,16 +5,12 @@ import numpy as np
 import parallel_functions as pf
 from mpi4py.MPI import COMM_WORLD as CW # for paralellisation
 
-run_type = sys.argv[1] # 'meteor' or 'CtoO' or 'star' according to which experiment we run, used to make loop at end more readable
-
-
-
 rank = CW.Get_rank()
 size = CW.Get_size()
 
 nsim_dist = 15 # distances, for now
 nsim_star = 13 # stars, for now
-sim_per_rank = int(nsim_dist / size) # this is needed to distribure the tasks between tha CPUs
+sim_per_rank = int(nsim_dist*nsim_star / size) + 1 # this is needed to distribure the tasks between tha CPUs
 
 scratch = '/scratch/s2555875' # place to store outputs
 output_folder = os.path.join(scratch, 'output/star_dist/')
@@ -51,11 +47,14 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     rad_file_change = ','.join(['sflux_file', new_rad_file, 'str'])
     new_r_star = str(star_df.loc[star_df.Name == param_matrix[i][0]].R.iloc[0])
     r_star_change = ','.join(['r_star', new_r_star, 'val'])
-    new_orbit_radius = param_matrix[i][1]
-    orbit_radius_change = ','.join(['orbit_radius', new_orbit_radius, 'val'])
+    new_orbit_radius = str(param_matrix[i][1])
+    orbit_radius_change = ','.join(['orbit_radius', str(new_orbit_radius), 'val'])
     new_tp_file = os.path.join(TP_folder, sim) + '.txt'
     tp_file_change = ','.join(['atm_file', new_tp_file, 'str'])
-    # do a test on surface tmeperature???????????????????????????????????????????????????????
+    # do a test on surface tmeperature so that only 0-100 surface tmeperature options will be simulated
+    surface_temperatue = np.genfromtxt(new_tp_file, dtype = None, names = True, skip_header = 1, max_rows = 5)['Temp'][0]
+    if surface_temperatue < 273 or surface_temperatue > 373:
+        continue
     # first create simulation folder
     subprocess.check_call(['mkdir', sim_folder])
     # then make new cfg file

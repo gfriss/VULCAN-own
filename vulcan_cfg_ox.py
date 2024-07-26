@@ -68,7 +68,7 @@ if use_photo == False and use_ion == True:
 
 
 # ====== Setting up parameters for the atmosphere ======
-atm_base = 'CO2' #Options: 'H2', 'N2', 'O2', 'CO2 -- the bulk gas of the atmosphere: changes the molecular diffsion, thermal diffusion factor, and settling velocity
+atm_base = 'N2' #Options: 'H2', 'N2', 'O2', 'CO2 -- the bulk gas of the atmosphere: changes the molecular diffsion, thermal diffusion factor, and settling velocity
 rocky = True # for the surface gravity
 nz = 120   # number of vertical layers
 P_b = 1e6  # pressure at the bottom (dyne/cm^2)
