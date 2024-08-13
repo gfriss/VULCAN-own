@@ -325,13 +325,12 @@ def plot_convergence(dat_list, figname = None, f_size = 13, l_size = 12):
     if figname != None:
         fig.savefig(plot_folder + figname)
 
-def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = None, f_size = 13, l_size = 12, rain_spec = 'HCN_rain', extra_list = []):
+def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = None, f_size = 15, l_size = 14, rain_spec = 'HCN_rain', extra_list = [], plot_non_conv = False):
     yconv_cri = 0.01
     yconv_min = 0.1
     slope_cri = 1.e-4
-    conv_rain_list = []
-    conv_param_list = []
-    conv_extra_list = []
+    conv_rain_list, conv_param_list, conv_extra_list = [], [], []
+    non_conv_rain_list, non_conv_param_list, non_conv_extra_list = [], [], []
     for i in range(len(dat_list)):
         longdy = dat_list[i]['variable']['longdy']
         longdydt = dat_list[i]['variable']['longdydt']
@@ -342,6 +341,11 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
             conv_param_list.append(param_list[i])
             if extra_list:
                 conv_extra_list.append(extra_list[i])
+        else:
+            non_conv_rain_list.append(rain_list[i])
+            non_conv_param_list.append(param_list[i])
+            if extra_list:
+                non_conv_extra_list.append(extra_list[i])
     gpm = 0.
     if rain_spec == 'HCN_rain':
         gpm = 27
@@ -361,8 +365,10 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
     popt, pcov = curve_fit(lin, conv_param_list, conv_rain_list)
     param_x = np.linspace(conv_param_list[0], conv_param_list[-1], 42, endpoint = True)
     fig, ax = plt.subplots(tight_layout = True)
-    ax.plot(conv_param_list, conv_rain_list, color = 'navy', linestyle = '', marker = '.')
-    ax.plot(param_archean, rain_archean, color = 'darkorange', marker = '*')
+    ax.plot(conv_param_list, conv_rain_list, color = 'navy', linestyle = '', marker = '.', markersize = 10)
+    if plot_non_conv and non_conv_param_list: # told to plot non converged and there are non converged sims
+        ax.plot(non_conv_param_list, non_conv_rain_list, color = 'navy', linestyle = '', marker = '.', fillstyle = 'none', markersize = 10)
+    ax.plot(param_archean, rain_archean, color = 'darkorange', marker = '*', markersize = 10)
     ax.plot(param_x, lin(param_x, popt[0], popt[1]), linestyle = '--', alpha = 0.4, color = 'r')
     ax.set_yscale('log')
     if sim_type == 'BC':
@@ -370,6 +376,8 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
         ax.set_xlabel(r'Mass delivery rate [g Gyr$^{-1}$]', fontsize = f_size)
         ax1 = ax.twiny()
         ax1.plot(conv_extra_list, conv_rain_list, linestyle = '')
+        if plot_non_conv and non_conv_param_list: # told to plot non converged and there are non converged sims
+            ax1.plot(non_conv_extra_list, non_conv_rain_list, color = 'navy', linestyle = '', marker = '.', markerfacecolor = 'none')
         ax1.set_xlabel(r'H$_2$ flux [cm$^{-2}$ s$^{-1}$]', fontsize = f_size)
         ax1.set_xscale('log')
         ax1.tick_params(which = 'both', direction='out', width=1, length = 4)
@@ -384,10 +392,13 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
         ax.set_xlabel('Distance [AU]', fontsize = f_size)
         ax1 = ax.twiny()
         ax1.plot(conv_extra_list, conv_rain_list, linestyle = '')
-        ax1.set_xlabel(r'T$_{surf}$ [K]')
+        if plot_non_conv and non_conv_param_list: # told to plot non converged and there are non converged sims
+            ax1.plot(non_conv_extra_list, non_conv_rain_list, color = 'navy', linestyle = '', marker = '.', markerfacecolor = 'none')
+        ax1.set_xlabel(r'T$_{surf}$ [K]', fontsize = f_size)
         ax1.invert_xaxis()
-        for tick in ax1.xaxis.get_major_ticks():
-            tick.label1.set_fontsize(l_size)
+        ax1.tick_params(which = 'both', direction='out', width=1, length = 4)
+        ax1.tick_params(axis = 'both', labelsize = l_size)
+        
 
     ax.set_ylabel(rain_spec[:-5] + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', fontsize = f_size)
     ax.tick_params(which='both', direction='out', width=1, length = 4)
@@ -484,6 +495,8 @@ for d in data_CtoO:
 #plot_convergence(data_CtoO, figname = 'helios_tp_convergence_C_to_O.pdf')
 plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_hcn_rain.pdf', rain_spec = 'HCN_rain')
 plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_rain.pdf', rain_spec = 'H2O_rain')
+plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_hcn_rain.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
+plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_rain.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
 # %%
 for d in data_bc:
     print_max_re(d, 'H2')
@@ -507,6 +520,8 @@ for d in data_star:
 #plot_convergence(data_star, figname = 'convergence_star.pdf')
 plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_star_hcn_rain.pdf', rain_spec = 'HCN_rain')
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain.pdf', rain_spec = 'H2O_rain')
+plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_nonconv_star_hcn_rain.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
+plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
 # %%
 # distance case
 a_list = np.linspace(0.82, 1.4, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
@@ -527,4 +542,6 @@ for d in data_dist:
 #plot_convergence(data_dist, figname = 'convergence_dist.pdf')
 plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf)
 plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf)
+plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf, plot_non_conv = True)
+plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf, plot_non_conv = True)
 # %%
