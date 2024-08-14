@@ -1,17 +1,20 @@
+#%%
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import os
-#import parallel_functions as pf
+import parallel_functions as pf
 
 nsim_dist = 15 # distances, for now
 nsim_star = 13 # stars, for now
 
 scratch = '/scratch/s2555875' # place to store outputs
-output_folder = os.path.join(scratch, 'output/star_dist/')
+output_folder = os.path.join(scratch, 'output')
+plot_folder = os.path.join(scratch, 'plot')
+cfg_folder = os.path.join(output_folder, 'cfg')
 TP_folder = os.path.join(scratch, 'TP_files/star_dist')
-#star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
-
+star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
+#%%
 def check_hab_surf_temp(file):
     surface_temperature = np.genfromtxt(file, dtype = None, skip_header=1, comments = '#', max_rows = 4, names = True)['Temp'][0]
     if surface_temperature > 273. and surface_temperature < 373.:
@@ -32,3 +35,45 @@ def check_convergence(data):
     else:
         return False
     
+def get_star_temp(file, df = star_df):
+    star_name = ''
+    if 'EARLY' in file:
+        star_name = 'EARLY_SUN'
+    else:
+        star_name = file.split('_')[1]
+    return df.loc[df.Name == star_name].T_eff.iloc[0]
+
+def get_dist(file):
+    cfg_file = os.path.join(cfg_folder, file[:-3] + 'txt') # from .vul to .txt
+    orbit_r = 0.
+    with open(cfg_file, 'r') as f:
+        for line in f:
+            if 'orbit_radius' in line:
+                orbit_r = line.split()[2]
+                break
+    return orbit_r
+    
+def rainout(file, rain_spec = 'HCN_rain', g_per_mol = 27):
+    with open(os.path.join(output_folder, file), 'rb') as handle:
+        dat = pickle.load(handle)
+    rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
+    rain_rate = rain_rate * 5.237e-13 # mol/m2yr
+    return rain_rate * (g_per_mol/1000.) # kg/m2yr
+
+def plot_meshgrid(figname = None, f_size = 13, l_size = 12, yscale = 'log', mol = 'HCN'):
+    fig, ax = plt.subplots(tight_layout = True)
+
+    # need a list of effective temperatures
+    T_eff = list(star_df.T_eff)
+    # need a list of semi major axes, but it is different for each star so need to combine them ( amd have corresponding T_eff list)
+    # modify previous functions, make them into one and return the two lists...
+
+    if figname != None:
+        fig.savefig(os.path.join(plot_folder, figname))
+
+
+#%%
+for f in sorted(os.listdir(output_folder)):
+    if 'star_' in f: # they are not in separate folder so dealing with only relevant files
+        ...
+# %%
