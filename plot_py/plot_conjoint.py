@@ -35,13 +35,16 @@ def check_convergence(data):
     else:
         return False
     
-def get_star_temp(file, df = star_df):
+def get_star_temp(star_name, df = star_df):
+    return df.loc[df.Name == star_name].T_eff.iloc[0]
+
+def get_star_name(file, df = star_df):
     star_name = ''
     if 'EARLY' in file:
         star_name = 'EARLY_SUN'
     else:
         star_name = file.split('_')[1]
-    return df.loc[df.Name == star_name].T_eff.iloc[0]
+    return star_name
 
 def get_dist(file):
     cfg_file = os.path.join(cfg_folder, file[:-3] + 'txt') # from .vul to .txt
@@ -53,27 +56,54 @@ def get_dist(file):
                 break
     return orbit_r
     
-def rainout(file, rain_spec = 'HCN_rain', g_per_mol = 27):
-    with open(os.path.join(output_folder, file), 'rb') as handle:
-        dat = pickle.load(handle)
+def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
     rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
 
-def plot_meshgrid(figname = None, f_size = 13, l_size = 12, yscale = 'log', mol = 'HCN'):
+def plot_meshgrid(teff, distance, rain, figname = None, f_size = 13, l_size = 12, yscale = 'log', mol = 'HCN'):
     fig, ax = plt.subplots(tight_layout = True)
-
-    # need a list of effective temperatures
-    T_eff = list(star_df.T_eff)
-    # need a list of semi major axes, but it is different for each star so need to combine them ( amd have corresponding T_eff list)
+    # need a list of semi major axes, but it is different for each star so need to combine them ( and have corresponding T_eff list)
     # modify previous functions, make them into one and return the two lists...
-
+    T, a= np.meshgrid(teff, distance)
+    ax.pcolormesh(T, a, rain, cmap = 'magma')
+    fig.colorbar()
     if figname != None:
         fig.savefig(os.path.join(plot_folder, figname))
 
 
 #%%
-for f in sorted(os.listdir(output_folder)):
+T_eff_list = list(star_df.T_eff)
+a_list = []
+non_zero_list = [] # list of lists
+
+for i,f in enumerate(sorted(os.listdir(output_folder))):
     if 'star_' in f: # they are not in separate folder so dealing with only relevant files
-        ...
+        star = get_star_name(f)
+        new_a = pf.semi_major_from_S_eff(star_df, star, factor = 1.1)
+        
+        if new_a not in a_list:
+            a_list.append(new_a) # save the new value
+            non_zero_list.append([i]) # make a new list for the current value
+        else:
+            a_idx = np.where(a_list == new_a)[0] # find the already existing value
+            non_zero_list[a_idx].append(i) # extend the non-zero index for given value
+        
+#non_zero_list = [x for _,x in sorted(zip(a_list, non_zero_list))] # sorting the lists for tidiness
+#a_list = sorted(a_list)
+ncol = len(a_list)
+conv_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))] # matrix will be T_eff x a size
+rain_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
+
+for i,f in enumerate(sorted(os.listdir(output_folder))):
+    if 'star_' in f: # they are not in separate folder so dealing with only relevant files
+        row_idx = i // nsim_dist # basically which star, should go until len(T_eff_list)
+        column_idx = i % ncol # gives the current distance simulation number
+        with open(os.path.join(output_folder, f), 'rb') as handle:
+            data = pickle.load(handle)
+        
+        if i in non_zero_list[column_idx]:
+            conv_matrix[] = check_convergence(data)
+            rain_matrix[] = rainout(data)
+        
 # %%
