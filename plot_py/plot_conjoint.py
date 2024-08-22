@@ -1,6 +1,7 @@
 #%%
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mc
 import pickle
 import os
 import parallel_functions as pf
@@ -61,13 +62,17 @@ def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
 
-def plot_meshgrid(teff, distance, rain, figname = None, f_size = 13, l_size = 12, yscale = 'log', mol = 'HCN'):
+def plot_meshgrid(teff, distance, values, val_label, figname = None, f_size = 13, l_size = 12, yscale = 'log', mol = 'HCN'):
     fig, ax = plt.subplots(tight_layout = True)
     # need a list of semi major axes, but it is different for each star so need to combine them ( and have corresponding T_eff list)
     # modify previous functions, make them into one and return the two lists...
     T, a= np.meshgrid(teff, distance)
-    ax.pcolormesh(T, a, rain, cmap = 'magma')
-    fig.colorbar()
+    cm = ax.pcolormesh(T, a, values, cmap = 'magma', shading = 'nearest', norm = mc.LogNorm())
+    fig.colorbar(cm)
+    ax.set_xlabel(r'T$_{eff}$ [K]', fontsize = f_size)
+    ax.set_ylabel('Distnace [AU]', fontsize = f_size)
+    ax.tick_params(which = 'both', direction = 'out', width = 1, length = 4)
+    ax.tick_params(axis = 'both', labelsize = l_size)
     if figname != None:
         fig.savefig(os.path.join(plot_folder, figname))
 
@@ -75,35 +80,34 @@ def plot_meshgrid(teff, distance, rain, figname = None, f_size = 13, l_size = 12
 #%%
 T_eff_list = list(star_df.T_eff)
 a_list = []
-non_zero_list = [] # list of lists
 
-for i,f in enumerate(sorted(os.listdir(output_folder))):
-    if 'star_' in f: # they are not in separate folder so dealing with only relevant files
-        star = get_star_name(f)
-        new_a = pf.semi_major_from_S_eff(star_df, star, factor = 1.1)
-        
-        if new_a not in a_list:
-            a_list.append(new_a) # save the new value
-            non_zero_list.append([i]) # make a new list for the current value
-        else:
-            a_idx = np.where(a_list == new_a)[0] # find the already existing value
-            non_zero_list[a_idx].append(i) # extend the non-zero index for given value
-        
-#non_zero_list = [x for _,x in sorted(zip(a_list, non_zero_list))] # sorting the lists for tidiness
-#a_list = sorted(a_list)
+for star in star_df.Name:
+    new_a_list = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = 1.1)
+    i = 0
+    for f in sorted(os.listdir(output_folder)):
+        if 'star_' + star in f: # they are not in separate folder so dealing with only relevant files
+            if new_a_list[i] not in a_list:
+                a_list.append(new_a_list[i]) # save the new value
+                i += 1
+            
 ncol = len(a_list)
 conv_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))] # matrix will be T_eff x a size
 rain_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
 
-for i,f in enumerate(sorted(os.listdir(output_folder))):
-    if 'star_' in f: # they are not in separate folder so dealing with only relevant files
-        row_idx = i // nsim_dist # basically which star, should go until len(T_eff_list)
-        column_idx = i % ncol # gives the current distance simulation number
-        with open(os.path.join(output_folder, f), 'rb') as handle:
-            data = pickle.load(handle)
+for j,star in enumerate(star_df.Name):
+    new_a_list = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = 1.1)
+    row_idx = j
+    i = 0
+    for f in sorted(os.listdir(output_folder)):
+        if 'star_' + star in f: # they are not in separate folder so dealing with only relevant files
+            column_idx = np.where(a_list == new_a_list[i])[0][0]
+            with open(os.path.join(output_folder, f), 'rb') as handle:
+                data = pickle.load(handle)
+            
+            conv_matrix[row_idx][column_idx] = check_convergence(data)
+            rain_matrix[row_idx][column_idx] = rainout(data)
+            i += 1
         
-        if i in non_zero_list[column_idx]:
-            conv_matrix[] = check_convergence(data)
-            rain_matrix[] = rainout(data)
-        
+# %%
+plot_meshgrid(a_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]')
 # %%
