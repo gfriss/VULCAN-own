@@ -74,6 +74,14 @@ def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None
     cm = ax.pcolormesh(a, T, values, cmap = 'magma', shading = 'nearest', norm = norm, edgecolor = conv, linewidth = 0.5)
     cbar = fig.colorbar(cm)
     cbar.set_label(val_label, fontsize = f_size)
+    #for i in range(conv.shape[0]):
+    #    for j in range(conv.shape[1]):
+    #        if conv[i][j] == 1:
+    #            a_anchor = a[i][j] - ((a[i, j+1] - a[i, j]) / 2) if j < conv.shape[1]-1 else a[i][j] - ((a[i, j] - a[i, j-1]) / 2)
+    #            a_size = a[i, j + 1] - a[i, j] if j < conv.shape[1]-1 else a[i, j] - a[i, j-1]
+    #            T_anchor = T[i][j] - ((T[i+1, j] - T[i, j]) / 2) if i < conv.shape[0]-1 else T[i][j] - ((T[i, j] - T[i-1, j]) / 2)
+    #            T_size = T[i + 1, j] - T[i, j] if i < conv.shape[0]-1 else T[i, j] - T[i-1, j]
+    #            ax.add_patch(plt.Rectangle((a_anchor, T_anchor), a_size, T_size, fc='none', ec='black', lw=0.5, clip_on=False))
     ax.set_ylabel(r'T$_{eff}$ [K]', fontsize = f_size)
     ax.set_xlabel('Distance [AU]', fontsize = f_size)
     ax.set_xscale('log')
@@ -97,7 +105,7 @@ for star in star_df.Name:
                 i += 1
             
 ncol = len(a_list)
-#conv_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
+#conv_matrix = [[0 for _ in range(ncol)] for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
 conv_matrix = [['none' for _ in range(ncol)] for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
 rain_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
 end_time_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
