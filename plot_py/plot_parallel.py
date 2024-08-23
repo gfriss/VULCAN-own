@@ -62,6 +62,9 @@ def calc_C_to_O(dat, mixing_file):
     return np.sum(C_profile) / np.sum(O_profile)
 
 def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
+    ''' Reads in all the data for a specific simulation type. The simulation type dictates how the files
+        are found and what extra parameters this function returns. It builds on the idea that output
+        files have a format of start_str+sim_+(start_number+)sim_number+sim_type+.vul.'''
     dat_list = [] # list to store the results (dicts)
     H2_flux = []
     T_surface = []
@@ -111,6 +114,7 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         return dat_list
 
 def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
+    ''' Calculates the rainout rate of the given species and returns it with units of kg/m2/yr.'''
     rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
@@ -119,6 +123,9 @@ def create_dummy_line(**kwds):
     return Line2D([], [], **kwds)
 
 def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, l_size = 12, bc_flux_list = [], surf_temp = [], yscale = 'log', mol = 'HCN', plot_Pearce = True):
+    ''' Function to plot rainout rates. Specific cases for different simulation types are included via
+        conditions. If needed, using the plot_Pearce parameter, it plots the fiducial model value which
+        is marked with a B at the end of the variables.'''
     if plot_Pearce:
         with open(out_folder+'B_nofix.vul', 'rb') as handle: # for comparison
             data_B = pickle.load(handle)
@@ -195,6 +202,8 @@ def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, 
         fig.savefig(plot_folder + figname)
 
 def calc_rate(dat, spec_list, re_id, n):
+    ''' Calculates the reaction rate by multiplying the reaction coefficient with the number densty of
+        the reagents.'''
     rate = dat['variable']['k'][re_id][n]
     for sp in spec_list:
         if sp != 'M':
@@ -202,6 +211,7 @@ def calc_rate(dat, spec_list, re_id, n):
     return rate
 
 def get_species(eq_side):
+    ''' Returns the species in a given reaction in an array.'''
     side_split = eq_side.split('+')
     if len(side_split) == 1: # stripping them from white spaces
         side_split = np.array([side_split[0].strip()]) # with array length 1 the other method fails so doing it separately
@@ -210,6 +220,9 @@ def get_species(eq_side):
     return side_split
 
 def print_max_re(dat, mol, n = 0, prod = False):
+    ''' Finds and prints the reaction with the highest reaction rate for a given molecule.
+        This reaction can be production or destruction reaction, controlled by the prod parameter
+        (True and False, respectively).'''
     reaction = ''
     k_rea = 0
     for k,v in dat['variable']['Rf'].items():
@@ -228,6 +241,7 @@ def print_max_re(dat, mol, n = 0, prod = False):
     print('The highest reaction rate in layer {} is\nk = {:.3e} cm-3s-1\nfor the reaction {}.'.format(n, k_rea, reaction))
 
 def print_max_n_re(dat, mol, first_n, n = 0, prod = False):
+    ''' Similar to previous function but it finds the first n reactions.'''
     reaction = np.empty(first_n, dtype = np.dtype('U42')) # extended the allowed character number to 42...
     reaction = np.array(reaction)
     k_rea = np.zeros(first_n)
@@ -252,6 +266,8 @@ def print_max_n_re(dat, mol, first_n, n = 0, prod = False):
     print('The highest {} reaction rates in layer {} are k = {} cm-3s-1 for the reaction {}.'.format(first_n, n, k_rea, reaction))
     
 def plot_vertical_n(dat_list, spec, param_list, sim_type, figname = None, f_size = 13, l_size = 12):
+    ''' Plots the vertical profile of the given species (spec) at the end of simulation for a list
+        of simulations.'''
     fig, ax = plt.subplots(tight_layout = True, figsize = (10,6))
     cm = plt.get_cmap('nipy_spectral')
     n_colours = len(dat_list)
@@ -277,6 +293,8 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figname = None, f_size
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
 
 def plot_end_time(dat_list, figname = None, f_size = 13, l_size = 12):
+    ''' Plots the end-of-simulation times for a list of simulations. It is used as a way of 
+        seeing what difference there are between both converged and not converged simulations.'''
     fig, ax = plt.subplots(tight_layout = True)
     for i in range(len(dat_list)):
         ax.plot(i, dat_list[i]['variable']['t'], linestyle = '', marker = 'o', color = 'red')
@@ -290,6 +308,7 @@ def plot_end_time(dat_list, figname = None, f_size = 13, l_size = 12):
         fig.savefig(plot_folder + figname)
 
 def plot_evo_layer(dat_list, spec, layer = 0, figname = None, f_size = 13, l_size = 12):
+    ''' Plots the evolution of a given species in a given layer for a list of simulations.'''
     fig, ax = plt.subplots(figsize = (12, 8))
     for i in range(len(dat_list)):
         ax.plot(dat_list[i]['variable']['t_time'], dat_list[i]['variable']['y_time'][:, 0, dat_list[i]['variable']['species'].index(spec)], label = i)
@@ -304,6 +323,8 @@ def plot_evo_layer(dat_list, spec, layer = 0, figname = None, f_size = 13, l_siz
         fig.savefig(plot_folder + figname)
 
 def plot_convergence(dat_list, figname = None, f_size = 13, l_size = 12):
+    ''' It checks and plots whether the convergence criteria has been met in all simulations in the given list. 
+        Template for calculation is taken from the VULCAN code (Tsai et al 2017, 2020).'''
     yconv_cri = 0.01
     yconv_min = 0.1
     slope_cri = 1.e-4
@@ -326,6 +347,9 @@ def plot_convergence(dat_list, figname = None, f_size = 13, l_size = 12):
         fig.savefig(plot_folder + figname)
 
 def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = None, f_size = 15, l_size = 14, rain_spec = 'HCN_rain', extra_list = [], plot_non_conv = False):
+    ''' Plots the rainout rates for a list of simulations for a given simulation types. It 
+        distinguishes between converged and non-converged simulations (full and empty circles, respectively).
+        Plotting and convergence caalculations are taken from previous functions.'''
     yconv_cri = 0.01
     yconv_min = 0.1
     slope_cri = 1.e-4

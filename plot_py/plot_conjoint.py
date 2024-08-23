@@ -15,26 +15,25 @@ plot_folder = os.path.join(scratch, 'plot')
 cfg_folder = os.path.join(output_folder, 'cfg')
 TP_folder = os.path.join(scratch, 'TP_files/star_dist')
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
-#%%
-def check_hab_surf_temp(file):
+#%%    
+def get_surf_temp(file):
     surface_temperature = np.genfromtxt(file, dtype = None, skip_header=1, comments = '#', max_rows = 4, names = True)['Temp'][0]
-    if surface_temperature > 273. and surface_temperature < 373.:
-        return True
-    else:
-        return False
-    
-def check_convergence(data):
+    return surface_temperature
+
+def check_convergence(dat):
+    ''' It checks whether the convergence criteria has been met in the given simulation (dat is the 
+        already read-in data). Template is taken from the VULCAN code (Tsai et al 2017, 2020).'''
     yconv_cri = 0.01
     yconv_min = 0.1
     slope_cri = 1.e-4
-    longdy = data['variable']['longdy']
-    longdydt = data['variable']['longdydt']
-    slope_min = min( np.amin(data['atm']['Kzz']/(0.1*data['atm']['Hp'][:-1])**2) , 1.e-8)
+    longdy = dat['variable']['longdy']
+    longdydt = dat['variable']['longdydt']
+    slope_min = min( np.amin(dat['atm']['Kzz']/(0.1*dat['atm']['Hp'][:-1])**2) , 1.e-8)
     slope_min = max(slope_min, 1.e-10)
     if (longdy < yconv_cri and longdydt < slope_cri or longdy < yconv_min and longdydt < slope_min):
-        return True
+        return 'black' # True
     else:
-        return False
+        return 'none' # False
     
 def get_star_temp(star_name, df = star_df):
     return df.loc[df.Name == star_name].T_eff.iloc[0]
@@ -58,19 +57,26 @@ def get_dist(file):
     return orbit_r
     
 def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
+    ''' Calculates the rainout rate of the given species and returns it with units of kg/m2/yr.'''
     rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
 
-def plot_meshgrid(teff, distance, values, val_label, figname = None, f_size = 13, l_size = 12, yscale = 'log', mol = 'HCN'):
+def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None, f_size = 13, l_size = 12, yscale = 'log', mol = 'HCN', norm = 'linear'):
+    ''' Plots values, let it be rainout rate, end-of-simulation time, convergence, etc., in a pcolormesh plot.
+        Diastance is X, teff is Y and values is C in documentation. Figure can be saved if needed.
+        It is possible to highlight converged simulations with an edge using conv which shoukld be a 1D list of
+        edgecolours.'''
     fig, ax = plt.subplots(tight_layout = True)
     # need a list of semi major axes, but it is different for each star so need to combine them ( and have corresponding T_eff list)
     # modify previous functions, make them into one and return the two lists...
-    T, a= np.meshgrid(teff, distance)
-    cm = ax.pcolormesh(T, a, values, cmap = 'magma', shading = 'nearest', norm = mc.LogNorm())
-    fig.colorbar(cm)
-    ax.set_xlabel(r'T$_{eff}$ [K]', fontsize = f_size)
-    ax.set_ylabel('Distnace [AU]', fontsize = f_size)
+    a, T = np.meshgrid(distance, teff)
+    cm = ax.pcolormesh(a, T, values, cmap = 'magma', shading = 'nearest', norm = norm, edgecolor = conv, linewidth = 0.5)
+    cbar = fig.colorbar(cm)
+    cbar.set_label(val_label, fontsize = f_size)
+    ax.set_ylabel(r'T$_{eff}$ [K]', fontsize = f_size)
+    ax.set_xlabel('Distance [AU]', fontsize = f_size)
+    ax.set_xscale('log')
     ax.tick_params(which = 'both', direction = 'out', width = 1, length = 4)
     ax.tick_params(axis = 'both', labelsize = l_size)
     if figname != None:
@@ -91,8 +97,10 @@ for star in star_df.Name:
                 i += 1
             
 ncol = len(a_list)
-conv_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))] # matrix will be T_eff x a size
+#conv_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
+conv_matrix = [['none' for _ in range(ncol)] for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
 rain_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
+end_time_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
 
 for j,star in enumerate(star_df.Name):
     new_a_list = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = 1.1)
@@ -106,8 +114,15 @@ for j,star in enumerate(star_df.Name):
             
             conv_matrix[row_idx][column_idx] = check_convergence(data)
             rain_matrix[row_idx][column_idx] = rainout(data)
+            end_time_matrix[row_idx][column_idx] = data['variable']['t']
             i += 1
         
 # %%
-plot_meshgrid(a_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]')
+flat_conv = []
+for row in conv_matrix:
+    flat_conv.extend(row)
+#%%
+plot_meshgrid(a_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint.pdf')
+# %%
+plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf')
 # %%
