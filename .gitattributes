@@ -1,2 +1,0 @@
-*.vul filter=lfs diff=lfs merge=lfs -text
-output/*.vul filter=lfs diff=lfs merge=lfs -text
