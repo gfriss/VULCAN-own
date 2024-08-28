@@ -15,6 +15,8 @@ sim_per_rank = int(nsim_dist*nsim_star / size) + 1 # this is needed to distribur
 scratch = '/scratch/s2555875' # place to store outputs
 output_folder = os.path.join(scratch, 'output/star_dist/')
 TP_folder = os.path.join(scratch, 'TP_files/star_dist')
+conv_file = os.path.join(scratch, 'converged.txt')
+check_conv = True
 # ------setting up parameterspace for all runs------
 # star type
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
@@ -55,10 +57,24 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     surface_temperatue = np.genfromtxt(new_tp_file, dtype = None, names = True, skip_header = 1, max_rows = 5)['Temp'][0]
     if surface_temperatue < 273 or surface_temperatue > 373:
         continue
-    # first create simulation folder
-    subprocess.check_call(['mkdir', sim_folder])
-    # then make new cfg file
-    subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_file_change, out_change])
+    # do test on convergence and rerun what didn't converge wiht a changed atol and rtol
+    if check_conv:
+        with open(conv_file, 'r') as f:
+            conv_text = f.read()
+        if out_file not in conv_text:
+            atol_change = ','.join(['atol', str(1.E-3), 'val'])
+            rtol_change = ','.join(['post_conden_rtol', str(0.1), 'val'])
+            # first create simulation folder
+            subprocess.check_call(['mkdir', sim_folder])
+            # then make new cfg file
+            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_file_change, out_change, atol_change, rtol_change])
+        else:
+            continue
+    else:
+        # first create simulation folder
+        subprocess.check_call(['mkdir', sim_folder])
+        # then make new cfg file
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_file_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     wd = os.getcwd()
     os.chdir(sim_folder)
