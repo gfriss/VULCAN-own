@@ -17,6 +17,9 @@ plot_folder = os.path.join(scratch, 'plot')
 cfg_folder = os.path.join(output_folder, 'cfg')
 TP_folder = os.path.join(scratch, 'TP_files/star_dist')
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
+
+min_flux_met = 1.058e-9
+max_flux_met = 2.646e-8
 #%%    
 def get_surf_temp(file):
     surface_temperature = np.genfromtxt(file, dtype = None, skip_header=1, comments = '#', max_rows = 4, names = True)['Temp'][0]
@@ -64,7 +67,8 @@ def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
 
-def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None, f_size = 13, l_size = 12, yscale = 'log', mol = 'HCN', norm = 'linear'):
+def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None, f_size = 13, l_size = 12,\
+                  yscale = 'log', mol = 'HCN', norm = 'linear', met_flux = True):
     ''' Plots values, let it be rainout rate, end-of-simulation time, convergence, etc., in a pcolormesh plot.
         Diastance is X, teff is Y and values is C in documentation. Figure can be saved if needed.
         It is possible to highlight converged simulations with an edge using conv which shoukld be a 1D list of
@@ -76,6 +80,9 @@ def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None
     cm = ax.pcolormesh(a, T, values, cmap = cmap, norm = norm, edgecolor = conv, linewidth = 0.05, snap = True)
     cbar = fig.colorbar(cm)
     cbar.set_label(val_label, fontsize = f_size)
+    if met_flux:
+        cbar.ax.axhline(min_flux_met, c = 'w')
+        cbar.ax.axhline(max_flux_met, c = 'w')
     #for i in range(conv.shape[0]):
     #    for j in range(conv.shape[1]):
     #        if conv[i][j] == 'black':
@@ -130,10 +137,10 @@ for j,star in enumerate(star_df.Name):
             end_time_matrix[row_idx][column_idx] = data['variable']['t']
             i += 1
 #%%
-T_eff_list.append(T_eff_list[-1] + (T_eff_list[-1]-T_eff_list[-2]))
-a_max = max(a_list)
-a_max2 = sorted(a_list)[-2]
-a_list.append(a_max + (a_max-a_max2))
+#T_eff_list.append(T_eff_list[-1] + (T_eff_list[-1]-T_eff_list[-2]))
+#a_max = max(a_list)
+#a_max2 = sorted(a_list)[-2]
+#a_list.append(a_max + (a_max-a_max2))
 # %%
 flat_conv = []
 for row in conv_matrix:
@@ -143,7 +150,7 @@ plot_meshgrid(a_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-
 #%%
 plot_meshgrid(a_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint_S_eff.pdf')
 # %%
-plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf')
+plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf', met_flux = False)
 # %%
-plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = np.array(conv_matrix), norm = mc.LogNorm(vmin = 1e-4), figname = 'endtime_conjoint_S_eff.pdf')
+plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = np.array(conv_matrix), norm = mc.LogNorm(vmin = 1e-4), figname = 'endtime_conjoint_S_eff.pdf', met_flux = False)
 # %%

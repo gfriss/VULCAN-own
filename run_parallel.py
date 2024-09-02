@@ -34,6 +34,8 @@ a_list = np.linspace(0.82, 1.4, 15, endpoint = True) #HZ limits from Kopprapau e
 # in case new sims with HELIOS TP
 helios_tp = ''
 #helios_tp = 'helios_tp_'
+# local meteorite case
+h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
 
 # ------end of parameter set up-----
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
@@ -94,6 +96,14 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         new_orbit_radius = str(a_list[i])
         orbit_radius_change = 'orbit_radius' + ',' + new_orbit_radius + ',' + 'val'
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, tp_change, orbit_radius_change, out_change])
+    elif run_type == 'local':
+        # generate new mixing ratios
+        new_mixing_file = main_folder + 'mixing_files/' + sim + 'mixing.txt'
+        mixing_change = 'vul_ini' + ',' + new_mixing_file + ',' + 'str'
+        pf.gen_mixing_local(h2_bar_list[i], new_mixing_file)
+        # assumed to keep P-T profile and surface pressure the same
+        # then change vulcan_cfg.py file
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     #subprocess.check_call(['cp', '-p', 'build_atm.py', 'chem_funs.py', 'op.py', 'phy_const.py', 'store.py', 'vulcan.py', sim_folder])
     wd = os.getcwd()

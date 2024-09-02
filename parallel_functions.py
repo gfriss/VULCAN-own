@@ -169,3 +169,28 @@ def get_rad_prof(star):
     else:
         rad_file = '/scratch/s2555875/stellar_flux/' + star.lower() + '.txt' # just to make sure it is lower case
     return rad_file
+#%%
+# function for local meteorite effect runs
+def gen_mixing_local(h2_bar, output):
+    ''' Generates new initial mixing ratios and write them into a file compatable with VULCAN.
+        It takes a base mixing ratio than changes the value for CO2, swapping it to CO
+        which will change the C/O ratio.
+        
+        .......'''
+    og_mixing = np.genfromtxt('atm/mixing_table_archean.txt', dtype = None, comments = '#', skip_header = 1, names = True)
+    N2 = og_mixing['N2'] # og was assumed that the partial pressure would be the same as mixing ratio
+    H2O = og_mixing['H2O']
+    CH4 = og_mixing['CH4']
+    O2 = og_mixing['O2']
+    CO2 = og_mixing['CO2']
+    new_total = 1 + h2_bar # total pressure with new H2 amount
+    N2 /= new_total
+    H2O /= new_total
+    CH4 /= new_total
+    O2 /= new_total
+    CO2 /= new_total
+    H2 = np.ones_like(N2) * h2_bar / new_total
+    with open(output, 'w') as f:
+        f.write('# (dyne/cm2)\nPressure  N2  CO2  CH4  O2  H2O  H2\n')
+        for i in range(len(N2)):
+            f.write('{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\n'.format(og_mixing['Pressure'][i],N2[i],CO2[i],CH4[i],O2[i],H2O[i],H2[i]))

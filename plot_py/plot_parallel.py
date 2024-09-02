@@ -23,6 +23,9 @@ mixing_folder = '/scratch/s2555875/mixing_files/'
 # setting up the distance case
 helios_output_folder = '/scratch/s2555875/HELIOS/output/'
 
+# setting up the local case
+h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
+
 # base simulation of Archean
 with open(out_folder+'archean.vul', 'rb') as handle:
     data_archean = pickle.load(handle)
@@ -61,6 +64,10 @@ def calc_C_to_O(dat, mixing_file):
 
     return np.sum(C_profile) / np.sum(O_profile)
 
+def calc_mixing_h2(h2_bar):
+    new_total = 1 + h2_bar
+    return h2_bar / new_total
+
 def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
     ''' Reads in all the data for a specific simulation type. The simulation type dictates how the files
         are found and what extra parameters this function returns. It builds on the idea that output
@@ -69,6 +76,7 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
     H2_flux = []
     T_surface = []
     ctoo = []
+    mixing_H2 = []
     extra_str = '' # to get the proper output
     if sim_type == 'BC':
         #extra_str = '_onlyH2.vul'
@@ -79,6 +87,8 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         extra_str = '_star.vul'
     elif sim_type == 'dist':
         extra_str = '_dist.vul'
+    elif sim_type == 'local':
+        extra_str = '_local.vul'
     for i in range(number_of_sim):
         sim = start_str + 'sim_' # setting up the names of files
         if i < 10:
@@ -103,6 +113,8 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         elif sim_type == 'dist':
             surface_temp = np.genfromtxt(helios_output_folder + sim[:-4] + '/{}_tp.dat'.format(sim[:-4]), dtype = None, skip_header = 2, usecols = (1))[0]
             T_surface.append(surface_temp)
+        elif sim_type == 'local':
+            mixing_H2.append(calc_mixing_h2(h2_bar_list))
 
     if sim_type == 'BC':
         return dat_list, H2_flux
@@ -110,6 +122,8 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         return dat_list, ctoo
     elif sim_type == 'dist':
         return dat_list, T_surface
+    elif sim_type == 'local':
+        return dat_list, mixing_H2
     else:
         return dat_list
 
@@ -192,6 +206,12 @@ def plot_rain(hcn_rain_list, param_list, sim_type, figname = None, f_size = 13, 
         ax1.invert_xaxis()
         for tick in ax1.xaxis.get_major_ticks():
             tick.label1.set_fontsize(l_size)
+    
+    elif sim_type == 'local':
+        ax.set_xlabel(r'X$_{H_2}$', fontsize = f_size)
+        ax.set_ylabel(mol + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', fontsize = f_size)
+        ax.tick_params(which='both', direction='out', width=1, length = 4)
+        ax.tick_params(axis = 'both', labelsize = l_size)
     
     ax.set_yscale(yscale)
     for tick in ax.xaxis.get_major_ticks():
@@ -282,6 +302,8 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figname = None, f_size
             ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'T$_{eff}$'+'= {:.2f} K'.format(param_list[i]), linestyle = lstyles[i%len(lstyles)])
         elif sim_type == 'dist':
             ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = 'd = {:.2f} AU'.format(param_list[i]), linestyle = lstyles[i%len(lstyles)])
+        elif sim_type == 'local':
+            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'X$_{H_2}$'+'= {:.2f}'.format(param_list[i]), linestyle = lstyles[i%len(lstyles)])
         
     ax.set_xscale('log')
     ax.set_xlabel(r'n [cm$^{-3}$]', fontsize = f_size)
@@ -385,6 +407,8 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
         param_archean = 5600.
     elif sim_type == 'dist':
         param_archean = 1.
+    elif sim_type == 'local':
+        param_archean = 0
 
     popt, pcov = curve_fit(lin, conv_param_list, conv_rain_list)
     param_x = np.linspace(conv_param_list[0], conv_param_list[-1], 42, endpoint = True)
@@ -422,7 +446,8 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
         ax1.invert_xaxis()
         ax1.tick_params(which = 'both', direction='out', width=1, length = 4)
         ax1.tick_params(axis = 'both', labelsize = l_size)
-        
+    elif sim_type == 'local':
+        ax.set_xlabel(r'X$_{H_2}$', fontsize = f_size)    
 
     ax.set_ylabel(rain_spec[:-5] + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]', fontsize = f_size)
     ax.tick_params(which='both', direction='out', width=1, length = 4)
@@ -569,3 +594,22 @@ plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_dist_r
 plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf, plot_non_conv = True)
 plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf, plot_non_conv = True)
 # %%
+# local case
+
+data_local, X_H2 = read_in('local', nsim)
+
+hcn_rain_local = []
+for d in data_local:
+    hcn_rain_local.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    
+rain_local = [] # storing the rainout rates
+for d in data_local:
+    rain_local.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+
+# do all the ploting
+plot_rain(hcn_rain_local, X_H2, 'local', figname = 'HCN_rainout_local.pdf')
+plot_rain(rain_local, X_H2, 'local', figname = 'H2O_rainout_local.pdf', mol = 'Water')
+plot_vertical_n(data_local, 'HCN', X_H2, 'local', figname = 'HCN_air_local.pdf', f_size = 19, l_size = 18)
+plot_end_time(data_local, figname = 'end_time_local.pdf')
+plot_evo_layer(data_local, 'HCN', figname = 'hcn_evo_local.pdf')
+plot_convergence(data_local, figname = 'convergence_local.pdf')
