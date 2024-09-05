@@ -145,6 +145,7 @@ for j,star in enumerate(star_df.Name):
 flat_conv = []
 for row in conv_matrix:
     flat_conv.extend(row)
+print('#converged: {}'.format(flat_conv.count('black')))
 #%%
 plot_meshgrid(a_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint.pdf')
 #%%
@@ -152,5 +153,5 @@ plot_meshgrid(a_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-
 # %%
 plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf', met_flux = False)
 # %%
-plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = np.array(conv_matrix), norm = mc.LogNorm(vmin = 1e-4), figname = 'endtime_conjoint_S_eff.pdf', met_flux = False)
+plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-4), figname = 'endtime_conjoint_S_eff.pdf', met_flux = False)
 # %%

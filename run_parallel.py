@@ -101,9 +101,12 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         new_mixing_file = main_folder + 'mixing_files/' + sim + 'mixing.txt'
         mixing_change = 'vul_ini' + ',' + new_mixing_file + ',' + 'str'
         pf.gen_mixing_local(h2_bar_list[i], new_mixing_file)
+        # H2 fiddles with cinvergence so reducing error tolerances
+        atol_change = ','.join(['atol', str(1.E-4), 'val'])
+        rtol_change = ','.join(['post_conden_rtol', str(0.5), 'val'])    
         # assumed to keep P-T profile and surface pressure the same
         # then change vulcan_cfg.py file
-        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, atol_change, rtol_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     #subprocess.check_call(['cp', '-p', 'build_atm.py', 'chem_funs.py', 'op.py', 'phy_const.py', 'store.py', 'vulcan.py', sim_folder])
     wd = os.getcwd()

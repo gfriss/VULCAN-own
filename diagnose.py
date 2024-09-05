@@ -18,7 +18,7 @@ import chem_funs, op
 from chem_funs import nr, re_wM_dict, re_dict
 
 
-vul_data = 'output/.vul'
+vul_data = '/scratch/s2555875/output/archean.vul'
 
 # setting the numerical solver to the desinated one in vulcan_cfg
 solver_str = vulcan_cfg.ode_solver
@@ -28,7 +28,7 @@ solver = getattr(op, solver_str)()
 top_num = 100
 
 # the species involved
-diag_sp = 'CH4'
+diag_sp = 'HCN'
 
 # the region to look at
 # the bottom layer 
