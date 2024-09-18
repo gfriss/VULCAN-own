@@ -1,8 +1,8 @@
 import numpy as np
 import pickle
-
+from chem_funs import spec_list
 # ------------creating the species_comp.out file------------
-allcompose = np.genfromtxt('thermo/all_compose.txt', dtype = str)
+allcompose = np.genfromtxt('/scratch/s2555875/VULCAN-CRAHCNO/all_compose.txt', dtype = str)
 phase = 'Gas'
 surf_cov = '0'
 array_insert = np.array([phase, surf_cov])
@@ -12,9 +12,17 @@ for element in allcompose[0, 1:-1]: # excluding species and mass
     new_str += '\t{}'.format(element)
 new_str += '\n'
 
+line_M = '' # will copy line of H here and change H to M and set all ones (only one) to 0
 for line in allcompose[1:, :-1]:
-    new_str += '{: <15}{: ^7}{: ^9}\t'.format(line[0], array_insert[0], array_insert[1])
-    new_str += '\t'.join(line[1:]) + '\n'
+    spec = line[0]
+    new_line = '{: <15}{: ^7}{: ^9}\t'.format(spec, array_insert[0], array_insert[1])
+    new_line += '\t'.join(line[1:]) + '\n'
+    new_str += new_line
+    if spec == 'H':
+        line_M = '{: <15}{: ^7}{: ^9}\t'.format('M', array_insert[0], array_insert[1])
+        line_M += '0\t' + '\t'.join(line[2:]) + '\n' # H will be the first so skip to second
+
+new_str += line_M
 
 with open('/scratch/s2555875/species_comp.out', 'w') as f:
     f.write(new_str)

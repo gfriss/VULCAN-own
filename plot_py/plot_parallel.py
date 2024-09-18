@@ -1,9 +1,13 @@
 #%%
+import sys
+sys.path.insert(0, '../') # including the upper level of directory for the path of modules
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from matplotlib.lines import Line2D
 from scipy.optimize import curve_fit
+from chem_funs import nr, re_wM_dict, re_dict
 
 # general parameters
 nsim = 15 # hardcoded for now, change later...
@@ -456,7 +460,29 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
     if figname != None:
         fig.savefig(plot_folder + figname)
     
-
+def get_total_reaction_rate(dat, diag_sp = 'HCN'):
+    species = dat['variable']['species']
+    total_re_list = np.zeros_like(dat['atm']['pco'])
+    for re in range(1,nr+1):
+        if diag_sp in re_wM_dict[re][0] or diag_sp in re_wM_dict[re][1]:
+            rate = dat['variable']['k'][re].astype(float)
+            for sp in re_wM_dict[re][0]: # [0]: reactants; [1]: prodcuts
+                if sp == 'M': rate *= dat['atm']['n_0']
+                else: rate *= dat['variable']['y'][:,species.index(sp)]
+            if diag_sp in re_dict[re][0]:
+                total_re_list -= np.array(rate)
+            elif diag_sp in re_dict[re][1]:
+                total_re_list += np.array(rate)    
+    
+def plot_prod_dest(dat_list, param_list, diag_sp = 'HCN'):
+    pressure = dat_list[0]['atm']['pco']/1e6
+    fig, ax = plt.subplots(tight_layout = True)
+    for d,p in zip(dat_list, param_list):
+        tot_rea = get_total_reaction_rate(d, diag_sp)
+        c = np.ones_like(pressure)
+        c[tot_rea <0] = 1
+        param = np.ones_like(pressure) * p
+        plt.colored_line(param, pressure, c=c, ax=ax, cmap = 'inferno')
 #%%
 # BC case
 data_bc, bc_flux = read_in('BC', nsim)

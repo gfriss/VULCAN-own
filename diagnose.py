@@ -32,7 +32,7 @@ diag_sp = 'HCN'
 
 # the region to look at
 # the bottom layer 
-n_bot = 25
+n_bot = 0
 # the top layer
 n_top = -1
 
@@ -64,5 +64,9 @@ for re in top_re:
         if re % 2 == 1: 
             print (data['variable']['Rf'][re] + ' max rate: ' + "{:.2e}".format(max_re_list[re-1]))
             print (total_re_list[re-1])
-        else: print('The reverse of ' + str(data['variable']['Rf'][re-1]))
-     
+            print (len(total_re_list[re-1]))
+        else: 
+            print ('The reverse of ' + str(data['variable']['Rf'][re-1]))
+            print (' max rate: ' + "{:.2e}".format(max_re_list[re-1]))
+            print (total_re_list[re-1])
+            print (len(total_re_list[re-1]))

@@ -1637,6 +1637,7 @@ class Integration(object):
             for re in var.rainout_re_list:
                 if var.Rf[re] == 'H2O_l_s -> H2O_rain':# and 'H2O' in vulcan_cfg.condense_sp:
                     var.k[re][j] = k_h2o
+                    var.k[re][j] = np.maximum(var.k[re][j], 0)
                     var.k[re+1][j] = 0.
                 elif var.Rf[re] == 'HCN -> HCN_rain':
                     if Tco[j] >= 268:
@@ -1657,6 +1658,7 @@ class Integration(object):
                     else:
                         var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
                         var.k[re][j] += k_wash
+                        var.k[re][j] = np.maximum(var.k[re][j], 0)
                         var.k[re+1][j] = 0.
 
         # for testing purposes, washout will be separate although it means more calculations
