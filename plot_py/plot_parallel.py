@@ -1,14 +1,19 @@
 #%%
-import sys
-sys.path.insert(0, '../') # including the upper level of directory for the path of modules
+#import sys
+#sys.path.insert(0, '../') # including the upper level of directory for the path of modules
 
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle
+import matplotlib.colors as mc
 from matplotlib.lines import Line2D
+from matplotlib.collections import LineCollection
+import pickle
 from scipy.optimize import curve_fit
+import os
+wd = os.getcwd()
+os.chdir('../')
 from chem_funs import nr, re_wM_dict, re_dict
-
+os.chdir(wd)
 # general parameters
 nsim = 15 # hardcoded for now, change later...
 out_folder = '/scratch/s2555875/output/'
@@ -472,17 +477,135 @@ def get_total_reaction_rate(dat, diag_sp = 'HCN'):
             if diag_sp in re_dict[re][0]:
                 total_re_list -= np.array(rate)
             elif diag_sp in re_dict[re][1]:
-                total_re_list += np.array(rate)    
+                total_re_list += np.array(rate)
+    return total_re_list    
     
-def plot_prod_dest(dat_list, param_list, diag_sp = 'HCN'):
+def colored_line(x, y, c, ax, **lc_kwargs):
+    """
+    Plot a line with a color specified along the line by a third value.
+
+    It does this by creating a collection of line segments. Each line segment is
+    made up of two straight lines each connecting the current (x, y) point to the
+    midpoints of the lines connecting the current point with its two neighbors.
+    This creates a smooth line with no gaps between the line segments.
+
+    Parameters
+    ----------
+    x, y : array-like
+        The horizontal and vertical coordinates of the data points.
+    c : array-like
+        The color values, which should be the same size as x and y.
+    ax : Axes
+        Axis object on which to plot the colored line.
+    **lc_kwargs
+        Any additional arguments to pass to matplotlib.collections.LineCollection
+        constructor. This should not include the array keyword argument because
+        that is set to the color argument. If provided, it will be overridden.
+
+    Returns
+    -------
+    matplotlib.collections.LineCollection
+        The generated line collection representing the colored line.
+    """
+    # Default the capstyle to butt so that the line segments smoothly line up
+    default_kwargs = {"capstyle": "butt"}
+    default_kwargs.update(lc_kwargs)
+
+    # Compute the midpoints of the line segments. Include the first and last points
+    # twice so we don't need any special syntax later to handle them.
+    x = np.asarray(x)
+    y = np.asarray(y)
+    x_midpts = np.hstack((x[0], 0.5 * (x[1:] + x[:-1]), x[-1]))
+    y_midpts = np.hstack((y[0], 0.5 * (y[1:] + y[:-1]), y[-1]))
+
+    # Determine the start, middle, and end coordinate pair of each line segment.
+    # Use the reshape to add an extra dimension so each pair of points is in its
+    # own list. Then concatenate them to create:
+    # [
+    #   [(x1_start, y1_start), (x1_mid, y1_mid), (x1_end, y1_end)],
+    #   [(x2_start, y2_start), (x2_mid, y2_mid), (x2_end, y2_end)],
+    #   ...
+    # ]
+    coord_start = np.column_stack((x_midpts[:-1], y_midpts[:-1]))[:, np.newaxis, :]
+    coord_mid = np.column_stack((x, y))[:, np.newaxis, :]
+    coord_end = np.column_stack((x_midpts[1:], y_midpts[1:]))[:, np.newaxis, :]
+    segments = np.concatenate((coord_start, coord_mid, coord_end), axis=1)
+
+    lc = LineCollection(segments, **default_kwargs)
+    lc.set_array(c)  # set the colors of each segment
+
+    return ax.add_collection(lc)    
+    
+def plot_prod_dest(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None, f_size = 15, l_size = 14):
     pressure = dat_list[0]['atm']['pco']/1e6
     fig, ax = plt.subplots(tight_layout = True)
     for d,p in zip(dat_list, param_list):
         tot_rea = get_total_reaction_rate(d, diag_sp)
-        c = np.ones_like(pressure)
-        c[tot_rea <0] = 1
+        c = np.zeros_like(pressure)
+        c[tot_rea > 0] = 1
         param = np.ones_like(pressure) * p
-        plt.colored_line(param, pressure, c=c, ax=ax, cmap = 'inferno')
+        ax.plot(param, pressure, linestyle = '') # need this otherwise not plotting the next...
+        colored_line(param, pressure, c=c, ax=ax, cmap = 'magma', lw = 7)
+    ax.invert_yaxis()
+    ax.set_yscale('log')
+    ax.set_ylabel('Pressure [bar]', fontsize = f_size)
+    ax.set_xscale('linear')
+    if sim_type == 'BC':
+        ax.set_xscale('log')
+        ax.set_xlabel(r'Mass delivery rate [g Gyr$^{-1}$]', fontsize = f_size)
+        ax.set_xlabel(r'H$_2$ flux [cm$^{-2}$ s$^{-1}$]', fontsize = f_size)
+        ax.set_xscale('log')
+    elif sim_type == 'CtoO':
+        ax.set_xlabel('C/O', fontsize = f_size)
+    elif sim_type == 'star':
+        ax.set_xlabel(r'T$_{eff}$ [K]', fontsize = f_size)
+    elif sim_type == 'dist':
+        ax.set_xlabel('Distance [AU]', fontsize = f_size)
+        ax.tick_params(which='both', direction='out', width=1, length = 4)
+        ax.tick_params(axis = 'both', labelsize = l_size)
+    elif sim_type == 'local':
+        ax.set_xlabel(r'X$_{H_2}$', fontsize = f_size)    
+
+    if figname != None:
+        fig.savefig(plot_folder + figname)
+        
+def plot_prod_dest_values(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None, f_size = 15, l_size = 14):
+    pressure = dat_list[0]['atm']['pco']/1e6
+    fig, ax = plt.subplots(tight_layout = True)
+    all_rea = np.array([])
+    for d in dat_list:
+        tot_rea = get_total_reaction_rate(d, diag_sp)
+        all_rea = np.concatenate((all_rea, tot_rea))
+    #norm = mpl.colors.Normalize(vmin = np.min(all_rea), vmax = np.max(all_rea))
+    #s_m = mpl.cm.ScalarMappable(cmap = 'magma', norm = norm)
+    #s_m.set_array(all_rea)
+    for d,p in zip(dat_list, param_list):
+        tot_rea = get_total_reaction_rate(d, diag_sp)
+        param = np.ones_like(pressure) * p
+        ax.plot(param, pressure, linestyle = '') # need this otherwise not plotting the next...
+        lines = colored_line(param, pressure, c=tot_rea, ax=ax, lw = 7, norm = mc.LogNorm(vmin = np.min(all_rea), vmax = np.max(all_rea)))
+    ax.invert_yaxis()
+    ax.set_yscale('log')
+    ax.set_ylabel('Pressure [bar]', fontsize = f_size)
+    ax.set_xscale('linear')
+    if sim_type == 'BC':
+        ax.set_xscale('log')
+        ax.set_xlabel(r'Mass delivery rate [g Gyr$^{-1}$]', fontsize = f_size)
+        ax.set_xlabel(r'H$_2$ flux [cm$^{-2}$ s$^{-1}$]', fontsize = f_size)
+        ax.set_xscale('log')
+    elif sim_type == 'CtoO':
+        ax.set_xlabel('C/O', fontsize = f_size)
+    elif sim_type == 'star':
+        ax.set_xlabel(r'T$_{eff}$ [K]', fontsize = f_size)
+    elif sim_type == 'dist':
+        ax.set_xlabel('Distance [AU]', fontsize = f_size)
+        ax.tick_params(which='both', direction='out', width=1, length = 4)
+        ax.tick_params(axis = 'both', labelsize = l_size)
+    elif sim_type == 'local':
+        ax.set_xlabel(r'X$_{H_2}$', fontsize = f_size)    
+    fig.colorbar(lines)
+    if figname != None:
+        fig.savefig(plot_folder + figname)
 #%%
 # BC case
 data_bc, bc_flux = read_in('BC', nsim)
@@ -501,12 +624,13 @@ rain = [] # storing the rainout rates
 for d in data_bc:
     rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
-plot_rain(rain, bomb_rate, 'BC', figname = 'H2O_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux, mol = 'Water')
-plot_rain(hcn_rain, bomb_rate, 'BC', figname = 'HCN_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux)
-plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'HCN_air_meteoritic.pdf')
-plot_end_time(data_bc, figname = 'end_time_meteor.pdf')
-plot_evo_layer(data_bc, 'HCN', figname = 'hcn_evo_meteor.pdf')
-plot_convergence(data_bc, figname = 'convergence_meteor.pdf')
+#plot_rain(rain, bomb_rate, 'BC', figname = 'H2O_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux, mol = 'Water')
+#plot_rain(hcn_rain, bomb_rate, 'BC', figname = 'HCN_rainout_meteor_onlyH2.pdf', bc_flux_list = bc_flux)
+#plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'HCN_air_meteoritic.pdf')
+#plot_end_time(data_bc, figname = 'end_time_meteor.pdf')
+#plot_evo_layer(data_bc, 'HCN', figname = 'hcn_evo_meteor.pdf')
+#plot_convergence(data_bc, figname = 'convergence_meteor.pdf')
+plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'prod_dest_meteor.pdf')
 #%%
 # BC case with helios TP
 data_bc, bc_flux = read_in('BC', nsim, start_str = 'helios_tp_')
@@ -525,8 +649,9 @@ for d in data_bc:
 #plot_end_time(data_bc, figname = 'helios_tp_end_time_meteor.pdf')
 #plot_evo_layer(data_bc, 'HCN', figname = 'helios_tp_hcn_evo_meteor.pdf')
 #plot_convergence(data_bc, figname = 'helios_tp_convergence_meteor.pdf')
-plot_rain_converged(data_bc, hcn_rain, bomb_rate, 'BC', figname = 'conv_BC_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = bc_flux)
-plot_rain_converged(data_bc, rain, bomb_rate, 'BC', figname = 'conv_BC_rain.pdf', rain_spec = 'H2O_rain', extra_list = bc_flux)
+#plot_rain_converged(data_bc, hcn_rain, bomb_rate, 'BC', figname = 'conv_BC_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = bc_flux)
+#plot_rain_converged(data_bc, rain, bomb_rate, 'BC', figname = 'conv_BC_rain.pdf', rain_spec = 'H2O_rain', extra_list = bc_flux)
+plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'helios_tp_prod_dest_meteor.pdf')
 # %%
 # C/O case
 
@@ -547,7 +672,7 @@ plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'C_to_O', figname = 'HCN_air_C_to_O.pd
 plot_end_time(data_CtoO, figname = 'end_time_C_to_O.pdf')
 plot_evo_layer(data_CtoO, 'HCN', figname = 'hcn_evo_C_to_O.pdf')
 plot_convergence(data_CtoO, figname = 'convergence_C_to_O.pdf')
-
+plot_prod_dest(data_CtoO, C_to_O, 'C_to_O', figname = 'prod_dest_C_to_O.pdf')
 #%%
 # C/O case with HELIOS tP
 
@@ -568,10 +693,11 @@ for d in data_CtoO:
 #plot_end_time(data_CtoO, figname = 'helios_tp_end_time_C_to_O.pdf')
 #plot_evo_layer(data_CtoO, 'HCN', figname = 'helios_tp_hcn_evo_C_to_O.pdf')
 #plot_convergence(data_CtoO, figname = 'helios_tp_convergence_C_to_O.pdf')
-plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_hcn_rain.pdf', rain_spec = 'HCN_rain')
-plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_rain.pdf', rain_spec = 'H2O_rain')
-plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_hcn_rain.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
-plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_rain.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
+#plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_hcn_rain.pdf', rain_spec = 'HCN_rain')
+#plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_rain.pdf', rain_spec = 'H2O_rain')
+#plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_hcn_rain.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
+#plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_rain.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
+plot_prod_dest(data_CtoO, C_to_O, 'CtoO', figname = 'prod_dest_CtoO.pdf')
 # %%
 for d in data_bc:
     print_max_re(d, 'H2')
@@ -581,7 +707,7 @@ import pandas as pd
 data_star = read_in('star', number_of_sim = 13)
 hcn_rain_star, rain_star = [], []
 T_eff = pd.read_csv('/scratch/s2555875/stellar_flux/stellar_params.csv').T_eff
-
+#%%
 for d in data_star:
     hcn_rain_star.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
     rain_star.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
@@ -593,10 +719,11 @@ for d in data_star:
 #plot_end_time(data_star, figname = 'end_time_star.pdf')
 #plot_evo_layer(data_star, 'HCN', figname = 'hcn_evo_star.pdf')
 #plot_convergence(data_star, figname = 'convergence_star.pdf')
-plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_star_hcn_rain.pdf', rain_spec = 'HCN_rain')
-plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain.pdf', rain_spec = 'H2O_rain')
-plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_nonconv_star_hcn_rain.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
-plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
+#plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_star_hcn_rain.pdf', rain_spec = 'HCN_rain')
+#plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain.pdf', rain_spec = 'H2O_rain')
+#plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_nonconv_star_hcn_rain.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
+#plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
+plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star.pdf')
 # %%
 # distance case
 a_list = np.linspace(0.82, 1.4, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
@@ -615,10 +742,11 @@ for d in data_dist:
 #plot_end_time(data_dist, figname = 'end_time_dist.pdf')
 #plot_evo_layer(data_dist, 'HCN', figname = 'hcn_evo_dist.pdf')
 #plot_convergence(data_dist, figname = 'convergence_dist.pdf')
-plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf)
-plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf)
-plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf, plot_non_conv = True)
-plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf, plot_non_conv = True)
+#plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf)
+#plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf)
+#plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf, plot_non_conv = True)
+#plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf, plot_non_conv = True)
+plot_prod_dest(data_dist, a_list, 'dist', figname = 'prod_dest_dist.pdf')
 # %%
 # local case
 
@@ -639,3 +767,4 @@ plot_vertical_n(data_local, 'HCN', X_H2, 'local', figname = 'HCN_air_local.pdf',
 plot_end_time(data_local, figname = 'end_time_local.pdf')
 plot_evo_layer(data_local, 'HCN', figname = 'hcn_evo_local.pdf')
 plot_convergence(data_local, figname = 'convergence_local.pdf')
+plot_prod_dest(data_local, X_H2, 'local', figname = 'prod_dest_local.pdf')
