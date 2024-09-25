@@ -3,6 +3,7 @@
 #sys.path.insert(0, '../') # including the upper level of directory for the path of modules
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as mc
 from matplotlib.lines import Line2D
@@ -538,34 +539,30 @@ def colored_line(x, y, c, ax, **lc_kwargs):
     
 def plot_prod_dest(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None, f_size = 15, l_size = 14):
     pressure = dat_list[0]['atm']['pco']/1e6
-    fig, ax = plt.subplots(tight_layout = True)
+    fig, ax = plt.subplots(tight_layout = True, figsize = (11,6))
+    lines = ['-', '--', '-.', ':']
+    i = 0
+    lab = ''
+    if sim_type == 'BC':
+        lab = 'Mdot = '
+    elif sim_type == 'CtoO':
+        lab = 'C/O = '
+    elif sim_type == 'star':
+        lab = r'T$_{eff}$ = '
+    elif sim_type == 'dist':
+        lab = 'a = '
     for d,p in zip(dat_list, param_list):
+        j = i % 4
         tot_rea = get_total_reaction_rate(d, diag_sp)
-        c = np.zeros_like(pressure)
-        c[tot_rea > 0] = 1
-        param = np.ones_like(pressure) * p
-        ax.plot(param, pressure, linestyle = '') # need this otherwise not plotting the next...
-        colored_line(param, pressure, c=c, ax=ax, cmap = 'magma', lw = 7)
+        ax.plot(tot_rea, pressure, label = lab+str(p), linestyle = lines[j])
+        i += 1
     ax.invert_yaxis()
     ax.set_yscale('log')
-    ax.set_ylabel('Pressure [bar]', fontsize = f_size)
-    ax.set_xscale('linear')
-    if sim_type == 'BC':
-        ax.set_xscale('log')
-        ax.set_xlabel(r'Mass delivery rate [g Gyr$^{-1}$]', fontsize = f_size)
-        ax.set_xlabel(r'H$_2$ flux [cm$^{-2}$ s$^{-1}$]', fontsize = f_size)
-        ax.set_xscale('log')
-    elif sim_type == 'CtoO':
-        ax.set_xlabel('C/O', fontsize = f_size)
-    elif sim_type == 'star':
-        ax.set_xlabel(r'T$_{eff}$ [K]', fontsize = f_size)
-    elif sim_type == 'dist':
-        ax.set_xlabel('Distance [AU]', fontsize = f_size)
-        ax.tick_params(which='both', direction='out', width=1, length = 4)
-        ax.tick_params(axis = 'both', labelsize = l_size)
-    elif sim_type == 'local':
-        ax.set_xlabel(r'X$_{H_2}$', fontsize = f_size)    
-
+    ax.set_ylabel('Pressure [bar]', fontsize = f_size)    
+    ax.tick_params(which='both', direction='out', width=1, length = 4)
+    ax.tick_params(axis = 'both', labelsize = l_size)
+    ax.set_xlabel(r'k$_{tot}$ [cm$^3$s$^{-1}$]', fontsize = f_size)    
+    ax.legend(bbox_to_anchor = (1,0.95), fontsize = l_size)
     if figname != None:
         fig.savefig(plot_folder + figname)
         
@@ -576,14 +573,14 @@ def plot_prod_dest_values(dat_list, param_list, sim_type, diag_sp = 'HCN', figna
     for d in dat_list:
         tot_rea = get_total_reaction_rate(d, diag_sp)
         all_rea = np.concatenate((all_rea, tot_rea))
-    #norm = mpl.colors.Normalize(vmin = np.min(all_rea), vmax = np.max(all_rea))
-    #s_m = mpl.cm.ScalarMappable(cmap = 'magma', norm = norm)
-    #s_m.set_array(all_rea)
+    norm = mpl.colors.Normalize(vmin = np.min(all_rea), vmax = np.max(all_rea))
+    s_m = mpl.cm.ScalarMappable(cmap = 'magma', norm = norm)
+    s_m.set_array([])
     for d,p in zip(dat_list, param_list):
         tot_rea = get_total_reaction_rate(d, diag_sp)
         param = np.ones_like(pressure) * p
         ax.plot(param, pressure, linestyle = '') # need this otherwise not plotting the next...
-        lines = colored_line(param, pressure, c=tot_rea, ax=ax, lw = 7, norm = mc.LogNorm(vmin = np.min(all_rea), vmax = np.max(all_rea)))
+        lines = colored_line(param, pressure, c=[s_m.to_rgba(c) for c in tot_rea], ax=ax, lw = 7)#, norm = mc.LogNorm(vmin = np.min(all_rea), vmax = np.max(all_rea)))
     ax.invert_yaxis()
     ax.set_yscale('log')
     ax.set_ylabel('Pressure [bar]', fontsize = f_size)

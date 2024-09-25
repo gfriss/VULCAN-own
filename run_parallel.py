@@ -102,8 +102,8 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         mixing_change = 'vul_ini' + ',' + new_mixing_file + ',' + 'str'
         pf.gen_mixing_local(h2_bar_list[i], new_mixing_file)
         # H2 fiddles with cinvergence so reducing error tolerances
-        atol_change = ','.join(['atol', str(1.E-5), 'val'])
-        rtol_change = ','.join(['post_conden_rtol', str(1.5), 'val'])    
+        atol_change = ','.join(['atol', str(1.E-7), 'val'])
+        rtol_change = ','.join(['post_conden_rtol', str(0.5), 'val'])    
         # assumed to keep P-T profile and surface pressure the same
         # then change vulcan_cfg.py file
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, atol_change, rtol_change, out_change])

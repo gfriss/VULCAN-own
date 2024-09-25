@@ -62,8 +62,8 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         with open(conv_file, 'r') as f:
             conv_text = f.read()
         if out_file not in conv_text:
-            atol_change = ','.join(['atol', str(1.E-5), 'val'])
-            rtol_change = ','.join(['post_conden_rtol', str(0.1), 'val'])
+            atol_change = ','.join(['atol', str(1.E-6), 'val'])
+            rtol_change = ','.join(['post_conden_rtol', str(0.3), 'val'])
             # first create simulation folder
             subprocess.check_call(['mkdir', sim_folder])
             # then make new cfg file
