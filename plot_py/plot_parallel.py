@@ -352,21 +352,29 @@ def plot_evo_layer(dat_list, spec, layer = 0, figname = None, f_size = 13, l_siz
     ax.tick_params(which='both', direction='out', width=1, length = 4)
     ax.tick_params(axis = 'both', labelsize = l_size)
     if figname != None:
-        fig.savefig(plot_folder + figname)
+        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
+
+def check_convergence(dat):
+    ''' It checks whether the convergence criteria has been met in the given simulation (dat is the 
+        already read-in data). Template is taken from the VULCAN code (Tsai et al 2017, 2020).'''
+    yconv_cri = 0.01
+    yconv_min = 0.1
+    slope_cri = 1.e-4
+    longdy = dat['variable']['longdy']
+    longdydt = dat['variable']['longdydt']
+    slope_min = min( np.amin(dat['atm']['Kzz']/(0.1*dat['atm']['Hp'][:-1])**2) , 1.e-8)
+    slope_min = max(slope_min, 1.e-10)
+    if (longdy < yconv_cri and longdydt < slope_cri or longdy < yconv_min and longdydt < slope_min):
+        return True
+    else:
+        return False
 
 def plot_convergence(dat_list, figname = None, f_size = 13, l_size = 12):
     ''' It checks and plots whether the convergence criteria has been met in all simulations in the given list. 
         Template for calculation is taken from the VULCAN code (Tsai et al 2017, 2020).'''
-    yconv_cri = 0.01
-    yconv_min = 0.1
-    slope_cri = 1.e-4
     fig, ax = plt.subplots(tight_layout = True)
-    for i in range(len(dat_list)):
-        longdy = dat_list[i]['variable']['longdy']
-        longdydt = dat_list[i]['variable']['longdydt']
-        slope_min = min( np.amin(dat_list[i]['atm']['Kzz']/(0.1*dat_list[i]['atm']['Hp'][:-1])**2) , 1.e-8)
-        slope_min = max(slope_min, 1.e-10)
-        if (longdy < yconv_cri and longdydt < slope_cri or longdy < yconv_min and longdydt < slope_min):
+    for i,d in enumerate(dat_list):
+        if check_convergence(d):
             ax.plot(i, 'Yes', 'ro')
         else:
             ax.plot(i, 'No', 'ro')
@@ -382,17 +390,10 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
     ''' Plots the rainout rates for a list of simulations for a given simulation types. It 
         distinguishes between converged and non-converged simulations (full and empty circles, respectively).
         Plotting and convergence caalculations are taken from previous functions.'''
-    yconv_cri = 0.01
-    yconv_min = 0.1
-    slope_cri = 1.e-4
     conv_rain_list, conv_param_list, conv_extra_list = [], [], []
     non_conv_rain_list, non_conv_param_list, non_conv_extra_list = [], [], []
-    for i in range(len(dat_list)):
-        longdy = dat_list[i]['variable']['longdy']
-        longdydt = dat_list[i]['variable']['longdydt']
-        slope_min = min( np.amin(dat_list[i]['atm']['Kzz']/(0.1*dat_list[i]['atm']['Hp'][:-1])**2) , 1.e-8)
-        slope_min = max(slope_min, 1.e-10)
-        if (longdy < yconv_cri and longdydt < slope_cri or longdy < yconv_min and longdydt < slope_min):
+    for i,d in enumerate(dat_list):
+        if check_convergence(d):
             conv_rain_list.append(rain_list[i])
             conv_param_list.append(param_list[i])
             if extra_list:
@@ -564,7 +565,7 @@ def plot_prod_dest(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = No
     ax.set_xlabel(r'k$_{tot}$ [cm$^3$s$^{-1}$]', fontsize = f_size)    
     ax.legend(bbox_to_anchor = (1,0.95), fontsize = l_size)
     if figname != None:
-        fig.savefig(plot_folder + figname)
+        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
         
 def plot_prod_dest_values(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None, f_size = 15, l_size = 14):
     pressure = dat_list[0]['atm']['pco']/1e6
@@ -602,7 +603,7 @@ def plot_prod_dest_values(dat_list, param_list, sim_type, diag_sp = 'HCN', figna
         ax.set_xlabel(r'X$_{H_2}$', fontsize = f_size)    
     fig.colorbar(lines)
     if figname != None:
-        fig.savefig(plot_folder + figname)
+        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
 #%%
 # BC case
 data_bc, bc_flux = read_in('BC', nsim)

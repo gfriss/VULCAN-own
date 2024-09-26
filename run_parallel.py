@@ -17,6 +17,8 @@ sim_per_rank = int(nsim / size) # this is needed to distribure the tasks between
 
 main_folder = '/scratch/s2555875/' # place to store outputs
 output_folder = main_folder + 'output/'
+conv_file = os.path.join(main_folder, 'converged.txt')
+check_conv = True
 # ------setting up parameterspace for all runs------
 # meteoritic bombardment
 bomb_rate = np.linspace(3e23, 1e25, nsim) # values from Pearce et al. (2022) Fig A4 min and max
@@ -36,6 +38,8 @@ helios_tp = ''
 #helios_tp = 'helios_tp_'
 # local meteorite case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
+
+check_conv = True
 
 # ------end of parameter set up-----
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
@@ -73,7 +77,17 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         mixing_change = 'vul_ini' + ',' + new_mixing_file + ',' + 'str'
         pf.gen_mixing(co2_for_CtoO_range[i], new_mixing_file)
         # then change vulcan_cfg.py file
-        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
+        if check_conv:
+            with open(conv_file, 'r') as f:
+                conv_text = f.read()
+            if out_file not in conv_text:
+                atol_change = ','.join(['atol', str(1.E-5), 'val'])
+                rtol_change = ','.join(['post_conden_rtol', str(0.1), 'val'])
+                subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change, atol_change, rtol_change])
+            else:
+                continue
+        else:
+            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
     elif run_type == 'star':
         # new stellar radiation files already created, need to update vulcan_cfg with filename and r_star and orbit_radius
         star_name = star_df.Name.iloc[i]
@@ -88,7 +102,17 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         # surf temps are similar, but better to use corresponding ones
         tp_file = main_folder + 'TP_files/' + sim + '.txt'
         tp_change = 'atm_file' + ',' + tp_file + ',' + 'str'
-        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change])
+        if check_conv:
+            with open(conv_file, 'r') as f:
+                conv_text = f.read()
+            if out_file not in conv_text:
+                atol_change = ','.join(['atol', str(1.E-5), 'val'])
+                rtol_change = ','.join(['post_conden_rtol', str(0.1), 'val'])
+                subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change, atol_change, rtol_change])
+            else:
+                continue
+        else:
+            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change])
     elif run_type == 'dist':
         # new TP files are already created with HELIOS, need to update vulcan_cfg with filename and orbit_radius
         tp_file = main_folder + 'TP_files/' + sim + '.txt'
