@@ -81,8 +81,8 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
             with open(conv_file, 'r') as f:
                 conv_text = f.read()
             if out_file not in conv_text:
-                atol_change = ','.join(['atol', str(1.E-10), 'val'])
-                rtol_change = ','.join(['post_conden_rtol', str(0.05), 'val'])
+                atol_change = ','.join(['atol', str(1.E-11), 'val'])
+                rtol_change = ','.join(['post_conden_rtol', str(0.8), 'val'])
                 subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change, atol_change, rtol_change])
             else:
                 continue
@@ -106,8 +106,8 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
             with open(conv_file, 'r') as f:
                 conv_text = f.read()
             if out_file not in conv_text:
-                atol_change = ','.join(['atol', str(1.E-10), 'val'])
-                rtol_change = ','.join(['post_conden_rtol', str(0.1), 'val'])
+                atol_change = ','.join(['atol', str(1.E-11), 'val'])
+                rtol_change = ','.join(['post_conden_rtol', str(0.3), 'val'])
                 subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change, atol_change, rtol_change])
             else:
                 continue
