@@ -65,6 +65,36 @@ def calc_sensitivity_param(dat, spec, reduced_list, n_layer):
             B_i += ( (ni/gj)*dfj_dni )**2
     return B_i
         
+def get_rates_and_sums(dat, n_layer, spec_list):
+    sum_rate_per_species = np.zeros_like(spec_list)
+    rate_list = []
+    for re in range(1,nr+1):
+        rate = dat['variable']['k'][re][n_layer].astype(float)
+        sp_idx_per_reaction = []
+        for sp in re_wM_dict[re][0]: # [0]: reactants; [1]: prodcuts
+            if sp == 'M': rate *= dat['atm']['n_0'][n_layer]
+            else: 
+                rate *= dat['variable']['y'][n_layer, spec_list.index(sp)]
+                sp_idx_per_reaction.append(spec_list.index(sp))
+        for sp in re_wM_dict[re][1]: # [0]: reactants; [1]: prodcuts
+            if sp != 'M':
+                sp_idx_per_reaction.append(spec_list.index(sp))
+        rate_list.append(rate)
+        for idx in sp_idx_per_reaction:
+            sum_rate_per_species[idx] += rate # will it be repeated?
+    return rate_list, sum_rate_per_species
+            
+def calc_wr(rate_list, sum_rate_per_species, spec_list, reduced_list, first_iter):
+    wr = np.zeros_like(rate_list)
+    ws = np.zeros_like(spec_list)
+    for i,sp in reduced_list:
+        if first_iter:
+            ws[i] = 1
+        for re in range(1,nr+1):
+            wr_new = (rate_list[re] / sum_rate_per_species[i]) * ws[i]
+            wr[re] = np.max([wr[re], wr_new])     
+            ws[i] = np.max([ws[i], rate_list[re]])   # not ready, to do: keep original species at 1 and only update the new ones
+    return wr, ws
 
 vul_data = '/scratch/s2555875/output/archean.vul'
 with open(vul_data, 'rb') as handle:
