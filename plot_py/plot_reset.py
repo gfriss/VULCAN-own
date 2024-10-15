@@ -15,11 +15,11 @@ def reset_plt(ticksize, fontsize, fxsize, fysize):
     plt.rcParams['ytick.minor.size'] = 4
     plt.rcParams['font.size'] = fontsize
     plt.rcParams['axes.labelsize'] = fontsize
-    plt.rcParams['mathtext.fontset'] = 'stix'
-    plt.rcParams['font.family'] = 'STIXGeneral'
+    plt.rcParams['mathtext.fontset'] = 'dejavuserif' #'stix'
+    plt.rcParams['font.family'] = 'serif' #'STIXGeneral'
     plt.rcParams['legend.facecolor'] = 'white'
     plt.rcParams['legend.fontsize'] = ticksize
-    plt.rcParams['axes.formatter.limits'] = (-1,3)
+    plt.rcParams['axes.formatter.limits'] = (-2,4)
     plt.rcParams['axes.linewidth'] = 1.75
     plt.rcParams['axes.grid'] = True
     plt.rcParams['grid.alpha'] = 0.6

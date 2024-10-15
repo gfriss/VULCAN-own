@@ -582,8 +582,61 @@ def plot_pt(dat_list, param_list, sim_type, figname = None):
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
     
-def plot_conden():
-    ...
+def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists, figname = None):
+    fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (22,18), tight_layout = True)
+    ax = ax.flatten()
+    sim_types = ['BC', 'CtoO', 'star', 'dist']
+    xscales = ['log', 'linear', 'linear', 'linear']
+    xlabels = [r'Mass delivery rate [g Gyr$^{-1}$]', 'C/O', r'T$_{eff}$ [K]', 'Distance [AU]']
+    labels_0 = ['Mdot = ', 'C/O = ', r'T$_{eff}$ = ', 'a = ']
+    labels_1 = [r' g Gyr$^{-1}$', '', ' K', ' AU']
+    legend_xanchors = [1.425, 1.305, 1.187, 1.318] # otherwise legends are all over the place, not sure why...
+    legend_yanchors = [0.97, 0.72, 0.46, 0.21]
+    hcn_rain_archean = rainout(data_archean)
+    param_archean = [1.2e24 * 2.3/3.42, calc_C_to_O(data_archean, '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt'), 5600., 1.]
+    i = 0
+    for dat_list,param_list,hcn_rain_list in zip(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists):
+        # plotting hcn rain rates in zeroth column
+        ax[i+0].plot(param_list, hcn_rain_list, color = 'navy', linestyle = '', marker = '.', markersize = 10)
+        ax[i+0].plot(param_archean[i//4], hcn_rain_archean, color = 'darkorange', marker = '*', markersize = 10)
+        ax[i+0].set_ylabel(r'HCN rain-out rate [kg m$^{-2}$ yr$^{-1}$]')
+        ax[i+0].set_yscale('log')
+        ax[i+0].set_xscale(xscales[i//4])
+        ax[i+0].set_xlabel(xlabels[i//4])
+        # plotting HCN and condensed water vertical structure and P-T profile (only star and dist simulations) in first, second and third columns, respectively
+        for d,p in zip(dat_list,param_list):
+            ax[i+1].plot(d['variable']['ymix'][:, d['variable']['species'].index('HCN')], d['atm']['pco']/1e6, label = labels_0[i//4]+str(p)+labels_1[i//4])
+            ax[i+2].plot(d['variable']['ymix'][:, d['variable']['species'].index('H2O_l_s')], d['atm']['pco']/1e6)
+            if sim_types[i//4] == 'star' or sim_types[i//4] == 'dist':
+                ax[i+3].plot(d['atm']['Tco'], d['atm']['pco']/1e6)
+        ax[i+1].set_xscale('log')
+        ax[i+1].set_xlabel(r'X$_{HCN}$')
+        ax[i+1].set_yscale('log')
+        ax[i+1].set_ylabel('Pressure [bar]')
+        ax[i+1].invert_yaxis()
+        ax[i+1].set_xlim((1e-18,1e-2))
+        #ax[i+1].legend()
+        ax[i+2].set_xscale('log')
+        ax[i+2].set_xlabel(r'X$_{cloud}$]')
+        ax[i+2].set_yscale('log')
+        ax[i+2].set_ylabel('Pressure [bar]')
+        ax[i+2].invert_yaxis()
+        ax[i+2].set_xlim((1e-18,1e-2))
+        # plotting the fixed T-P profiles for BC and CtoO simulations and setting scales and labels for all
+        if sim_types[i//4] == 'BC' or sim_types[i//4] == 'CtoO':
+            ax[i+3].plot(data_archean['atm']['Tco'], data_archean['atm']['pco']/1e6)
+        ax[i+3].set_xlabel('T [K]')
+        ax[i+3].set_yscale('log')
+        ax[i+3].set_ylabel('Pressure [bar]')
+        ax[i+3].invert_yaxis()
+        ax[i+3].set_xlim((125,385))
+        handles, labels = ax[i+1].get_legend_handles_labels()
+        fig.legend(handles, labels, loc = 'upper right', bbox_to_anchor = (legend_xanchors[i//4], legend_yanchors[i//4]), ncols = 2)
+        i += 4
+    
+    if figname != None:
+        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
+    
 #%%
 # BC case with helios TP
 data_bc, bc_flux = read_in('BC', nsim, start_str = 'helios_tp_')
@@ -703,3 +756,6 @@ plot_pt(data_dist, a_list, 'dist', figname = 'PT_dist.pdf')
 #plot_evo_layer(data_local, 'HCN', figname = 'hcn_evo_local.pdf')
 #plot_convergence(data_local, figname = 'convergence_local.pdf')
 #plot_prod_dest(data_local, X_H2, 'local', figname = 'prod_dest_local.pdf')
+#%%
+plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_star, data_dist], [bomb_rate, C_to_O, T_eff, a_list], [hcn_rain, hcn_rain_CtoO, hcn_rain_star, hcn_rain_dist], figname = 'rain_vertical_pt.pdf')
+# %%
