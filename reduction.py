@@ -66,7 +66,7 @@ def calc_sensitivity_param(dat, spec, reduced_list, n_layer):
     return B_i
         
 def get_rates_and_sums(dat, n_layer, spec_list):
-    sum_rate_per_species = np.zeros_like(spec_list)
+    sum_rate_per_species = np.zeros(len(spec_list))
     rate_list = []
     for re in range(1,nr+1):
         rate = dat['variable']['k'][re][n_layer].astype(float)
@@ -83,30 +83,36 @@ def get_rates_and_sums(dat, n_layer, spec_list):
         for idx in sp_idx_per_reaction:
             sum_rate_per_species[idx] += rate # will it be repeated?
     return rate_list, sum_rate_per_species
-            
-def calc_wr(rate_list, sum_rate_per_species, spec_list, reduced_list, first_iter):
-    wr = np.zeros_like(rate_list)
-    ws = np.zeros_like(spec_list)
-    for i,sp in reduced_list:
-        if first_iter:
-            ws[i] = 1
+      
+#%%      
+def calc_wr(wr, ws, rate_list, sum_rate_per_species, iter_specs, reduced_list):
+    spec_to_add = []
+    for i,sp in enumerate(iter_specs):
         for re in range(1,nr+1):
-            wr_new = (rate_list[re] / sum_rate_per_species[i]) * ws[i]
-            wr[re] = np.max([wr[re], wr_new])     
-            ws[i] = np.max([ws[i], rate_list[re]])   # not ready, to do: keep original species at 1 and only update the new ones
-    return wr, ws
+            if (sp in re_wM_dict[re][0] or sp in re_wM_dict[re][1]) and sp != 'M':
+                wr_new = (rate_list[re-1] / sum_rate_per_species[i]) * ws[i]
+                wr[re-1] = np.max([wr[re-1], wr_new])
+                spec_to_add += [s for s in (list(re_wM_dict[re][0])+list(re_wM_dict[re][1])) if s not in reduced_list and s != 'M']
+    spec_to_add = np.unique(spec_to_add) # making sure that no duplicates are present
+    for i,sp in enumerate(spec_to_add):
+        wr_i_max = 0
+        for re in range(1,nr+1):
+            if sp in re_wM_dict[re][0] or sp in re_wM_dict[re][1]:
+                wr_i_max = np.max([wr_i_max, wr[re-1]]) # finding maximum reaction weith coupled to current species
+        ws[i] = np.max([ws[i], wr_i_max])
+    return wr, ws, list(spec_to_add)
 
 vul_data = '/scratch/s2555875/output/archean.vul'
 with open(vul_data, 'rb') as handle:
     data = pickle.load(handle)
 #%%
-red_spec = ['HCN']
-B = []
-for mol in data['variable']['species']:
-    if mol not in red_spec:
-        B.append(calc_sensitivity_param(data, mol, red_spec, 0))
-    else:
-        B.append(0) # set to zero so it would not be given to the list again
+#red_spec = ['HCN']
+#B = []
+#for mol in data['variable']['species']:
+#    if mol not in red_spec:
+#        B.append(calc_sensitivity_param(data, mol, red_spec, 0))
+#    else:
+#        B.append(0) # set to zero so it would not be given to the list again
         
 #%% 
 #B.sort(reverse = True)
@@ -139,5 +145,30 @@ print('Number of iterations in layer {}: {}'.format(nl, it))
 B_sort_idx = np.argsort(B)
 B.sort(reverse = True)
 plt.plot(B, linestyle = '', marker = '.', color = 'r')
+plt.yscale('log')
+# %%
+nl = 0
+species_list = data['variable']['species']
+rates, sum_rates = get_rates_and_sums(data, nl, species_list)
+#%%
+it = 0 # tracking number of iterations
+red_spec = ['HCN', 'HCN_rain', 'H2O_rain']
+again = True
+w_r = np.zeros_like(rates)
+w_s = np.zeros(len(species_list))
+for rs in red_spec: w_s[species_list.index(rs)] = 1.
+while again:
+    it += 1
+    if it == 1: 
+        added_spec = np.copy(red_spec)
+    w_r, w_s, added_spec = calc_wr(w_r, w_s, rates, sum_rates, added_spec, red_spec)
+    red_spec += added_spec
+    if len(red_spec) == len(species_list):
+        again = False
+        
+w_r_sort_idx = np.argsort(w_r)
+w_r = list(w_r)
+w_r.sort(reverse = True)
+plt.plot(w_r, linestyle = '', marker = '.', color = 'r')
 plt.yscale('log')
 # %%
