@@ -582,16 +582,21 @@ def plot_pt(dat_list, param_list, sim_type, figname = None):
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
     
+#%%
 def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists, figname = None):
-    fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (22,18), tight_layout = True)
+    fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27))#, figsize = (22,18), tight_layout = True) # take out tight layout here if legends are below subplots
     ax = ax.flatten()
     sim_types = ['BC', 'CtoO', 'star', 'dist']
     xscales = ['log', 'linear', 'linear', 'linear']
     xlabels = [r'Mass delivery rate [g Gyr$^{-1}$]', 'C/O', r'T$_{eff}$ [K]', 'Distance [AU]']
     labels_0 = ['Mdot = ', 'C/O = ', r'T$_{eff}$ = ', 'a = ']
     labels_1 = [r' g Gyr$^{-1}$', '', ' K', ' AU']
-    legend_xanchors = [1.425, 1.305, 1.187, 1.318] # otherwise legends are all over the place, not sure why...
-    legend_yanchors = [0.97, 0.72, 0.46, 0.21]
+    # legends on the right
+    #legend_xanchors = [1.425, 1.306, 1.183, 1.316] # otherwise legends are all over the place, not sure why...
+    #legend_yanchors = [0.97, 0.72, 0.46, 0.21]
+    # legends below subplots
+    legend_xanchors = [0.5, 0.5, 0.5, 0.5] # otherwise legends are all over the place, not sure why...
+    legend_yanchors = [0.762, 0.505, 0.244, -0.014]
     hcn_rain_archean = rainout(data_archean)
     param_archean = [1.2e24 * 2.3/3.42, calc_C_to_O(data_archean, '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt'), 5600., 1.]
     i = 0
@@ -617,7 +622,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+1].set_xlim((1e-18,1e-2))
         #ax[i+1].legend()
         ax[i+2].set_xscale('log')
-        ax[i+2].set_xlabel(r'X$_{cloud}$]')
+        ax[i+2].set_xlabel(r'X$_{cloud}$')
         ax[i+2].set_yscale('log')
         ax[i+2].set_ylabel('Pressure [bar]')
         ax[i+2].invert_yaxis()
@@ -631,7 +636,8 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+3].invert_yaxis()
         ax[i+3].set_xlim((125,385))
         handles, labels = ax[i+1].get_legend_handles_labels()
-        fig.legend(handles, labels, loc = 'upper right', bbox_to_anchor = (legend_xanchors[i//4], legend_yanchors[i//4]), ncols = 2)
+        fig.tight_layout(h_pad = 6) # use if legends are below subplots
+        fig.legend(handles, labels, loc = 'center', bbox_to_anchor = (legend_xanchors[i//4], legend_yanchors[i//4]), ncols = 4)#, ncols = 2) took out for legends on side, also use upper right for loc
         i += 4
     
     if figname != None:
@@ -757,5 +763,6 @@ plot_pt(data_dist, a_list, 'dist', figname = 'PT_dist.pdf')
 #plot_convergence(data_local, figname = 'convergence_local.pdf')
 #plot_prod_dest(data_local, X_H2, 'local', figname = 'prod_dest_local.pdf')
 #%%
-plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_star, data_dist], [bomb_rate, C_to_O, T_eff, a_list], [hcn_rain, hcn_rain_CtoO, hcn_rain_star, hcn_rain_dist], figname = 'rain_vertical_pt.pdf')
+pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
+plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_star, data_dist], [bomb_rate, C_to_O, T_eff, a_list], [hcn_rain, hcn_rain_CtoO, hcn_rain_star, hcn_rain_dist], figname = 'rain_vertical_pt_2.pdf')
 # %%
