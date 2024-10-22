@@ -34,12 +34,12 @@ a_star_list  = [0.0296, 0.0770, 0.0780, 0.1550, 0.1780, 0.3840, 0.4945, 0.6295, 
 # distance case
 a_list = np.linspace(0.82, 1.4, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, keep surface temp between 0 and 100 Celsius after trial
 # in case new sims with HELIOS TP
-#helios_tp = ''
-helios_tp = 'helios_tp_'
+helios_tp = ''
+#helios_tp = 'helios_tp_'
 # local meteorite case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
 
-check_conv = True
+check_conv = False
 
 # ------end of parameter set up-----
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
@@ -81,8 +81,8 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
             with open(conv_file, 'r') as f:
                 conv_text = f.read()
             if out_file not in conv_text:
-                atol_change = ','.join(['atol', str(1.E-11), 'val'])
-                rtol_change = ','.join(['post_conden_rtol', str(0.8), 'val'])
+                atol_change = ','.join(['atol', str(1.E-99), 'val'])
+                rtol_change = ','.join(['post_conden_rtol', str(1.e-5), 'val'])
                 subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change, atol_change, rtol_change])
             else:
                 continue
@@ -107,7 +107,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
                 conv_text = f.read()
             if out_file not in conv_text:
                 atol_change = ','.join(['atol', str(1.E-11), 'val'])
-                rtol_change = ','.join(['post_conden_rtol', str(0.3), 'val'])
+                rtol_change = ','.join(['post_conden_rtol', str(1.3), 'val'])
                 subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change, atol_change, rtol_change])
             else:
                 continue
