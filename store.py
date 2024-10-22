@@ -47,6 +47,7 @@ class Variables(object):
         self.t_time = [] # storing the time  at each step 
         self.dt_time = [] # storing the time step  at each step 
         self.atom_loss_time = [] # storing the loss of atoms at each step
+        self.k_time = [] # storing the reaction rate constant at each step
 
         self.vs_time = {} # storing the settling velocity for each species each step
 
@@ -89,7 +90,7 @@ class Variables(object):
             if vulcan_cfg.T_cross_sp: self.var_save.extend(['cross_J','cross_T'])
             if vulcan_cfg.use_ion == True: self.var_save.extend(['charge_list', 'ion_sp', 'cross_Jion','Jion_sp', 'ion_wavelen','ion_branch','ion_br_ratio'])
         # 'ion_list' stores all the non-neutral species in build.atm whereas 'ion_sp' is for the species that actually have ionisation reactions in the network 
-        self.var_evol_save = ['y_time','t_time']#, 'vs_time']
+        self.var_evol_save = ['y_time','t_time', 'k_time']#, 'vs_time']
         self.conden_re_list = []
         self.rainout_re_list = []
         
