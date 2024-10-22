@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from chem_funs import nr, re_wM_dict, re_dict
+import plot_py.plot_reset as pr
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
 
 def calc_gj(dat, diag_sp, n_layer, spec_list):
     gain, loss = 0, 0
@@ -83,8 +85,7 @@ def get_rates_and_sums(dat, n_layer, spec_list):
         for idx in sp_idx_per_reaction:
             sum_rate_per_species[idx] += rate # will it be repeated?
     return rate_list, sum_rate_per_species
-      
-#%%      
+            
 def calc_wr(wr, ws, rate_list, sum_rate_per_species, iter_specs, reduced_list):
     spec_to_add = []
     for i,sp in enumerate(iter_specs):
@@ -147,10 +148,9 @@ B.sort(reverse = True)
 plt.plot(B, linestyle = '', marker = '.', color = 'r')
 plt.yscale('log')
 # %%
-nl = 0
+nl = 113
 species_list = data['variable']['species']
 rates, sum_rates = get_rates_and_sums(data, nl, species_list)
-#%%
 it = 0 # tracking number of iterations
 red_spec = ['HCN', 'HCN_rain', 'H2O_rain']
 again = True
@@ -170,5 +170,14 @@ w_r_sort_idx = np.argsort(w_r)
 w_r = list(w_r)
 w_r.sort(reverse = True)
 plt.plot(w_r, linestyle = '', marker = '.', color = 'r')
+plt.xlabel('# reaction')
+plt.ylabel(r'w_r')
 plt.yscale('log')
+plt.ylim((1e-18, None))
+plt.savefig('/scratch/s2555875/plot/archean_reduction_{}.pdf'.format(nl))
+with open('/scratch/s2555875/plot/archean_reduced_network.txt', 'a') as f:
+    f.write('Layer {}:\n'.format(nl))
+    for i,re in enumerate(w_r_sort_idx[np.array(w_r) > 1e-18]):
+        f.write(str(re_wM_dict[re+1]) + ' - w_r = {}\n'.format(w_r[i])) # maybe need to change and chek if re%2 == 0...
+    f.write('\n') # just to space out things
 # %%
