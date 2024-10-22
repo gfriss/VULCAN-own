@@ -318,7 +318,7 @@ def plot_evo_layer(dat_list, spec, layer = 0, figname = None):
     ''' Plots the evolution of a given species in a given layer for a list of simulations.'''
     fig, ax = plt.subplots()
     for i in range(len(dat_list)):
-        ax.plot(dat_list[i]['variable']['t_time'], dat_list[i]['variable']['y_time'][:, 0, dat_list[i]['variable']['species'].index(spec)], label = i)
+        ax.plot(dat_list[i]['variable']['t_time'], dat_list[i]['variable']['y_time'][:, layer, dat_list[i]['variable']['species'].index(spec)], label = i)
     ax.set_xlabel('Time [s]')
     ax.set_ylabel('n [cm-3]')
     ax.set_yscale('log')
