@@ -1198,7 +1198,6 @@ class Integration(object):
         var.y_time.append(var.y)
         #var.ymix_time.append(var.ymix.copy())
         var.t_time.append(var.t)
-        var.k_time.append(var.k)
         
     
         # only used in PI_control
