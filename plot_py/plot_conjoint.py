@@ -7,6 +7,10 @@ import os
 import sys
 sys.path.insert(0, '../') # including the upper level of directory for the path of modules
 import parallel_functions as pf
+# setting up plot style
+import plot_reset as pr
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
+
 
 nsim_dist = 15 # distances, for now
 nsim_star = 13 # stars, for now
@@ -67,8 +71,7 @@ def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
 
-def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None, f_size = 13, l_size = 12,\
-                  yscale = 'log', mol = 'HCN', norm = 'linear', met_flux = True):
+def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None, norm = 'linear', met_flux = True):
     ''' Plots values, let it be rainout rate, end-of-simulation time, convergence, etc., in a pcolormesh plot.
         Diastance is X, teff is Y and values is C in documentation. Figure can be saved if needed.
         It is possible to highlight converged simulations with an edge using conv which shoukld be a 1D list of
@@ -79,7 +82,7 @@ def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None
     cmap.set_under('none')
     cm = ax.pcolormesh(a, T, values, cmap = cmap, norm = norm, edgecolor = conv, linewidth = 0.05, snap = True)
     cbar = fig.colorbar(cm)
-    cbar.set_label(val_label, fontsize = f_size)
+    cbar.set_label(val_label)
     if met_flux:
         cbar.ax.axhline(min_flux_met, c = 'w')
         cbar.ax.axhline(max_flux_met, c = 'w')
@@ -91,50 +94,45 @@ def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None
     #            T_anchor = T[i][j]
     #            T_size = T[i + 1, j] - T[i, j]
     #            ax.add_patch(plt.Rectangle((a_anchor, T_anchor), a_size, T_size, fc='none', ec='black', lw=0.5, clip_on=False))
-    ax.set_ylabel(r'T$_{eff}$ [K]', fontsize = f_size)
-    ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]', fontsize = f_size)
+    ax.plot(0.728, 5400, color = 'orange', marker = '*')
+    ax.set_ylabel(r'T$_{eff}$ [K]')
+    ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
     #ax.set_xscale('log')
     ax.invert_xaxis()
-    ax.tick_params(which = 'both', direction = 'out', width = 1, length = 4)
-    ax.tick_params(axis = 'both', labelsize = l_size)
     if figname != None:
         fig.savefig(os.path.join(plot_folder, figname))
 
 
 #%%
 T_eff_list = list(star_df.T_eff)
-a_list = []
+Seff_list = []
 
 for star in star_df.Name:
-    #new_a_list = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = 1.1)
-    new_a_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
-    i = 0
-    for f in sorted(os.listdir(output_folder)):
-        if 'star_' + star in f: # they are not in separate folder so dealing with only relevant files
-            if new_a_list[i] not in a_list:
-                a_list.append(new_a_list[i]) # save the new value
-                i += 1
+    new_Seff_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
+    Seff_list += list(new_Seff_list)
             
-ncol = len(a_list)
+ncol = len(Seff_list)
 #conv_matrix = [[0 for _ in range(ncol)] for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
 conv_matrix = [['none' for _ in range(ncol)] for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
 rain_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
 end_time_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
-
+#name_matrix = [['' for _ in range(ncol)] for _ in range(len(T_eff_list))] # for testing data collection
 for j,star in enumerate(star_df.Name):
     #new_a_list = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = 1.1)
-    new_a_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
+    new_Seff_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
     row_idx = j
     i = 0
     for f in sorted(os.listdir(output_folder)):
+        
         if 'star_' + star in f: # they are not in separate folder so dealing with only relevant files
-            column_idx = np.where(a_list == new_a_list[i])[0][0]
+            column_idx = Seff_list.index(new_Seff_list[i])#np.where(Seff_list == new_Seff_list[i])[0][0]
             with open(os.path.join(output_folder, f), 'rb') as handle:
                 data = pickle.load(handle)
             
             conv_matrix[row_idx][column_idx] = check_convergence(data)
             rain_matrix[row_idx][column_idx] = rainout(data)
             end_time_matrix[row_idx][column_idx] = data['variable']['t']
+            #name_matrix[row_idx][column_idx] = f
             i += 1
 #%%
 #T_eff_list.append(T_eff_list[-1] + (T_eff_list[-1]-T_eff_list[-2]))
@@ -147,11 +145,11 @@ for row in conv_matrix:
     flat_conv.extend(row)
 print('#converged: {}'.format(flat_conv.count('black')))
 #%%
-plot_meshgrid(a_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint.pdf')
+plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint.pdf')
 #%%
-plot_meshgrid(a_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint_S_eff.pdf')
+plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', norm = mc.LogNorm(vmin = 1e-10), figname = 'HCN_rainout_conjoint_S_eff.pdf')
 # %%
-plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf', met_flux = False)
+plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf', met_flux = False)
 # %%
-plot_meshgrid(a_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-4), figname = 'endtime_conjoint_S_eff.pdf', met_flux = False)
+plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-4), figname = 'endtime_conjoint_S_eff.pdf', met_flux = False)
 # %%

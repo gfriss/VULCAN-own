@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from cycler import cycler
 
 def reset_plt(ticksize, fontsize, fxsize, fysize):
-    plt.style.use('seaborn-v0_8-white')
+    plt.style.use('seaborn-white') # was seaborn-v0_8-white
     plt.rcParams['xtick.labelsize'] = ticksize
     plt.rcParams['ytick.labelsize'] = ticksize
     plt.rcParams['xtick.major.width'] = 1.25
