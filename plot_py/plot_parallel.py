@@ -11,6 +11,7 @@ from matplotlib.collections import LineCollection
 import pickle
 from scipy.optimize import curve_fit
 import os
+import pandas as pd
 wd = os.getcwd()
 os.chdir('../')
 from chem_funs import nr, re_wM_dict, re_dict
@@ -30,8 +31,12 @@ bc_spec = 'H2'
 bc_linestyle = '-'
 
 # setting up the C/O case
-co2_for_CtoO_range = np.linspace(0,0.1,nsim, endpoint = True)
+co2_for_CtoO_range = np.linspace(0.001,0.1,nsim, endpoint = True)
 mixing_folder = '/scratch/s2555875/mixing_files/'
+
+# setting up star case
+star_df = pd.read_csv('/scratch/s2555875/stellar_flux/stellar_params.csv')
+T_eff = star_df.T_eff
 
 # setting up the distance case
 helios_output_folder = '/scratch/s2555875/HELIOS/output/'
@@ -582,7 +587,6 @@ def plot_pt(dat_list, param_list, sim_type, figname = None):
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
     
-#%%
 def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists, figname = None):
     fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27))#, figsize = (22,18), tight_layout = True) # take out tight layout here if legends are below subplots
     ax = ax.flatten()
@@ -643,7 +647,49 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
     
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
+#%%    
+def get_rad_prof(star):
+    ''' Taken from parallel_functions.py but changed so relative passes are correct. 
+        Gives back the location of the needed stellar radiation profile file for a given star.'''
+    rad_file = ''
+    if star == 'EARLY_SUN':
+        rad_file = '../atm/stellar_flux/Pearce_B_solar.txt'
+    elif star == 'SUN':
+        rad_file = '../atm/stellar_flux/Gueymard_solar.txt'
+    else:
+        rad_file = '/scratch/s2555875/stellar_flux/' + star.lower() + '.txt' # just to make sure it is lower case
+    return rad_file
+
+h = 6.626197e-27 # Planck constant in cgs (erg s)
+c = 2.997925e10 # speed of light in cgs (cm/s)
+k = 1.380622e-16 # Boltzmann constant in cgs (erg/K)
+def planck(l, T):
+    l_cm = l*1e-6 # convert nm to cm
+    B = ( 2 * h * (c**2) / (l_cm**5) ) / ( np.exp(h*c/(l_cm*k*T)) -1 ) # units in erg / cm**3 / s
+    return B / 1e6 # units in erg / cm**2 / nm / s
     
+def plot_stellar_spectra(figname = None):
+    fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27), sharex = True, sharey = True)
+    ax = ax.flatten()
+    i = 0
+    lam = np.genfromtxt('../atm/stellar_flux/Gueymard_solar.txt', names = ['lambda', 'flux'], comments = '#')['lambda'] # in nm
+    for star,T in zip(star_df.Name, star_df.T_eff):
+        spectrum = np.genfromtxt(get_rad_prof(star), names = ['lambda', 'flux'], comments = '#')
+        ax[i].plot(spectrum['lambda'], spectrum['flux'], label = star)
+        ax[i].plot(lam, planck(lam, T), linestyle = '--', label = 'Black body')
+        ax[i].set_xscale('log')
+        ax[i].set_yscale('log')
+        ax[i].set_ylim((1e2,None))
+        ax[i].legend(loc = 'center right')
+        if i >= 12: 
+            ax[i].set_xlabel(r'$\lambda$ [nm]')
+        if i%4 == 0:
+            ax[i].set_ylabel(r'F [ergs cm$^{-2}$ s$^{-1}$ nm$^{-1}$]')
+        i += 1
+    
+        
+    if figname != None:
+        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
 #%%
 # BC case with helios TP
 data_bc, bc_flux = read_in('BC', nsim, start_str = 'helios_tp_')
@@ -694,10 +740,8 @@ plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_noncon
 plot_prod_dest(data_CtoO, C_to_O, 'CtoO', figname = 'prod_dest_CtoO.pdf')
 # %%
 # star case
-import pandas as pd
 data_star = read_in('star', number_of_sim = 13)
 hcn_rain_star, rain_star = [], []
-T_eff = pd.read_csv('/scratch/s2555875/stellar_flux/stellar_params.csv').T_eff
 
 for d in data_star:
     hcn_rain_star.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
@@ -717,6 +761,7 @@ plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_non
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
 plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star.pdf')
 plot_pt(data_star, T_eff, 'star', figname = 'PT_star.pdf')
+plot_stellar_spectra('stellar_spectra_comp.pdf')
 # %%
 # distance case
 a_list = np.linspace(0.82, 1.4, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
