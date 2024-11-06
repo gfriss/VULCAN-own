@@ -29,7 +29,10 @@ for filename in os.listdir(fits_dir):
     d_star = stellar_table.loc[stellar_table.Name == star.upper()].Distance.iloc[0] * pc / u.m
 
     for wl,flux in zip(spec['WAVELENGTH'],spec['FLUX']):
-        new_str += '{:<12}'.format(wl*0.1) + "{:>12.2E}".format(float(flux*10. *(d_star/r_star)**2        )) + '\n'
+        if flux > 0: # there's negative values..., could do something smoother because it's still a big drop many a times
+            new_str += '{:<12}'.format(wl*0.1) + "{:>12.2E}".format(float(flux*10. *(d_star/r_star)**2        )) + '\n'
+        else:
+            new_str += '{:<12}'.format(wl*0.1) + "{:>12.2E}".format(0.5) + '\n' # trying whether zeros affect the convergence
     
     new_file = os.path.join(flux_dir,star + '.txt')
     with open(new_file, 'w') as g:
