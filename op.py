@@ -998,27 +998,27 @@ class Integration(object):
     def update_phi_esc(self, var, atm): # updating diffusion-mimited escape
     
         # Diffusion limited escape 
-        #for sp in vulcan_cfg.diff_esc:
+        for sp in vulcan_cfg.diff_esc:
 
             #atm.top_flux[species.index(sp)] = - atm.Dzz[-1,species.index(sp)] *var.y[-1,species.index(sp)] /atm.Hp[-1]
-        #    atm.top_flux[species.index(sp)] = - atm.Dzz[-1,species.index(sp)]*var.y[-1,species.index(sp)]*( 1./atm.Hp[-1] -atm.ms[species.index(sp)]* atm.g[-1]/(Navo*kb*atm.Tco[-1])     )            
-        #    atm.top_flux[species.index(sp)] = max(atm.top_flux[species.index(sp)], vulcan_cfg.max_flux*(-1))
+            atm.top_flux[species.index(sp)] = - atm.Dzz[-1,species.index(sp)]*var.y[-1,species.index(sp)]*( 1./atm.Hp[-1] -atm.ms[species.index(sp)]* atm.g[-1]/(Navo*kb*atm.Tco[-1])     )            
+            atm.top_flux[species.index(sp)] = max(atm.top_flux[species.index(sp)], vulcan_cfg.max_flux*(-1))
             
             # print ("Escape flux of " + sp + "{:>10.2e}".format(atm.top_flux[species.index(sp)]))
             # print ("diffusion-limite value: " + "{:>10.2e}".format(- atm.Dzz[-1,species.index(sp)]*var.y[-1,species.index(sp)]*( 1./atm.Hp[-1] -atm.ms[species.index(sp)]* atm.g[-1]/(Navo*kb*atm.Tco[-1])     )) )
             #print ("Test  " + sp + "{:>10.2e}".format(atm.Dzz[-1,species.index(sp)] *var.y[-1,species.index(sp)] /atm.Hp[-1]) )
 
         # energy and diffusion limited fro Pearce (2022)
-        A = 2e12
-        B2 = 0.006
-        S = 30 # for red and 9 for ox
-        y = var.y.copy()
-        dz = atm.dz.copy()
-        N_tot = np.sum(np.sum(y[:,atm.gas_indx], axis=1) * dz)
-        for sp in vulcan_cfg.diff_esc:
-            N_i = np.sum(np.sum(y[:,species.index(sp)]) * dz)
-            fl = -1. * (A*S / (np.sqrt(1+B2*np.power(S,2)))) * (N_i/N_tot)
-            atm.top_flux[species.index(sp)] = fl
+        #A = 2e12
+        #B2 = 0.006
+        #S = 30 # for red and 9 for ox
+        #y = var.y.copy()
+        #dz = atm.dz.copy()
+        #N_tot = np.sum(np.sum(y[:,atm.gas_indx], axis=1) * dz)
+        #for sp in vulcan_cfg.diff_esc:
+        #    N_i = np.sum(np.sum(y[:,species.index(sp)]) * dz)
+        #    fl = -1. * (A*S / (np.sqrt(1+B2*np.power(S,2)))) * (N_i/N_tot)
+        #    atm.top_flux[species.index(sp)] = fl
         #    print(str(sp) + " escape flux is {:.2e} cm2/s".format(fl))
                 
         return atm
