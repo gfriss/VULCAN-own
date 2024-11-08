@@ -676,10 +676,10 @@ def plot_stellar_spectra(figname = None):
     for star,T in zip(star_df.Name, star_df.T_eff):
         spectrum = np.genfromtxt(get_rad_prof(star), names = ['lambda', 'flux'], comments = '#')
         ax[i].plot(spectrum['lambda'], spectrum['flux'], label = star)
-        ax[i].plot(lam, planck(lam, T), linestyle = '--', label = 'Black body')
+        #ax[i].plot(lam, planck(lam, T), linestyle = '--', label = 'Black body')
         ax[i].set_xscale('log')
         ax[i].set_yscale('log')
-        ax[i].set_ylim((1e2,None))
+        #ax[i].set_ylim((1e2,None))
         ax[i].legend(loc = 'center right')
         if i >= 12: 
             ax[i].set_xlabel(r'$\lambda$ [nm]')
