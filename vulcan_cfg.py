@@ -38,7 +38,7 @@ ini_mix = 'table' # Options: 'EQ', 'const_mix', 'vulcan_ini', 'table' (for 'vulc
 # Initialsing uniform (constant with pressure) mixing ratios (only reads when ini_mix = const_mix)
 #const_mix = {'N2':0.78, 'O2':0.20, 'H2O':1e-6,  'CO2':4E-4, 'Ar':9.34e-3, 'SO2': 2e-10} 
 #const_mix = {'H2':0.9, 'N2':0.1, 'H2O':1e-4, 'CH4': 2e-6, 'Ar':9.34e-3, 'SO2': 2e-10} # Ar and SO2 left from original
-const_mix = {'CO2':0.9, 'N2':0.1, 'H2O':1e-5, 'CH4':1e-7}#, 'Ar':9.34e-3, 'SO2':2e-10} 
+const_mix = {'N2':8.929e-01, 'CO2':0.1, 'H2O':4.112e-03, 'CH4':3e-3, 'O2':1e-7}
 
 # ====== Setting up photochemistry ======
 use_photo = True
@@ -95,7 +95,7 @@ update_frq = 100
 
 # ====== Setting up the boundary conditions ======
 # Boundary Conditions:
-use_topflux = True
+use_topflux = False
 use_botflux = True
 use_fix_sp_bot = {} #{"H2O":0.00894, 'CO2':4E-4, "H2O_l_s":0} #   0.0143 for 40% humidity 0.0033 for 20% humidity in US standard 1967 # fixed mixing ratios at the lower boundary
 diff_esc = ['H2', 'H'] # species for diffusion-limit escape at TOA
@@ -142,7 +142,7 @@ dt_var_max = 2.
 dt_var_min = 0.5
 count_min = int(2E2) #120 # already built in minimum countto check
 count_max = int(2E5) #int(3E4)
-atol = 1.E-2 #1.E-1 # Try decreasing this if the solutions are not stable
+atol = 1.E-6 # Try decreasing this if the solutions are not stable
 mtol = 1.E-22
 mtol_conv = 1.E-16
 pos_cut = 0
@@ -155,8 +155,8 @@ flux_cri = 0.1
 flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)
 
 # ====== Setting up numerical parameters for Ros2 ODE solver ====== 
-rtol = 9e-2#1.5              # relative tolerence for adjusting the stepsize 
-post_conden_rtol = 0.2 # switched to this value after fix_species_time
+rtol = 5e-2              # relative tolerence for adjusting the stepsize 
+post_conden_rtol = 1.2# switched to this value after fix_species_time
 
 # ====== Setting up for ouwtput and plotting ======
 # plotting:

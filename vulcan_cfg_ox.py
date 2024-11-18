@@ -38,7 +38,7 @@ ini_mix = 'table' # Options: 'EQ', 'const_mix', 'vulcan_ini', 'table' (for 'vulc
 # Initialsing uniform (constant with pressure) mixing ratios (only reads when ini_mix = const_mix)
 #const_mix = {'N2':0.78, 'O2':0.20, 'H2O':1e-6,  'CO2':4E-4, 'Ar':9.34e-3, 'SO2': 2e-10} 
 #const_mix = {'H2':0.9, 'N2':0.1, 'H2O':1e-4, 'CH4': 2e-6, 'Ar':9.34e-3, 'SO2': 2e-10} # Ar and SO2 left from original
-const_mix = {'CO2':0.9, 'N2':0.1, 'H2O':1e-5, 'CH4':1e-7}#, 'Ar':9.34e-3, 'SO2':2e-10} 
+const_mix = {'N2':8.929e-01, 'CO2':0.1, 'H2O':4.112e-03, 'CH4':3e-3, 'O2':1e-7}
 
 # ====== Setting up photochemistry ======
 use_photo = True
@@ -142,7 +142,7 @@ dt_var_max = 2.
 dt_var_min = 0.5
 count_min = int(2E2) #120 # already built in minimum countto check
 count_max = int(2E5) #int(3E4)
-atol = 1.E-6 #1.E-1 # Try decreasing this if the solutions are not stable
+atol = 1.E-6 # Try decreasing this if the solutions are not stable
 mtol = 1.E-22
 mtol_conv = 1.E-16
 pos_cut = 0

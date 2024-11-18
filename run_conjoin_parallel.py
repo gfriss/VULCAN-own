@@ -16,7 +16,7 @@ scratch = '/scratch/s2555875' # place to store outputs
 output_folder = os.path.join(scratch, 'output/star_dist/')
 TP_folder = os.path.join(scratch, 'TP_files/star_dist')
 conv_file = os.path.join(scratch, 'converged.txt')
-check_conv = True
+check_conv = False
 # ------setting up parameterspace for all runs------
 # star type
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
@@ -62,8 +62,8 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         with open(conv_file, 'r') as f:
             conv_text = f.read()
         if out_file not in conv_text:
-            atol_change = ','.join(['atol', str(1.E-10), 'val'])
-            rtol_change = ','.join(['post_conden_rtol', str(1.5), 'val'])
+            atol_change = ','.join(['atol', str(1.E-30), 'val'])
+            rtol_change = ','.join(['post_conden_rtol', str(1.e-5), 'val'])
             # first create simulation folder
             subprocess.check_call(['mkdir', sim_folder])
             # then make new cfg file
