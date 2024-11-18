@@ -679,7 +679,7 @@ def plot_stellar_spectra(figname = None):
         #ax[i].plot(lam, planck(lam, T), linestyle = '--', label = 'Black body')
         ax[i].set_xscale('log')
         ax[i].set_yscale('log')
-        #ax[i].set_ylim((1e2,None))
+        ax[i].set_ylim((1e1,1e11))
         ax[i].legend(loc = 'center right')
         if i >= 12: 
             ax[i].set_xlabel(r'$\lambda$ [nm]')
