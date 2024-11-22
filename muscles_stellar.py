@@ -37,3 +37,48 @@ for filename in os.listdir(fits_dir):
     new_file = os.path.join(flux_dir,star + '.txt')
     with open(new_file, 'w') as g:
         g.write(new_str)
+# %%
+# testing spectra  to make sure which one VULCAN and HELIOS uses
+# i.e. top of tmopsher or on surface of star...
+import numpy as np
+import matplotlib.pyplot as plt
+# solar spectra from VULCAN:
+gueymard_vulcan = np.genfromtxt('/home/s2555875/VULCAN-2/atm/stellar_flux/Gueymard_solar.txt', comments='#', names = ['lambda', 'flux'])
+lam_vul = gueymard_vulcan['lambda']
+F_vul = gueymard_vulcan['flux']
+# solar spectra from Gueymard et al (2018) directly
+# this is definitely at the top of the atmosphere
+gueymard_og = np.genfromtxt('/scratch/s2555875/stellar_flux/gueymard_og.txt', comments='#', usecols=(0,1), names = ['lambda', 'flux'])
+lam_og = gueymard_og['lambda']
+F_og = gueymard_og['flux']*1e3 # unit conversion from Wm-2nm-1 to ergs-1cm-2nm-1
+# plot for comparison with scaling original to solar surface
+F_scaled = F_og*(1.496e8/6.955e5)**2 # F_TOA * (a/R_*)**2
+plt.plot(lam_og, F_og, label = 'Gueymard et al. (2018)')
+plt.plot(lam_vul, F_vul, label = 'from VULCAN')
+plt.plot(lam_og, F_scaled, linestyle = '--', label = 'converted')
+plt.yscale('log')
+plt.xscale('log')
+plt.legend()
+plt.savefig('/scratch/s2555875/plot/solar_spectra_check.pdf')
+#%%
+# creating the early sun stellar spectrum from the file from Claire et al (2012) with a solar age of 0.6 Gyr
+
+lam_f = np.genfromtxt('/scratch/s2555875/stellar_flux/early_sun_to_convert.txt', comments = '#', names = ['lambda', 'flux'])
+# first convert to aangstrom because the conversiion factor uses aangstroms
+lam = lam_f['lambda']*10
+F = lam_f['flux']*0.1
+# then do the conversion
+F *= 1.98648e-8 / lam
+# then convert back to nm
+lam *= 0.1
+F *= 10
+# lastly, need to scale from top of atmosphere to solar surface
+F *= (1.496e8/6.955e5)**2
+# and write to file
+new_str = '# WL(nm)\t Flux(ergs/cm**2/s/nm)\n'
+for wl,flux in zip(lam,F):
+    new_str += '{:<12}'.format(wl) + "{:>12.2E}".format(flux) + '\n'
+
+new_file = os.path.join(flux_dir, 'early_sun.txt')
+with open(new_file, 'w') as g:
+    g.write(new_str)
