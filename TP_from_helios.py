@@ -33,9 +33,7 @@ def create_param_file(sim_name, dist = None, sname = None, manual = False, r_sta
                 new_str += change_line(line, 3, 'no')
             elif dist != None and 'orbital distance' in line:
                 new_str += change_line(line, 6, str(dist))
-            elif sname != None and sname != 'EARLY_SUN' and 'stellar spectral model' in line: # used blackbody for early sun, set as default
-                new_str += change_line(line, 4, 'file')
-            elif sname != None and 'path to stellar spectrum file' in line:
+            elif sname != None and 'path to stellar spectrum file' in line: # by default it asks for dile in param.dat
                 new_str += change_line(line, 8, './star_tool/output/{}.h5'.format(sname.lower()))
             elif sname != None and sname not in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
                 new_str += change_line(line, 8, '/r50_kdistr/muscles/{}'.format(sname.lower()))
@@ -45,7 +43,7 @@ def create_param_file(sim_name, dist = None, sname = None, manual = False, r_sta
                 if manual:
                     new_str += change_line(line, 2, 'manual')
                 else:
-                    new_str += change_line(line, 2, sname.upper() + '_own')
+                    new_str += change_line(line, 2, sname.upper() + '_own') # all info on planets are in HELIOS/source/planet_database.py
             elif r_star != None and 'radius star [R_Sun]' in line:
                 new_str += change_line(line, 6, str(r_star))
             elif T_star != None and 'temperature star [K]' in line:
@@ -66,21 +64,22 @@ def read_helios_tp(sim_name):
 
 def create_new_vulcan_pt(sim_name, subfolder = ''):
     T_h, P_h = read_helios_tp(sim_name)
-    T_P_interp = interpolate.interp1d(P_h, T_h, bounds_error = False, fill_value = "extrapolate")
+    #T_P_interp = interpolate.interp1d(P_h, T_h, bounds_error = False, fill_value = "extrapolate")
 
     vulcan_atm = np.genfromtxt('/home/s2555875/VULCAN-2/atm/atm_Earth_Jan_Kzz.txt', dtype = None, comments = '#', skip_header = 1, names = True)
     P_vulcan = vulcan_atm['Pressure']
     Kzz_vulcan = vulcan_atm['Kzz']
-    T_vulcan_helios = T_P_interp(P_vulcan)
+    P_Kzz = interpolate.interp1d(P_vulcan, Kzz_vulcan, bounds_error = False, fill_value = "extrapolate")
+    Kzz_h = P_Kzz(P_h)
 
     with open(os.path.join(scratch, 'TP_files', subfolder, '{}.txt'.format(sim_name)), 'w') as f:
         f.write('# (dyne/cm2) (K)     (cm2/s)\nPressure\tTemp\tKzz\n')
-        for p,t,z in zip(P_vulcan,T_vulcan_helios,Kzz_vulcan):
+        for p,t,z in zip(P_h,T_h,Kzz_h):
             f.write('{:.3e}\t{:.1f}\t{:.3e}\n'.format(p,t,z))
 #%%
-#create_new_vulcan_pt('1')
+#create_new_vulcan_pt('archean')
 #%%
-a_list = np.linspace(0.82, 1.4, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, keep surface temp between 0 and 100 Celsius after trial
+a_list = np.linspace(0.85, 1.35, nsim_dist, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
 
 def run_many_dist(dist_list):
     for i,a in enumerate(dist_list):
@@ -118,13 +117,22 @@ def run_many_planets(star_table):
 #%%
 def run_star_dist(star_table, factor = 1.1):
     param_matrix = []
-    for star in star_table.Name:
-        dist = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = factor)
+    for star,a_min,a_max in zip(star_table.Name, star_table.a_min, star_table.a_max):
+        #dist = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = factor)
+        # for a few starts the original method got too cold surface temperatures so decided to test 
+        # and make sure surface temperature are between 0and 100 Celsiusfor all
+        dist = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
         for d in dist:
             param_matrix.append([star, d])
 
     for i,sim_i in enumerate(param_matrix):
         i_dist = i%nsim_dist
+        #if i_dist not in [0,14]:
+        #    continue # testing extremities
+        #if sim_i[0] in ['EARLY_SUN', 'SUN', 'GJ1214', 'GJ674', 'GJ15A', 'HD40307', 'TRAPPIST-1', 'GJ676A', 'HD97658', 'HD149026', 'WASP17','GJ729']:
+        #    continue
+        #if sim_i[0] in ['HD85512'] and i_dist == 14:
+        #    continue
         T = star_table.loc[star_table.Name == sim_i[0]].T_eff.iloc[0]
         R = star_table.loc[star_table.Name == sim_i[0]].R.iloc[0]
         sim = 'star_{}_'.format(sim_i[0]) # param matrix first goes through the distances
