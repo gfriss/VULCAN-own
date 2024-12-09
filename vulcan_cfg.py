@@ -13,11 +13,12 @@ use_lowT_limit_rates = False
 gibbs_text = '/home/s2555875/VULCAN-2/thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
 cross_folder = '/home/s2555875/VULCAN-2/thermo/photo_cross/'
 com_file = '/home/s2555875/scratch/VULCAN-CRAHCNO/all_compose.txt'
-atm_file = '/home/s2555875/VULCAN-2/atm/TP_helios.txt' # TP and Kzz (optional) file
-sflux_file = '/home/s2555875/VULCAN-2/atm/stellar_flux/Pearce_B_solar.txt' # This is the flux density at the stellar surface
+atm_file = '/scratch/s2555875/TP_files/archean.txt' # TP and Kzz (optional) file
+sflux_file = '/scratch/s2555875/stellar_flux/early_sun.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_top_Earth.txt' # the file for the top boundary conditions
 bot_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_bot_Pearce_B.txt' # the file for the lower boundary conditions
 vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
+#vul_ini = '/scratch/s2555875/output/archean.vul'
 # output:
 output_dir = '/home/s2555875/scratch/output/'
 plot_dir = '/home/s2555875/scratch/plot/'
@@ -142,9 +143,9 @@ dt_var_max = 2.
 dt_var_min = 0.5
 count_min = int(2E2) #120 # already built in minimum countto check
 count_max = int(2E5) #int(3E4)
-atol = 1.E-6 # Try decreasing this if the solutions are not stable
+atol = 1.E-3 # Try decreasing this if the solutions are not stable
 mtol = 1.E-22
-mtol_conv = 1.E-16
+mtol_conv = 1.E-15
 pos_cut = 0
 nega_cut = -1.
 loss_eps = 1e12 # for using BC
@@ -156,7 +157,7 @@ flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)
 
 # ====== Setting up numerical parameters for Ros2 ODE solver ====== 
 rtol = 5e-2              # relative tolerence for adjusting the stepsize 
-post_conden_rtol = 1.2# switched to this value after fix_species_time
+post_conden_rtol = 0.2# switched to this value after fix_species_time
 
 # ====== Setting up for ouwtput and plotting ======
 # plotting:
