@@ -149,11 +149,11 @@ def semi_major_list_from_Seff(df, name, n, factor = 1):
 
 def Seff_list(df, name, n, factor = 1):
     ''' Gives back a range of effective radiations in the habitable zone. Factor changes the vaules so
-        would not be too close to the edge (if needed).'''
+        would not be too close to the edge (if needed, should be >=1).'''
     t_eff = df.loc[df.Name == name].T_eff.iloc[0]
     s_moist_gh = hz_inner_s_eff(t_eff)
     s_max_gh = hz_outer_s_eff(t_eff)
-    s_eff = np.linspace(s_moist_gh/factor, s_max_gh*factor, n)
+    s_eff = np.linspace(s_moist_gh*factor, s_max_gh/factor, n)
     return s_eff
 
 # %%
