@@ -337,6 +337,7 @@ def plot_many_layers(dat, n, mol = None, xscale = 'log', yscale = 'log', ylim = 
     ax[i].set_yscale(yscale)
     ax[i].set_xscale(xscale)
     ax[i].set_title('Layer ' + str(n[-(i+1)]))
+    #ax[i].set_xlim((1e12, None))
   if ylim != None:
       ax[0].set_ylim(ylim)
   fig.legend(labels = lab, bbox_to_anchor = (1.12, 0.65))

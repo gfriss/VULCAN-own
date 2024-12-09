@@ -107,8 +107,10 @@ def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None
 T_eff_list = list(star_df.T_eff)
 Seff_list = []
 
-for star in star_df.Name:
-    new_Seff_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
+for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log):
+    #new_Seff_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
+    a_star = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
+    new_Seff_list = np.power(10, Llog) / np.power(a_star, 2)
     Seff_list += list(new_Seff_list)
             
 ncol = len(Seff_list)
@@ -117,9 +119,13 @@ conv_matrix = [['none' for _ in range(ncol)] for _ in range(len(T_eff_list))] # 
 rain_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
 end_time_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
 #name_matrix = [['' for _ in range(ncol)] for _ in range(len(T_eff_list))] # for testing data collection
-for j,star in enumerate(star_df.Name):
+#for j,star in enumerate(star_df.Name):
+j = 0
+for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log):
     #new_a_list = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = 1.1)
-    new_Seff_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
+    #new_Seff_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
+    a_star = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
+    new_Seff_list = np.power(10, Llog) / np.power(a_star, 2)
     row_idx = j
     i = 0
     for f in sorted(os.listdir(output_folder)):
@@ -134,6 +140,7 @@ for j,star in enumerate(star_df.Name):
             end_time_matrix[row_idx][column_idx] = data['variable']['t']
             #name_matrix[row_idx][column_idx] = f
             i += 1
+    j += 1
 #%%
 #T_eff_list.append(T_eff_list[-1] + (T_eff_list[-1]-T_eff_list[-2]))
 #a_max = max(a_list)
@@ -151,5 +158,5 @@ plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$
 # %%
 plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf', met_flux = False)
 # %%
-plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-4), figname = 'endtime_conjoint_S_eff.pdf', met_flux = False)
+plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', norm = mc.LogNorm(), figname = 'endtime_conjoint_S_eff.pdf', met_flux = False)
 # %%

@@ -642,7 +642,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+3].set_xlim((125,385))
         handles, labels = ax[i+1].get_legend_handles_labels()
         fig.tight_layout(h_pad = 5.8) # use if legends are below subplots
-        fig.legend(handles, labels, loc = 'center', bbox_to_anchor = (legend_xanchors[i//4], legend_yanchors[i//4]), ncols = 5)#, ncols = 2) took out for legends on side, also use upper right for loc
+        fig.legend(handles, labels, loc = 'center', bbox_to_anchor = (legend_xanchors[i//4], legend_yanchors[i//4]), ncol = 5)#, ncols = 2) took out for legends on side, also use upper right for loc
         i += 4
     
     if figname != None:
@@ -764,7 +764,7 @@ plot_pt(data_star, T_eff, 'star', figname = 'PT_star.pdf')
 plot_stellar_spectra('stellar_spectra_comp.pdf')
 # %%
 # distance case
-a_list = np.linspace(0.82, 1.4, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
+a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
 
 data_dist, T_surf = read_in('dist', nsim)
 hcn_rain_dist, rain_dist = [], []
