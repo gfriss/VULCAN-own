@@ -32,14 +32,14 @@ co2_for_CtoO_range = np.linspace(0.001,0.1,nsim, endpoint = True)
 star_df = pf.read_stellar_data(main_folder + 'stellar_flux/stellar_params.csv') # NOT necessarily nsim long...
 a_star_list  = [0.0296, 0.0770, 0.0780, 0.1550, 0.1780, 0.3840, 0.4945, 0.6295, 0.6976, 1., 1.1623, 1.9047, 2.3155]
 # distance case
-a_list = np.linspace(0.82, 1.4, 15, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, keep surface temp between 0 and 100 Celsius after trial
+a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
 # in case new sims with HELIOS TP
 helios_tp = ''
 #helios_tp = 'helios_tp_'
 # local meteorite case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
 
-check_conv = False
+check_conv = True
 
 # ------end of parameter set up-----
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
@@ -68,62 +68,42 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         BC_bot_file = main_folder + 'BC_files/' + 'BC_bot_' + sim + '.txt'
         subprocess.check_call(['python', 'gen_BC.py', sp_names, sp_fluxes, vdep, BC_bot_file])
         # then use the new BC file in cfg file with output name
-        BC_bot_change = 'bot_BC_flux_file' + ',' + BC_bot_file + ',' + 'str'
+        BC_bot_change = ','.join(['bot_BC_flux_file', BC_bot_file, 'str'])
         # then change vulcan_cfg.py file
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, BC_bot_change, out_change])
     elif run_type == 'CtoO':
         # generate new mixing file
         new_mixing_file = main_folder + 'mixing_files/' + sim + 'mixing.txt'
-        mixing_change = 'vul_ini' + ',' + new_mixing_file + ',' + 'str'
+        mixing_change = ','.join(['vul_ini', new_mixing_file, 'str'])
         pf.gen_mixing(co2_for_CtoO_range[i], new_mixing_file)
         # then change vulcan_cfg.py file
-        if check_conv:
-            with open(conv_file, 'r') as f:
-                conv_text = f.read()
-            if out_file not in conv_text:
-                atol_change = ','.join(['atol', str(1.E-99), 'val'])
-                rtol_change = ','.join(['post_conden_rtol', str(1.e-5), 'val'])
-                subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change, atol_change, rtol_change])
-            else:
-                continue
-        else:
-            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
     elif run_type == 'star':
         # new stellar radiation files already created, need to update vulcan_cfg with filename and r_star and orbit_radius
         star_name = star_df.Name.iloc[i]
         new_rad_file = pf.get_rad_prof(star_name)
-        rad_file_change = 'sflux_file' + ',' + new_rad_file + ',' + 'str'
+        rad_file_change = ','.join(['sflux_file', new_rad_file, 'str'])
         new_r_star = str(star_df.loc[star_df.Name == star_name].R.iloc[0])
-        r_star_change = 'r_star' + ',' + new_r_star + ',' + 'val'
+        r_star_change = ','.join(['r_star', new_r_star, 'val'])
         #new_orbit_radius = str(pf.semi_major_from_S_eff(star_df, star_name))
         new_orbit_radius = str(a_star_list[i])
-        orbit_radius_change = 'orbit_radius' + ',' + new_orbit_radius + ',' + 'val'
+        orbit_radius_change = ','.join(['orbit_radius', new_orbit_radius, 'val'])
         # new TP files are already created with HELIOS, need to update vulcan_cfg with filename and orbit_radius
         # surf temps are similar, but better to use corresponding ones
         tp_file = main_folder + 'TP_files/' + sim + '.txt'
-        tp_change = 'atm_file' + ',' + tp_file + ',' + 'str'
-        if check_conv:
-            with open(conv_file, 'r') as f:
-                conv_text = f.read()
-            if out_file not in conv_text:
-                atol_change = ','.join(['atol', str(1.E-11), 'val'])
-                rtol_change = ','.join(['post_conden_rtol', str(1.3), 'val'])
-                subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change, atol_change, rtol_change])
-            else:
-                continue
-        else:
-            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change])
+        tp_change = ','.join(['atm_file', tp_file, 'str'])
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change])
     elif run_type == 'dist':
         # new TP files are already created with HELIOS, need to update vulcan_cfg with filename and orbit_radius
         tp_file = main_folder + 'TP_files/' + sim + '.txt'
-        tp_change = 'atm_file' + ',' + tp_file + ',' + 'str'
+        tp_change = ','.join(['atm_file', tp_file, 'str'])
         new_orbit_radius = str(a_list[i])
-        orbit_radius_change = 'orbit_radius' + ',' + new_orbit_radius + ',' + 'val'
+        orbit_radius_change = ','.join(['orbit_radius', new_orbit_radius, 'val'])
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, tp_change, orbit_radius_change, out_change])
     elif run_type == 'local':
         # generate new mixing ratios
         new_mixing_file = main_folder + 'mixing_files/' + sim + 'mixing.txt'
-        mixing_change = 'vul_ini' + ',' + new_mixing_file + ',' + 'str'
+        mixing_change = ','.join(['vul_ini', new_mixing_file, 'str'])
         pf.gen_mixing_local(h2_bar_list[i], new_mixing_file)
         # H2 fiddles with cinvergence so reducing error tolerances
         atol_change = ','.join(['atol', str(1.E-7), 'val'])
@@ -146,6 +126,19 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     
     # then run vulcan.py
     subprocess.check_call(['python', 'vulcan.py', '-n'])
+    # check convergence and rerun once if needed:
+    os.chdir(wd)
+    if check_conv:# == True and n_round == 1:
+        with open(conv_file, 'r') as f:
+            conv_text = f.read()
+        if out_file not in conv_text:
+            vul_ini_change = ','.join(['vul_ini', os.path.join(output_folder,out_file), 'str'])
+            ini_mix_change = ','.join(['ini_mix', 'vulcan_ini', 'str'])
+            out_file = sim + '_rerun.vul' # change this last so the initial composition will use the previous run
+            out_change = ','.join(['out_name', out_file, 'str'])
+            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, 'rerun', sim])
+            os.chdir(sim_folder)
+            subprocess.check_call(['python', 'vulcan.py', '-n'])
     # then exit simulation folder and delete it
     os.chdir(wd)
     subprocess.check_call(['rm', '-rf', sim_folder])
