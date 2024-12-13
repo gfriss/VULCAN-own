@@ -1146,7 +1146,8 @@ class Integration(object):
 
         if vulcan_cfg.use_rainout == True:
             longdy[:,self.non_gas_rain_sp_index] = 0
-        
+        longdy = longdy[:-10] # ignoring uppermost layers for convergence...
+        ymix = ymix[:-10]
         with np.errstate(divide='ignore',invalid='ignore'): # ignoring nan when devided by zero
             where_varies_most = longdy/ymix
         para.where_varies_most = where_varies_most
@@ -3074,7 +3075,7 @@ class Output(object):
     def print_prog(self, var, para):
         indx_max = np.nanargmax(para.where_varies_most)
         print ('Elapsed time: ' +"{:.2e}".format(var.t) + ' || Step number: ' + str(para.count) + '/' + str(vulcan_cfg.count_max) ) 
-        print ('longdy = ' + "{:.2e}".format(var.longdy) + '      || longdy/dt = ' + "{:.2e}".format(var.longdydt) + '  || dt = '+ "{:.2e}".format(var.dt) )      
+        print ('longdy = ' + "{:.2e}".format(var.longdy) + '      || longdy/dt = ' + "{:.2e}".format(var.longdydt) + '  || dt = '+ "{:.2e}".format(var.dt) + '  || aflux_change = '+ "{:.2e}".format(var.aflux_change) )      
         print ('from nz = ' + str(int(indx_max/ni)) + ' and ' + species[indx_max%ni])
         print ('------------------------------------------------------------------------' )
         
