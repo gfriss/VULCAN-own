@@ -312,19 +312,19 @@ def plot_evo_layer(dat, n, mol = None, xscale = 'log', yscale = 'log', ylim = No
 
 def plot_many_layers(dat, n, mol = None, xscale = 'log', yscale = 'log', ylim = None, figname = None, years = False):
   fig, ax = plt.subplots(nrows = len(n), sharex = True, sharey = True, figsize = (8,4*len(n)), tight_layout = True)
-  yt = dat['variable']['y_time']
+  yt = dat['variable']['y_time'][-800:,:,:]
   if years:
-    tt = dat['variable']['t_time'] / (24*365.24*3600)
+    tt = dat['variable']['t_time'][-800:] / (24*365.24*3600)
     ax[-1].set_xlabel('Time [yr]')
   else:
-    tt = dat['variable']['t_time']
+    tt = dat['variable']['t_time'][-800:]
     ax[-1].set_xlabel('Time [s]')
   
   dat_spec = dat['variable']['species']
-  colour = ['r', 'orange', 'b', 'peru', 'c', 'k', 'magenta', 'purple', 'y', 'g']
+  colour = ['r', 'orange', 'b', 'peru', 'c', 'k', 'magenta', 'purple', 'y', 'g', 'gray', 'yellow']
   lab = []
   if mol == None:
-    mol = ['H2', 'N2', 'H2O', 'CO2', 'O2', 'CO', 'CH4', 'HCN', 'H2CO', 'OH']
+    mol = ['H2', 'N2', 'H2O', 'CO2', 'O2', 'CO', 'CH4', 'HCN', 'H2CO', 'OH', 'H2O_l_s', 'CH3']
   for i in range(len(ax)):
     ytot = np.sum(yt[:, n[-(i+1)], dat['atm']['gas_indx']], axis = 1)
     for molec,c in zip(mol, colour):
