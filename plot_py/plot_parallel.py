@@ -97,7 +97,6 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
     mixing_H2 = []
     extra_str = '' # to get the proper output
     if sim_type == 'BC':
-        #extra_str = '_onlyH2.vul'
         extra_str = '_meteor.vul'
     elif sim_type == 'CtoO':
         extra_str = '_CtoO.vul'
@@ -118,6 +117,15 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         with open(out_folder + sim, 'rb') as handle:
             data_i = pickle.load(handle)
             dat_list.append(data_i)
+        sim_rerun_file = os.path.join(out_folder,sim[:-4] + '_rerun.vul')
+        if os.path.exists(sim_rerun_file):
+            with open(sim_rerun_file, 'rb') as handle:
+                data_rerun = pickle.load(handle)
+            # change values that are carried over from first run, e.g. t, t_time, y_time
+            data_rerun['variable']['t'] += data_i['variable']['t']
+            data_rerun['variable']['t_time'] = np.concatenate((data_i['variable']['t_time'], data_rerun['variable']['t_time']+data_i['variable']['t']))
+            data_rerun['variable']['y_time'] = np.concatenate((data_i['variable']['y_time'], data_rerun['variable']['y_time']), axis = 0)
+            dat_list[i] = data_rerun
 
         if sim_type == 'BC':
             with open(bc_folder+'BC_bot_'+sim[:-4]+'.txt') as f: # vas sim[:-11]+'.txt
@@ -647,27 +655,17 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
     
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
-#%%    
+    
 def get_rad_prof(star):
     ''' Taken from parallel_functions.py but changed so relative passes are correct. 
         Gives back the location of the needed stellar radiation profile file for a given star.'''
     rad_file = ''
-    if star == 'EARLY_SUN':
-        rad_file = '../atm/stellar_flux/Pearce_B_solar.txt'
-    elif star == 'SUN':
+    if star == 'SUN':
         rad_file = '../atm/stellar_flux/Gueymard_solar.txt'
     else:
         rad_file = '/scratch/s2555875/stellar_flux/' + star.lower() + '.txt' # just to make sure it is lower case
     return rad_file
 
-h = 6.626197e-27 # Planck constant in cgs (erg s)
-c = 2.997925e10 # speed of light in cgs (cm/s)
-k = 1.380622e-16 # Boltzmann constant in cgs (erg/K)
-def planck(l, T):
-    l_cm = l*1e-6 # convert nm to cm
-    B = ( 2 * h * (c**2) / (l_cm**5) ) / ( np.exp(h*c/(l_cm*k*T)) -1 ) # units in erg / cm**3 / s
-    return B / 1e6 # units in erg / cm**2 / nm / s
-    
 def plot_stellar_spectra(figname = None):
     fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27), sharex = True, sharey = True)
     ax = ax.flatten()
@@ -676,7 +674,6 @@ def plot_stellar_spectra(figname = None):
     for star,T in zip(star_df.Name, star_df.T_eff):
         spectrum = np.genfromtxt(get_rad_prof(star), names = ['lambda', 'flux'], comments = '#')
         ax[i].plot(spectrum['lambda'], spectrum['flux'], label = star)
-        #ax[i].plot(lam, planck(lam, T), linestyle = '--', label = 'Black body')
         ax[i].set_xscale('log')
         ax[i].set_yscale('log')
         ax[i].set_ylim((1e1,1e11))
