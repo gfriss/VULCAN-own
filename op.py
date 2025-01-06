@@ -2868,6 +2868,9 @@ class Ros2(ODESolver):
         # neglecting the errors at the surface
         if vulcan_cfg.use_botflux == True or vulcan_cfg.use_fix_sp_bot: delta[0] = 0
         
+        # neglecting the errors in the topmost layers (spongelayer)
+        delta[-10:] = 0
+        
         # TEST condensation 2022
         if vulcan_cfg.use_condense == True:
             delta[:,self.non_gas_sp_index] = 0
