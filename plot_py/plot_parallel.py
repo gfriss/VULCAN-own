@@ -596,7 +596,7 @@ def plot_pt(dat_list, param_list, sim_type, figname = None):
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
     
 def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists, figname = None):
-    fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27))#, figsize = (22,18), tight_layout = True) # take out tight layout here if legends are below subplots
+    fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27), tight_layout = True)#, figsize = (22,18)) # take out tight layout here if legends are below subplots
     ax = ax.flatten()
     sim_types = ['BC', 'CtoO', 'dist', 'star']
     xscales = ['log', 'linear', 'linear', 'linear']

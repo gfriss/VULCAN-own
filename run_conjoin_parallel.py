@@ -13,7 +13,7 @@ nsim_star = 13 # stars, for now
 sim_per_rank = int(nsim_dist*nsim_star / size) + 1 # this is needed to distribure the tasks between tha CPUs
 
 scratch = '/scratch/s2555875' # place to store outputs
-output_folder = os.path.join(scratch, 'output/star_dist/')
+output_folder = os.path.join(scratch, 'output')
 TP_folder = os.path.join(scratch, 'TP_files/star_dist')
 conv_file = os.path.join(scratch, 'converged.txt')
 check_conv = True
@@ -43,6 +43,10 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         sim_folder = os.path.join(scratch, sim)
     # build files for simulation
     out_file = sim + '.vul'
+    with open(conv_file, 'r') as f:
+        conv_text = f.read()
+    if out_file in conv_text:
+        continue
     out_change = ','.join(['out_name', out_file, 'str'])
     output_dir_change = ','.join(['output_dir', output_folder, 'str'])
     new_cfg = os.path.join(sim_folder, 'vulcan_cfg.py')

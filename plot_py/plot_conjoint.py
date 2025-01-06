@@ -94,7 +94,7 @@ def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None
     #            T_anchor = T[i][j]
     #            T_size = T[i + 1, j] - T[i, j]
     #            ax.add_patch(plt.Rectangle((a_anchor, T_anchor), a_size, T_size, fc='none', ec='black', lw=0.5, clip_on=False))
-    ax.plot(0.728, 5400, color = 'orange', marker = '*')
+    ax.plot(0.74, 5590, color = 'orange', marker = '*') # values do not match ones from csv but this way the marker is in the middle of the pixel
     ax.set_ylabel(r'T$_{eff}$ [K]')
     ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
     #ax.set_xscale('log')
@@ -130,14 +130,22 @@ for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, sta
     i = 0
     for f in sorted(os.listdir(output_folder)):
         
-        if 'star_' + star in f: # they are not in separate folder so dealing with only relevant files
+        if 'star_' + star in f and 'rerun' not in f: # they are not in separate folder so dealing with only relevant files, also not reruns here to avoid confusion
+            sim = f
+            og_time = 0.
+            if os.path.isfile(f[:-4]+'_rerun.vul'): # if this simulation needed a rerun, use data from there
+                sim = f[:-4]+'_rerun.vul'
+                # need to get time of original simulation (og_time)
+                with open(os.path.join(output_folder, f), 'rb') as handle:
+                    data = pickle.load(handle)
+                og_time = data['variable']['t']
             column_idx = Seff_list.index(new_Seff_list[i])#np.where(Seff_list == new_Seff_list[i])[0][0]
-            with open(os.path.join(output_folder, f), 'rb') as handle:
+            with open(os.path.join(output_folder, sim), 'rb') as handle:
                 data = pickle.load(handle)
             
             conv_matrix[row_idx][column_idx] = check_convergence(data)
             rain_matrix[row_idx][column_idx] = rainout(data)
-            end_time_matrix[row_idx][column_idx] = data['variable']['t']
+            end_time_matrix[row_idx][column_idx] = og_time + data['variable']['t']
             #name_matrix[row_idx][column_idx] = f
             i += 1
     j += 1
@@ -154,7 +162,7 @@ print('#converged: {}'.format(flat_conv.count('black')))
 #%%
 plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint.pdf')
 #%%
-plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', norm = mc.LogNorm(vmin = 1e-10), figname = 'HCN_rainout_conjoint_S_eff.pdf')
+plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', norm = mc.LogNorm(vmin = 1e-14), figname = 'HCN_rainout_conjoint_S_eff.pdf')
 # %%
 plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf', met_flux = False)
 # %%
