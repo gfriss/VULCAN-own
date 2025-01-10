@@ -1146,8 +1146,8 @@ class Integration(object):
 
         if vulcan_cfg.use_rainout == True:
             longdy[:,self.non_gas_rain_sp_index] = 0
-        longdy = longdy[:-10] # ignoring uppermost layers for convergence...
-        ymix = ymix[:-10]
+        longdy = longdy[:-vulcan_cfg.nl_ignore] # ignoring uppermost layers for convergence...
+        ymix = ymix[:-vulcan_cfg.nl_ignore]
         with np.errstate(divide='ignore',invalid='ignore'): # ignoring nan when devided by zero
             where_varies_most = longdy/ymix
         para.where_varies_most = where_varies_most
@@ -2869,7 +2869,7 @@ class Ros2(ODESolver):
         if vulcan_cfg.use_botflux == True or vulcan_cfg.use_fix_sp_bot: delta[0] = 0
         
         # neglecting the errors in the topmost layers (spongelayer)
-        delta[-10:] = 0
+        delta[-vulcan_cfg.nl_ignore:] = 0
         
         # TEST condensation 2022
         if vulcan_cfg.use_condense == True:

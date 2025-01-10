@@ -689,7 +689,7 @@ def plot_stellar_spectra(figname = None):
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
 #%%
 # BC case with helios TP
-data_bc, bc_flux = read_in('BC', nsim, start_str = 'helios_tp_')
+data_bc, bc_flux = read_in('BC', nsim)
 
 hcn_rain = [] # storing the rainout rates
 for d in data_bc:
@@ -699,8 +699,6 @@ rain = [] # storing the rainout rates
 for d in data_bc:
     rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
-#plot_rain(rain, bomb_rate, 'BC', figname = 'helios_tp_H2O_rainout_meteor.pdf', bc_flux_list = bc_flux, mol = 'Water', plot_Pearce = False, yscale = 'linear')
-#plot_rain(hcn_rain, bomb_rate, 'BC', figname = 'helios_tp_HCN_rainout_meteor.pdf', bc_flux_list = bc_flux, plot_Pearce = False, yscale = 'linear')
 plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'HCN_air_meteor.pdf')
 plot_vertical_n(data_bc, 'H2O_l_s', bomb_rate, 'BC', figname = 'H2O_condensed_air_meteor.pdf')
 plot_end_time(data_bc, figname = 'end_time_meteor.pdf')
@@ -708,11 +706,11 @@ plot_evo_layer(data_bc, 'HCN', figname = 'hcn_evo_meteor.pdf')
 plot_convergence(data_bc, figname = 'convergence_meteor.pdf')
 plot_rain_converged(data_bc, hcn_rain, bomb_rate, 'BC', figname = 'conv_BC_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = bc_flux)
 plot_rain_converged(data_bc, rain, bomb_rate, 'BC', figname = 'conv_BC_rain.pdf', rain_spec = 'H2O_rain', extra_list = bc_flux)
-plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'helios_tp_prod_dest_meteor.pdf')
+plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'prod_dest_meteor.pdf')
 #%%
 # C/O case with HELIOS tP
 
-data_CtoO, C_to_O = read_in('CtoO', nsim, start_str = 'helios_tp_')
+data_CtoO, C_to_O = read_in('CtoO', nsim)
 
 hcn_rain_CtoO = []
 for d in data_CtoO:
@@ -723,8 +721,6 @@ for d in data_CtoO:
     rain_CtoO.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
-#plot_rain(hcn_rain_CtoO, C_to_O, 'C_to_O', figname = 'helios_tp_HCN_rainout_C_to_O.pdf', plot_Pearce = False)
-#plot_rain(rain_CtoO, C_to_O, 'C_to_O', figname = 'helios_tp_H2O_rainout_C_to_O.pdf', mol = 'Water', plot_Pearce = False)
 plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'C_to_O', figname = 'HCN_air_C_to_O.pdf')
 plot_vertical_n(data_CtoO, 'H2O_l_s', C_to_O, 'C_to_O', figname = 'H2O_condensed_air_C_to_O.pdf')
 plot_end_time(data_CtoO, figname = 'end_time_C_to_O.pdf')

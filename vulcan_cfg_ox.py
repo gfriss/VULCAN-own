@@ -126,7 +126,7 @@ fix_species_from_coldtrap_lev = True
 
 # ====== steady state check ======
 st_factor = 0.5
-conv_step = 1000 
+conv_step = 500 
 
 # ====== Setting up numerical parameters for the ODE solver ====== 
 ode_solver = 'Ros2' # case sensitive
@@ -144,19 +144,20 @@ count_min = int(2E2) #120 # already built in minimum countto check
 count_max = int(2E5) #int(3E4)
 atol = 1.E-5 # Try decreasing this if the solutions are not stable
 mtol = 1.E-22
-mtol_conv = 1.E-16 # worked: 1e-14
+mtol_conv = 1.E-16
 pos_cut = 0
 nega_cut = -1.
 loss_eps = 1e12 # for using BC
-yconv_cri = 0.01 # for checking steady-state  worked: 0.05
-slope_cri = 1.e-4 # worked: 5.e-4
+yconv_cri = 0.01 # for checking steady-state
+slope_cri = 5.e-4
 yconv_min = 0.1
 flux_cri = 0.1
 flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)
+nl_ignore = 5
 
 # ====== Setting up numerical parameters for Ros2 ODE solver ====== 
 rtol = 5e-2              # relative tolerence for adjusting the stepsize 
-post_conden_rtol = 0.2# switched to this value after fix_species_time # worked: 1.2
+post_conden_rtol = 0.2# switched to this value after fix_species_time
 
 # ====== Setting up for ouwtput and plotting ======
 # plotting:

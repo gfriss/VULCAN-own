@@ -47,7 +47,7 @@ def gen_mixing(co2_mix, output):
     CH4 = og_mixing['CH4']
     O2 = og_mixing['O2']
     CO2 = np.ones_like(N2) * co2_mix
-    CO = np.ones_like(N2) * (np.max(co2_mix) - co2_mix)
+    CO = np.ones_like(N2) * (0.1 - co2_mix)
     with open(output, 'w') as f:
         f.write('# (dyne/cm2)\nPressure  N2  CO2  CH4  O2  H2O  CO\n')
         for i in range(len(N2)):
