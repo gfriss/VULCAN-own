@@ -154,7 +154,8 @@ slope_cri = 5.e-4
 yconv_min = 0.1
 flux_cri = 0.1
 flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)
-nl_ignore = 5
+ignore_layers = True
+nl_ignore = 3
 
 # ====== Setting up numerical parameters for Ros2 ODE solver ====== 
 rtol = 5e-2              # relative tolerence for adjusting the stepsize 
