@@ -15,6 +15,7 @@ import pandas as pd
 wd = os.getcwd()
 os.chdir('../')
 from chem_funs import nr, re_wM_dict, re_dict
+from vulcan_cfg import yconv_cri, yconv_min, slope_cri, nl_ignore
 os.chdir(wd)
 # setting up plot style
 import plot_reset as pr
@@ -343,9 +344,6 @@ def plot_evo_layer(dat_list, spec, layer = 0, figname = None):
 def check_convergence(dat):
     ''' It checks whether the convergence criteria has been met in the given simulation (dat is the 
         already read-in data). Template is taken from the VULCAN code (Tsai et al 2017, 2020).'''
-    yconv_cri = 0.01
-    yconv_min = 0.1
-    slope_cri = 1.e-4
     longdy = dat['variable']['longdy']
     longdydt = dat['variable']['longdydt']
     slope_min = min( np.amin(dat['atm']['Kzz']/(0.1*dat['atm']['Hp'][:-1])**2) , 1.e-8)

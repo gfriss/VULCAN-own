@@ -1146,8 +1146,7 @@ class Integration(object):
 
         if vulcan_cfg.use_rainout == True:
             longdy[:,self.non_gas_rain_sp_index] = 0
-        longdy = longdy[:-vulcan_cfg.nl_ignore] # ignoring uppermost layers for convergence...
-        ymix = ymix[:-vulcan_cfg.nl_ignore]
+        longdy[:-vulcan_cfg.nl_ignore] = 0 # ignoring uppermost layers for convergence...
         with np.errstate(divide='ignore',invalid='ignore'): # ignoring nan when devided by zero
             where_varies_most = longdy/ymix
         para.where_varies_most = where_varies_most

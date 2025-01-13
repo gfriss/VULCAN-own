@@ -20,7 +20,7 @@ with open(out_file, 'w') as f:
                 for i in range(len(species)):
                     if species[i] == line.split()[0]:
                         count += 1
-                        f.write('{}\t\t\t{:.1e}\t\t\t\t\t\t{}\n'.format(species[i],flux[i],vdep[i]))
+                        f.write('{}\t\t\t{:.2e}\t\t\t\t\t\t{}\n'.format(species[i],float(flux[i]),vdep[i]))
                         found = True
                         break
                 if not found:
