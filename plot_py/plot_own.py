@@ -352,3 +352,60 @@ print(hcn_rain_rate * 1.24e-14) # kg/m2yr
 hcn_rain_rate = np.sum(data_B_nofix_norain['variable']['y'][:,vulcan_spec.index('HCN')]) * data_B_nofix_norain['atm']['bot_vdep'][vulcan_spec.index('HCN')] # 1/cm2s
 print(hcn_rain_rate * 1.24e-14) # kg/m2yr
 # %%
+vul_data_crahcno = scratch + 'output/archean.vul'
+with open(vul_data_crahcno, 'rb') as handle:
+  data_crahcno = pickle.load(handle)
+  
+vul_data_crahcno_ignore_5 = scratch + 'output/archean_ignore_5.vul'
+with open(vul_data_crahcno_ignore_5, 'rb') as handle:
+  data_crahcno_ignore_5 = pickle.load(handle)
+  
+vul_data_ncho = scratch + 'output/archean_ncho.vul'
+with open(vul_data_ncho, 'rb') as handle:
+  data_ncho = pickle.load(handle)
+  
+vul_data_ncho_ignore_5 = scratch + 'output/archean_ncho_ignore_5.vul'
+with open(vul_data_ncho_ignore_5, 'rb') as handle:
+  data_ncho_ignore_5 = pickle.load(handle)
+# %%
+import plot_reset as pr
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
+#%%
+sp_to_plot = 'HCN'
+fig, ax = plt.subplots(tight_layout = True)
+ax.plot(data_crahcno['variable']['ymix'][:,data_crahcno['variable']['species'].index(sp_to_plot)], data_crahcno['atm']['pco']/1.e6, label = 'CRAHCNO', color = 'blue', linestyle = '-')
+ax.plot(data_crahcno_ignore_5['variable']['ymix'][:,data_crahcno_ignore_5['variable']['species'].index(sp_to_plot)], data_crahcno_ignore_5['atm']['pco']/1.e6, label = 'CRAHCNO - ignore 5', linestyle = '--', color = 'orange')
+ax.plot(data_ncho['variable']['ymix'][:,data_ncho['variable']['species'].index(sp_to_plot)], data_ncho['atm']['pco']/1.e6, label = 'NCHO', color = 'green', linestyle = '-')
+ax.plot(data_ncho_ignore_5['variable']['ymix'][:,data_ncho_ignore_5['variable']['species'].index(sp_to_plot)], data_ncho_ignore_5['atm']['pco']/1.e6, label = 'NCHO - ignore 5', linestyle = '--', color = 'red')
+ax.set_xlabel('X_{}'.format(sp_to_plot))
+ax.set_ylabel('Pressure [bar]')
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_xlim((1e-12, None))
+ax.invert_yaxis()
+fig.legend(loc = (0.65,0.75))
+fig.savefig(scratch + 'plot/networks_{}.pdf'.format(sp_to_plot))
+# %%
+rain_spec = 'H2O_rain'
+dat_list = [data_crahcno, data_crahcno_ignore_5, data_ncho, data_ncho_ignore_5]
+name_list = ['CRAHCNO', 'CRAHCNO_ignore_5', 'NCHO', 'NCHO_ignore_5']
+rain_rate = []
+end_time = []
+for dat in dat_list:
+  rain_rate.append((np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'])*5.237e-13*(27/1000.)) # kg/m2yr
+  end_time.append(dat['variable']['t'])
+#%%
+fig, ax = plt.subplots(tight_layout = True)
+ax.scatter(name_list, rain_rate, c = 'red')
+ax.set_ylabel('{} rate [kg/m2yr]'.format(rain_spec))
+ax.set_yscale('log')
+ax.set_ylim((min(rain_rate)/2, None))
+fig.savefig(scratch + 'plot/network_{}.pdf'.format(rain_spec))
+# %%
+fig, ax = plt.subplots(tight_layout = True)
+ax.scatter(name_list, end_time, c = 'red')
+ax.set_ylabel('End of sim time [s]')
+ax.set_yscale('log')
+ax.set_ylim((min(end_time)/2, None))
+fig.savefig(scratch + 'plot/network_end_time.pdf')
+# %%

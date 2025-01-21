@@ -45,8 +45,14 @@ helios_output_folder = '/scratch/s2555875/HELIOS/output/'
 # setting up the local case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
 
+# setting chemical network and  top layer ignore for naming (empty if crahcno/no ignore as these are the defaults)
+#network = ''
+network = '_ncho'
+#ignore = ''
+ignore = '_ignore_5'
 # base simulation of Archean
-with open(out_folder+'archean.vul', 'rb') as handle:
+base_sim = out_folder+'archean'+network+ignore+'.vul'
+with open(base_sim, 'rb') as handle:
     data_archean = pickle.load(handle)
 #%%
 def lin(x, a, b):
@@ -118,15 +124,15 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         with open(out_folder + sim, 'rb') as handle:
             data_i = pickle.load(handle)
             dat_list.append(data_i)
-        sim_rerun_file = os.path.join(out_folder,sim[:-4] + '_rerun.vul')
-        if os.path.exists(sim_rerun_file):
-            with open(sim_rerun_file, 'rb') as handle:
-                data_rerun = pickle.load(handle)
+        #sim_rerun_file = os.path.join(out_folder,sim[:-4] + '_rerun.vul')
+        #if os.path.exists(sim_rerun_file):
+        #    with open(sim_rerun_file, 'rb') as handle:
+        #        data_rerun = pickle.load(handle)
             # change values that are carried over from first run, e.g. t, t_time, y_time
-            data_rerun['variable']['t'] += data_i['variable']['t']
-            data_rerun['variable']['t_time'] = np.concatenate((data_i['variable']['t_time'], data_rerun['variable']['t_time']+data_i['variable']['t']))
-            data_rerun['variable']['y_time'] = np.concatenate((data_i['variable']['y_time'], data_rerun['variable']['y_time']), axis = 0)
-            dat_list[i] = data_rerun
+        #    data_rerun['variable']['t'] += data_i['variable']['t']
+        #    data_rerun['variable']['t_time'] = np.concatenate((data_i['variable']['t_time'], data_rerun['variable']['t_time']+data_i['variable']['t']))
+        #    data_rerun['variable']['y_time'] = np.concatenate((data_i['variable']['y_time'], data_rerun['variable']['y_time']), axis = 0)
+        #    dat_list[i] = data_rerun
 
         if sim_type == 'BC':
             with open(bc_folder+'BC_bot_'+sim[:-4]+'.txt') as f: # vas sim[:-11]+'.txt
@@ -697,14 +703,14 @@ rain = [] # storing the rainout rates
 for d in data_bc:
     rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
-plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'HCN_air_meteor.pdf')
-plot_vertical_n(data_bc, 'H2O_l_s', bomb_rate, 'BC', figname = 'H2O_condensed_air_meteor.pdf')
-plot_end_time(data_bc, figname = 'end_time_meteor.pdf')
-plot_evo_layer(data_bc, 'HCN', figname = 'hcn_evo_meteor.pdf')
-plot_convergence(data_bc, figname = 'convergence_meteor.pdf')
-plot_rain_converged(data_bc, hcn_rain, bomb_rate, 'BC', figname = 'conv_BC_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = bc_flux)
-plot_rain_converged(data_bc, rain, bomb_rate, 'BC', figname = 'conv_BC_rain.pdf', rain_spec = 'H2O_rain', extra_list = bc_flux)
-plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'prod_dest_meteor.pdf')
+plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figname = 'HCN_air_meteor'+network+'.pdf')
+plot_vertical_n(data_bc, 'H2O_l_s', bomb_rate, 'BC', figname = 'H2O_condensed_air_meteor'+network+'.pdf')
+plot_end_time(data_bc, figname = 'end_time_meteor'+network+'.pdf')
+plot_evo_layer(data_bc, 'HCN', figname = 'hcn_evo_meteor'+network+'.pdf')
+plot_convergence(data_bc, figname = 'convergence_meteor'+network+'.pdf')
+plot_rain_converged(data_bc, hcn_rain, bomb_rate, 'BC', figname = 'conv_BC_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', extra_list = bc_flux)
+plot_rain_converged(data_bc, rain, bomb_rate, 'BC', figname = 'conv_BC_rain'+network+'.pdf', rain_spec = 'H2O_rain', extra_list = bc_flux)
+plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'prod_dest_meteor'+network+'.pdf')
 #%%
 # C/O case with HELIOS tP
 
@@ -719,16 +725,16 @@ for d in data_CtoO:
     rain_CtoO.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
-plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'C_to_O', figname = 'HCN_air_C_to_O.pdf')
-plot_vertical_n(data_CtoO, 'H2O_l_s', C_to_O, 'C_to_O', figname = 'H2O_condensed_air_C_to_O.pdf')
-plot_end_time(data_CtoO, figname = 'end_time_C_to_O.pdf')
-plot_evo_layer(data_CtoO, 'HCN', figname = 'hcn_evo_C_to_O.pdf')
-plot_convergence(data_CtoO, figname = 'convergence_C_to_O.pdf')
-plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_hcn_rain.pdf', rain_spec = 'HCN_rain')
-plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_rain.pdf', rain_spec = 'H2O_rain')
-plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_hcn_rain.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
-plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_rain.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
-plot_prod_dest(data_CtoO, C_to_O, 'CtoO', figname = 'prod_dest_CtoO.pdf')
+plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'C_to_O', figname = 'HCN_air_C_to_O'+network+'.pdf')
+plot_vertical_n(data_CtoO, 'H2O_l_s', C_to_O, 'C_to_O', figname = 'H2O_condensed_air_C_to_O'+network+'.pdf')
+plot_end_time(data_CtoO, figname = 'end_time_C_to_O'+network+'.pdf')
+plot_evo_layer(data_CtoO, 'HCN', figname = 'hcn_evo_C_to_O'+network+'.pdf')
+plot_convergence(data_CtoO, figname = 'convergence_C_to_O'+network+'.pdf')
+plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain')
+plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_rain'+network+'.pdf', rain_spec = 'H2O_rain')
+plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
+plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_rain'+network+'.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
+plot_prod_dest(data_CtoO, C_to_O, 'CtoO', figname = 'prod_dest_CtoO'+network+'.pdf')
 # %%
 # star case
 data_star = read_in('star', number_of_sim = 13)
@@ -739,18 +745,16 @@ for d in data_star:
     rain_star.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
-#plot_rain(hcn_rain_star, T_eff, 'star', figname = 'HCN_rainout_star.pdf', plot_Pearce = False)
-#plot_rain(rain_star, T_eff, 'star', figname = 'H2O_rainout_star.pdf', mol = 'Water', plot_Pearce = False)
-plot_vertical_n(data_star, 'HCN', T_eff, 'star', figname = 'HCN_air_star.pdf')
-plot_vertical_n(data_star, 'H2O_l_s', T_eff, 'star', figname = 'H2O_condensed_air_star.pdf')
-plot_end_time(data_star, figname = 'end_time_star.pdf')
-plot_evo_layer(data_star, 'HCN', figname = 'hcn_evo_star.pdf')
-plot_convergence(data_star, figname = 'convergence_star.pdf')
-plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_star_hcn_rain.pdf', rain_spec = 'HCN_rain')
-plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain.pdf', rain_spec = 'H2O_rain')
-plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_nonconv_star_hcn_rain.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
-plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
-plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star.pdf')
+plot_vertical_n(data_star, 'HCN', T_eff, 'star', figname = 'HCN_air_star'+network+'.pdf')
+plot_vertical_n(data_star, 'H2O_l_s', T_eff, 'star', figname = 'H2O_condensed_air_star'+network+'.pdf')
+plot_end_time(data_star, figname = 'end_time_star'+network+'.pdf')
+plot_evo_layer(data_star, 'HCN', figname = 'hcn_evo_star'+network+'.pdf')
+plot_convergence(data_star, figname = 'convergence_star'+network+'.pdf')
+plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_star_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain')
+plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain')
+plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_nonconv_star_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
+plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
+plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star'+network+'.pdf')
 plot_pt(data_star, T_eff, 'star', figname = 'PT_star.pdf')
 plot_stellar_spectra('stellar_spectra_comp.pdf')
 # %%
@@ -765,41 +769,18 @@ for d in data_dist:
     rain_dist.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
-#plot_rain(hcn_rain_dist, a_list, 'dist', figname = 'HCN_rainout_dist.pdf', surf_temp = T_surf, plot_Pearce = False)
-#plot_rain(rain_dist, a_list, 'dist', figname = 'H2O_rainout_dist.pdf', mol = 'Water', surf_temp = T_surf, plot_Pearce = False)
-plot_vertical_n(data_dist, 'HCN', a_list, 'dist', figname = 'HCN_air_dist.pdf')
-plot_vertical_n(data_dist, 'H2O_l_s', a_list, 'dist', figname = 'H2O_condensed_air_dist.pdf')
-plot_end_time(data_dist, figname = 'end_time_dist.pdf')
-plot_evo_layer(data_dist, 'HCN', figname = 'hcn_evo_dist.pdf')
-plot_convergence(data_dist, figname = 'convergence_dist.pdf')
-plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf)
-plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf)
-plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_hcn_rain.pdf', rain_spec = 'HCN_rain', extra_list = T_surf, plot_non_conv = True)
-plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_rain.pdf', rain_spec = 'H2O_rain', extra_list = T_surf, plot_non_conv = True)
-plot_prod_dest(data_dist, a_list, 'dist', figname = 'prod_dest_dist.pdf')
+plot_vertical_n(data_dist, 'HCN', a_list, 'dist', figname = 'HCN_air_dist'+network+'.pdf')
+plot_vertical_n(data_dist, 'H2O_l_s', a_list, 'dist', figname = 'H2O_condensed_air_dist'+network+'.pdf')
+plot_end_time(data_dist, figname = 'end_time_dist'+network+'.pdf')
+plot_evo_layer(data_dist, 'HCN', figname = 'hcn_evo_dist'+network+'.pdf')
+plot_convergence(data_dist, figname = 'convergence_dist'+network+'.pdf')
+plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_dist_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', extra_list = T_surf)
+plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_dist_rain'+network+'.pdf', rain_spec = 'H2O_rain', extra_list = T_surf)
+plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', extra_list = T_surf, plot_non_conv = True)
+plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_rain'+network+'.pdf', rain_spec = 'H2O_rain', extra_list = T_surf, plot_non_conv = True)
+plot_prod_dest(data_dist, a_list, 'dist', figname = 'prod_dest_dist'+network+'.pdf')
 plot_pt(data_dist, a_list, 'dist', figname = 'PT_dist.pdf')
-# %%
-# local case
-
-#data_local, X_H2 = read_in('local', nsim)
-
-#hcn_rain_local = []
-#for d in data_local:
-#    hcn_rain_local.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
-    
-#rain_local = [] # storing the rainout rates
-#for d in data_local:
-#    rain_local.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
-
-## do all the ploting
-#plot_rain(hcn_rain_local, X_H2, 'local', figname = 'HCN_rainout_local.pdf')
-#plot_rain(rain_local, X_H2, 'local', figname = 'H2O_rainout_local.pdf', mol = 'Water')
-#plot_vertical_n(data_local, 'HCN', X_H2, 'local', figname = 'HCN_air_local.pdf')
-#plot_end_time(data_local, figname = 'end_time_local.pdf')
-#plot_evo_layer(data_local, 'HCN', figname = 'hcn_evo_local.pdf')
-#plot_convergence(data_local, figname = 'convergence_local.pdf')
-#plot_prod_dest(data_local, X_H2, 'local', figname = 'prod_dest_local.pdf')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
-plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figname = 'rain_vertical_pt.pdf')
+plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figname = 'rain_vertical_pt'+network+'.pdf')
 # %%

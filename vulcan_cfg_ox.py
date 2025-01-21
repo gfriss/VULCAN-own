@@ -8,11 +8,13 @@ use_lowT_limit_rates = False
 
 # ====== Setting up paths and filenames for the input and output files  ======
 # input:
-network = '/home/s2555875/scratch/VULCAN-CRAHCNO/bp20_clean.txt'
+#network = '/home/s2555875/scratch/VULCAN-CRAHCNO/bp20_clean.txt'
+network = '/home/s2555875/VULCAN-2/thermo/NCHO_full_photo_network.txt'
 use_lowT_limit_rates = False
 gibbs_text = '/home/s2555875/VULCAN-2/thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
 cross_folder = '/home/s2555875/VULCAN-2/thermo/photo_cross/'
-com_file = '/home/s2555875/scratch/VULCAN-CRAHCNO/all_compose.txt'
+#com_file = '/home/s2555875/scratch/VULCAN-CRAHCNO/all_compose.txt'
+com_file = '/home/s2555875/VULCAN-2/thermo/all_compose.txt'
 atm_file = '/scratch/s2555875/TP_files/archean.txt' # TP and Kzz (optional) file
 sflux_file = '/scratch/s2555875/stellar_flux/early_sun.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_top_Earth.txt' # the file for the top boundary conditions
@@ -153,7 +155,7 @@ slope_cri = 5.e-4
 yconv_min = 0.1
 flux_cri = 0.1
 flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)
-ignore_layers = True
+ignore_layers = False
 nl_ignore = 5
 longdy_ignore = 1.
 
