@@ -24,6 +24,9 @@ star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_param
 
 min_flux_met = 1.058e-9
 max_flux_met = 2.646e-8
+
+#network = ''
+network = '_ncho'
 #%%    
 def get_surf_temp(file):
     surface_temperature = np.genfromtxt(file, dtype = None, skip_header=1, comments = '#', max_rows = 4, names = True)['Temp'][0]
@@ -129,7 +132,11 @@ for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, sta
     row_idx = j
     i = 0
     for f in sorted(os.listdir(output_folder)):
-        
+        # making sure to only chose output files for the given network
+        if network == '_ncho' and 'ncho' not in f:
+            continue
+        elif network == '' and 'ncho' in f:
+            continue
         if 'star_' + star in f and 'rerun' not in f: # they are not in separate folder so dealing with only relevant files, also not reruns here to avoid confusion
             sim = f
             og_time = 0.

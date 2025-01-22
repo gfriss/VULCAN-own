@@ -104,15 +104,15 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
     mixing_H2 = []
     extra_str = '' # to get the proper output
     if sim_type == 'BC':
-        extra_str = '_meteor.vul'
+        extra_str = '_meteor'+network+'.vul'
     elif sim_type == 'CtoO':
-        extra_str = '_CtoO.vul'
+        extra_str = '_CtoO'+network+'.vul'
     elif sim_type == 'star':
-        extra_str = '_star.vul'
+        extra_str = '_star'+network+'.vul'
     elif sim_type == 'dist':
-        extra_str = '_dist.vul'
+        extra_str = '_dist'+network+'.vul'
     elif sim_type == 'local':
-        extra_str = '_local.vul'
+        extra_str = '_local'+network+'.vul'
     for i in range(number_of_sim):
         sim = start_str + 'sim_' # setting up the names of files
         if i < 10:
@@ -124,27 +124,33 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         with open(out_folder + sim, 'rb') as handle:
             data_i = pickle.load(handle)
             dat_list.append(data_i)
-        #sim_rerun_file = os.path.join(out_folder,sim[:-4] + '_rerun.vul')
-        #if os.path.exists(sim_rerun_file):
-        #    with open(sim_rerun_file, 'rb') as handle:
-        #        data_rerun = pickle.load(handle)
+        # if rerun was needed, combiune the results
+        sim_rerun_file = os.path.join(out_folder,sim[:-4] + '_rerun.vul')
+        if os.path.exists(sim_rerun_file):
+            with open(sim_rerun_file, 'rb') as handle:
+                data_rerun = pickle.load(handle)
             # change values that are carried over from first run, e.g. t, t_time, y_time
-        #    data_rerun['variable']['t'] += data_i['variable']['t']
-        #    data_rerun['variable']['t_time'] = np.concatenate((data_i['variable']['t_time'], data_rerun['variable']['t_time']+data_i['variable']['t']))
-        #    data_rerun['variable']['y_time'] = np.concatenate((data_i['variable']['y_time'], data_rerun['variable']['y_time']), axis = 0)
-        #    dat_list[i] = data_rerun
-
+            data_rerun['variable']['t'] += data_i['variable']['t']
+            data_rerun['variable']['t_time'] = np.concatenate((data_i['variable']['t_time'], data_rerun['variable']['t_time']+data_i['variable']['t']))
+            data_rerun['variable']['y_time'] = np.concatenate((data_i['variable']['y_time'], data_rerun['variable']['y_time']), axis = 0)
+            dat_list[i] = data_rerun
+        # both network se the same parameter file, so the name is the same
+        if network == '_ncho':
+            sim_name_for_param = sim[:-9]
+        else:
+            sim_name_for_param = sim[:-4]
+        # getting the parameters matching the run type
         if sim_type == 'BC':
-            with open(bc_folder+'BC_bot_'+sim[:-4]+'.txt') as f: # vas sim[:-11]+'.txt
+            with open(bc_folder+'BC_bot_'+sim_name_for_param+'.txt') as f:
                 for line in f:
                     lin = line.split()
                     if line[0] != '#' and lin[0] == bc_spec:
                         H2_flux.append(float(lin[1]))
                         break
         elif sim_type == 'CtoO':
-            ctoo.append(calc_C_to_O(data_i, mixing_folder + sim[:-4] + 'mixing.txt'))
+            ctoo.append(calc_C_to_O(data_i, mixing_folder + sim_name_for_param + 'mixing.txt'))
         elif sim_type == 'dist':
-            surface_temp = np.genfromtxt(helios_output_folder + sim[:-4] + '/{}_tp.dat'.format(sim[:-4]), dtype = None, skip_header = 2, usecols = (1))[0]
+            surface_temp = np.genfromtxt(helios_output_folder + sim_name_for_param + '/{}_tp.dat'.format(sim_name_for_param), dtype = None, skip_header = 2, usecols = (1))[0]
             T_surface.append(surface_temp)
         elif sim_type == 'local':
             mixing_H2.append(calc_mixing_h2(h2_bar_list))

@@ -38,7 +38,10 @@ helios_tp = ''
 #helios_tp = 'helios_tp_'
 # local meteorite case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
-
+# defining network (crahcno is defualt), only used to identify sim folders and outputs
+#network = ''
+network = '_ncho'
+# Boolian to check convergence and rerun if needed
 check_conv = True
 
 # ------end of parameter set up-----
@@ -53,10 +56,10 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         #new_folder = os.path.join(main_folder, sim) # my folder naming conventions
     else:
         sim = helios_tp + 'sim_' + str(i) + '_' + run_type
-        sim_folder = main_folder + sim
+        sim_folder = main_folder + sim + network
         #new_folder = os.path.join(main_folder, sim)
     # build files for simulation
-    out_file = sim + '.vul'
+    out_file = sim + network + '.vul'
     out_change = 'out_name,' + out_file + ',str'
     new_cfg = sim_folder + '/vulcan_cfg.py'
     # first create simulation folder

@@ -16,7 +16,6 @@ scratch = '/scratch/s2555875' # place to store outputs
 output_folder = os.path.join(scratch, 'output')
 TP_folder = os.path.join(scratch, 'TP_files/star_dist')
 conv_file = os.path.join(scratch, 'converged.txt')
-check_conv = True
 # ------setting up parameterspace for all runs------
 # star type
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
@@ -26,7 +25,11 @@ for star,a_min,a_max in zip(star_df.Name, star_df.a_min, star_df.a_max):
     dist = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
     for d in dist:
         param_matrix.append([star, d])
-
+# defining network (crahcno is defualt), only used to identify sim folders and outputs
+#network = ''
+network = '_ncho'
+# Boolian to check convergence and rerun if needed
+check_conv = True
 # ------end of parameter set up-----
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
                                                             # this is the magic, after this just think of it as a normal, sequential loop
@@ -37,12 +40,12 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     sim = 'star_{}_'.format(param_matrix[i][0]) # param matrix first goes through the distances
     if i_dist < 10:
         sim += 'dist_0{}'.format(i_dist)
-        sim_folder = os.path.join(scratch, sim)
+        sim_folder = os.path.join(scratch, sim + network)
     else:
         sim += 'dist_{}'.format(i_dist)
-        sim_folder = os.path.join(scratch, sim)
+        sim_folder = os.path.join(scratch, sim + network)
     # build files for simulation
-    out_file = sim + '.vul'
+    out_file = sim + network + '.vul'
     with open(conv_file, 'r') as f:
         conv_text = f.read()
     if out_file in conv_text:
