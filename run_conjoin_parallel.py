@@ -28,8 +28,8 @@ for star,a_min,a_max in zip(star_df.Name, star_df.a_min, star_df.a_max):
 #network = ''
 network = '_ncho'
 # Boolian to check convergence and rerun if needed
+check_conv = True
 # ------end of parameter set up-----
-test = True
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
                                                             # this is the magic, after this just think of it as a normal, sequential loop
     if i > nsim_dist*nsim_star - 1: # in case using total sim number is not divisible by number of CPUs
