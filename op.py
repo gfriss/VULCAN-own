@@ -1181,12 +1181,18 @@ class Integration(object):
             print ('Integration not completed...\nMaximal allowed runtime exceeded ('+ \
             str (vulcan_cfg.runtime) + ' sec)!')
             para.end_case = 2
+            if vulcan_cfg.save_if_converged:
+                with open('/scratch/s2555875/non_converged.txt', 'a') as f:
+                    f.write('\n' + vulcan_cfg.out_name)
             return True
         elif para.count > vulcan_cfg.count_max:
             print ("After ------- %s seconds -------" % ( time.time()- para.start_time ) + ' s CPU time')
             print ('Integration not completed...\nMaximal allowed steps exceeded (' + \
             str (vulcan_cfg.count_max) + ')!')
             para.end_case = 3
+            if vulcan_cfg.save_if_converged:
+                with open('/scratch/s2555875/non_converged.txt', 'a') as f:
+                    f.write('\n' + vulcan_cfg.out_name)
             return True
     
     def save_step(self, var, para):

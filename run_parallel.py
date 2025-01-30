@@ -15,8 +15,8 @@ size = CW.Get_size()
 nsim = 15
 sim_per_rank = int(nsim / size) # this is needed to distribure the tasks between tha CPUs
 
-main_folder = '/scratch/s2555875/' # place to store outputs
-output_folder = main_folder + 'output/'
+main_folder = '/scratch/s2555875' # place to store outputs
+output_folder = os.path.join(main_folder,'output')
 conv_file = os.path.join(main_folder, 'converged.txt')
 check_conv = True
 # ------setting up parameterspace for all runs------
@@ -29,7 +29,7 @@ m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
 # C/O ratio
 co2_for_CtoO_range = np.linspace(0.001,0.1,nsim, endpoint = True)
 # star type
-star_df = pf.read_stellar_data(main_folder + 'stellar_flux/stellar_params.csv') # NOT necessarily nsim long...
+star_df = pf.read_stellar_data(os.path.join(main_folder,'stellar_flux/stellar_params.csv')) # NOT necessarily nsim long...
 a_star_list  = [0.0296, 0.0770, 0.0780, 0.1550, 0.1780, 0.3840, 0.4945, 0.6295, 0.6976, 1., 1.1623, 1.9047, 2.3155]
 # distance case
 a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
@@ -39,8 +39,8 @@ helios_tp = ''
 # local meteorite case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
 # defining network (crahcno is defualt), only used to identify sim folders and outputs
-#network = ''
-network = '_ncho'
+network = ''
+#network = '_ncho'
 # Boolian to check convergence and rerun if needed
 check_conv = True
 
@@ -51,24 +51,22 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         continue
     sim = ''
     if i < 10:
-        sim = helios_tp + 'sim_0' + str(i) + '_' + run_type
-        sim_folder = main_folder + sim
-        #new_folder = os.path.join(main_folder, sim) # my folder naming conventions
+        sim = helios_tp + 'sim_0' + str(i) + '_' + run_type # due to using this variable to allocate input files that are same for all the networks
+        sim_folder = os.path.join(main_folder,sim + network) # the network variable only comes into play when creating the sim folder and name
     else:
         sim = helios_tp + 'sim_' + str(i) + '_' + run_type
-        sim_folder = main_folder + sim + network
-        #new_folder = os.path.join(main_folder, sim)
+        sim_folder = os.path.join(main_folder,sim + network)
     # build files for simulation
     out_file = sim + network + '.vul'
     out_change = 'out_name,' + out_file + ',str'
-    new_cfg = sim_folder + '/vulcan_cfg.py'
+    new_cfg = os.path.join(sim_folder,'/vulcan_cfg.py')
     # first create simulation folder
     subprocess.check_call(['mkdir', sim_folder])
     if run_type == 'meteor':
         # then BC because of meteorite and outgassing and lightning
         sp_names, sp_fluxes = pf.dict_to_input(pf.bombardment(bomb_rate[i], m_mass, prod_sp))
         # need: species, flux, vdep and name of txt file
-        BC_bot_file = main_folder + 'BC_files/' + 'BC_bot_' + sim + '.txt'
+        BC_bot_file = os.path.join(main_folder, 'BC_files', 'BC_bot_' + sim + '.txt')
         subprocess.check_call(['python', 'gen_BC.py', sp_names, sp_fluxes, vdep, BC_bot_file])
         # then use the new BC file in cfg file with output name
         BC_bot_change = ','.join(['bot_BC_flux_file', BC_bot_file, 'str'])
@@ -76,7 +74,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, BC_bot_change, out_change])
     elif run_type == 'CtoO':
         # generate new mixing file
-        new_mixing_file = main_folder + 'mixing_files/' + sim + 'mixing.txt'
+        new_mixing_file = os.path.join(main_folder, 'mixing_files', sim + 'mixing.txt')
         mixing_change = ','.join(['vul_ini', new_mixing_file, 'str'])
         pf.gen_mixing(co2_for_CtoO_range[i], new_mixing_file)
         # then change vulcan_cfg.py file
@@ -93,19 +91,19 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         orbit_radius_change = ','.join(['orbit_radius', new_orbit_radius, 'val'])
         # new TP files are already created with HELIOS, need to update vulcan_cfg with filename and orbit_radius
         # surf temps are similar, but better to use corresponding ones
-        tp_file = main_folder + 'TP_files/' + sim + '.txt'
+        tp_file = os.path.join(main_folder, 'TP_files', sim + '.txt')
         tp_change = ','.join(['atm_file', tp_file, 'str'])
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_change, out_change])
     elif run_type == 'dist':
         # new TP files are already created with HELIOS, need to update vulcan_cfg with filename and orbit_radius
-        tp_file = main_folder + 'TP_files/' + sim + '.txt'
+        tp_file = os.path.join(main_folder, 'TP_files', sim + '.txt')
         tp_change = ','.join(['atm_file', tp_file, 'str'])
         new_orbit_radius = str(a_list[i])
         orbit_radius_change = ','.join(['orbit_radius', new_orbit_radius, 'val'])
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, tp_change, orbit_radius_change, out_change])
     elif run_type == 'local':
         # generate new mixing ratios
-        new_mixing_file = main_folder + 'mixing_files/' + sim + 'mixing.txt'
+        new_mixing_file = os.path.join(main_folder, 'mixing_files', sim + 'mixing.txt')
         mixing_change = ','.join(['vul_ini', new_mixing_file, 'str'])
         pf.gen_mixing_local(h2_bar_list[i], new_mixing_file)
         # H2 fiddles with cinvergence so reducing error tolerances
@@ -137,7 +135,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         if out_file not in conv_text:
             vul_ini_change = ','.join(['vul_ini', os.path.join(output_folder,out_file), 'str'])
             ini_mix_change = ','.join(['ini_mix', 'vulcan_ini', 'str'])
-            out_file = sim + '_rerun.vul' # change this last so the initial composition will use the previous run
+            out_file = sim + network + '_rerun.vul' # change this last so the initial composition will use the previous run
             out_change = ','.join(['out_name', out_file, 'str'])
             subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, 'rerun', sim])
             os.chdir(sim_folder)
@@ -153,5 +151,5 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
 # DONE  write general vulcan_cfg generator -> NEED generic file to start from that has save structure
 # DONE  do I need to copy vulcan.py for each function or can I call the same file? -> can call the same as they run as different processes with their own memory, variables, etc.
 # DONE  after all these can the parallelisation run
-# IMPROVE?  plus figure out the output structure: how to name and what groupings should I save them in
+# DONE  plus figure out the output structure: how to name and what groupings should I save them in
 # DONE  so far every bit is in a different script, maybe can be as functions here, THINK about this -> less command line python stuff if they're here as functions...
