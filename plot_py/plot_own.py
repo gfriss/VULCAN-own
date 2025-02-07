@@ -371,7 +371,7 @@ with open(vul_data_ncho_ignore_5, 'rb') as handle:
 import plot_reset as pr
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
 #%%
-sp_to_plot = 'HCN'
+sp_to_plot = 'H2O_l_s'
 fig, ax = plt.subplots(tight_layout = True)
 ax.plot(data_crahcno['variable']['ymix'][:,data_crahcno['variable']['species'].index(sp_to_plot)], data_crahcno['atm']['pco']/1.e6, label = 'CRAHCNO', color = 'blue', linestyle = '-')
 ax.plot(data_crahcno_ignore_5['variable']['ymix'][:,data_crahcno_ignore_5['variable']['species'].index(sp_to_plot)], data_crahcno_ignore_5['atm']['pco']/1.e6, label = 'CRAHCNO - ignore 5', linestyle = '--', color = 'orange')
@@ -394,7 +394,6 @@ end_time = []
 for dat in dat_list:
   rain_rate.append((np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'])*5.237e-13*(27/1000.)) # kg/m2yr
   end_time.append(dat['variable']['t'])
-#%%
 fig, ax = plt.subplots(tight_layout = True)
 ax.scatter(name_list, rain_rate, c = 'red')
 ax.set_ylabel('{} rate [kg/m2yr]'.format(rain_spec))
@@ -408,4 +407,31 @@ ax.set_ylabel('End of sim time [s]')
 ax.set_yscale('log')
 ax.set_ylim((min(end_time)/2, None))
 fig.savefig(scratch + 'plot/network_end_time.pdf')
+# %%
+import matplotlib.colors as mcolors
+import matplotlib.cm as cm
+pr.reset_plt(ticksize = 15, fontsize = 18, fxsize = 10, fysize = 8)
+#%%
+sp_to_plot = 'HCN'
+fig, ax = plt.subplots(tight_layout = True)
+markers = ['o', 's', 'v', '^']
+norm = mcolors.LogNorm(vmin=min(data_crahcno['variable']['t_time']), vmax=max(data_crahcno['variable']['t_time']))
+mapper = cm.ScalarMappable(norm=norm, cmap=cm.viridis)
+for d,m,name in zip(dat_list,markers,name_list):
+  t_time = d['variable']['t_time']
+  for i in range(len(t_time)):
+    if i == 0:
+      ax.scatter(d['variable']['y_time'][i, ::5, d['variable']['species'].index(sp_to_plot)], d['atm']['pco'][::5]/1.e6, marker = m, label = name, c=mapper.to_rgba(t_time[i]*np.ones_like( d['atm']['pco'][::5]/1.e6)))
+    elif i > 0 and i%20 == 0:
+      ax.scatter(d['variable']['y_time'][i, ::5, d['variable']['species'].index(sp_to_plot)], d['atm']['pco'][::5]/1.e6, marker = m, c=mapper.to_rgba(t_time[i]*np.ones_like( d['atm']['pco'][::5]/1.e6)))
+ax.set_xlabel('n_{} [cm^-3]'.format(sp_to_plot))
+ax.set_ylabel('Pressure [bar]')
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_xlim((1e-2, 1e12))
+#ax.set_xlim((None, 1e-21))
+ax.invert_yaxis()
+fig.legend(loc = (0.12,0.45))
+fig.colorbar(mapper, label = 'Time [s]')
+fig.savefig(scratch + 'plot/networks_evo_{}.pdf'.format(sp_to_plot))
 # %%

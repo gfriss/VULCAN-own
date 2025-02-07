@@ -46,10 +46,10 @@ helios_output_folder = '/scratch/s2555875/HELIOS/output/'
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
 
 # setting chemical network and  top layer ignore for naming (empty if crahcno/no ignore as these are the defaults)
-#network = ''
-network = '_ncho'
-#ignore = ''
-ignore = '_ignore_5'
+network = ''
+#network = '_ncho'
+ignore = ''
+#ignore = '_ignore_5'
 # base simulation of Archean
 base_sim = out_folder+'archean'+network+ignore+'.vul'
 with open(base_sim, 'rb') as handle:
@@ -716,7 +716,7 @@ plot_evo_layer(data_bc, 'HCN', figname = 'hcn_evo_meteor'+network+'.pdf')
 plot_convergence(data_bc, figname = 'convergence_meteor'+network+'.pdf')
 plot_rain_converged(data_bc, hcn_rain, bomb_rate, 'BC', figname = 'conv_BC_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', extra_list = bc_flux)
 plot_rain_converged(data_bc, rain, bomb_rate, 'BC', figname = 'conv_BC_rain'+network+'.pdf', rain_spec = 'H2O_rain', extra_list = bc_flux)
-plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'prod_dest_meteor'+network+'.pdf')
+#plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'prod_dest_meteor'+network+'.pdf')
 #%%
 # C/O case with HELIOS tP
 
@@ -740,7 +740,7 @@ plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_Ct
 plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_rain'+network+'.pdf', rain_spec = 'H2O_rain')
 plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
 plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_rain'+network+'.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
-plot_prod_dest(data_CtoO, C_to_O, 'CtoO', figname = 'prod_dest_CtoO'+network+'.pdf')
+#plot_prod_dest(data_CtoO, C_to_O, 'CtoO', figname = 'prod_dest_CtoO'+network+'.pdf')
 # %%
 # star case
 data_star = read_in('star', number_of_sim = 13)
@@ -760,7 +760,7 @@ plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_sta
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain')
 plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_nonconv_star_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
-plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star'+network+'.pdf')
+#plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star'+network+'.pdf')
 plot_pt(data_star, T_eff, 'star', figname = 'PT_star.pdf')
 plot_stellar_spectra('stellar_spectra_comp.pdf')
 # %%
@@ -784,7 +784,7 @@ plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_di
 plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_dist_rain'+network+'.pdf', rain_spec = 'H2O_rain', extra_list = T_surf)
 plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', extra_list = T_surf, plot_non_conv = True)
 plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_rain'+network+'.pdf', rain_spec = 'H2O_rain', extra_list = T_surf, plot_non_conv = True)
-plot_prod_dest(data_dist, a_list, 'dist', figname = 'prod_dest_dist'+network+'.pdf')
+#plot_prod_dest(data_dist, a_list, 'dist', figname = 'prod_dest_dist'+network+'.pdf')
 plot_pt(data_dist, a_list, 'dist', figname = 'PT_dist.pdf')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)

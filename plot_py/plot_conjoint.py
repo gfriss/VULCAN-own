@@ -108,52 +108,70 @@ def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None
 
 #%%
 T_eff_list = list(star_df.T_eff)
+Seff_dict = {}
 Seff_list = []
-
-for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log):
-    #new_Seff_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
-    a_star = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
-    new_Seff_list = np.power(10, Llog) / np.power(a_star, 2)
-    Seff_list += list(new_Seff_list)
+rain_list, end_time_list, Teff_list = [], [], []
+#for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log):
+#    distances = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
+#    new_Seff_list = np.power(10, Llog) / np.power(distances, 2)
+#    Seff_dict[star] = list(new_Seff_list)
+#    Seff_list += list(new_Seff_list)
             
+#rain_dict = {}
+#end_time_dict = {}
+#S_eff_all = []
+# first loop to get all the S_eff value and sort them, used later for the meshgrid
+#for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log):
+#    a_star = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
+#    new_Seff_list = np.power(10, Llog) / np.power(a_star, 2)
+#    S_eff_all += list(new_Seff_list)
+#S_eff_all = sorted(S_eff_all)
+# then second loop to get the data and fill in the meshgrid
+#ncol = len(S_eff_all)
 ncol = len(Seff_list)
-#conv_matrix = [[0 for _ in range(ncol)] for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
 conv_matrix = [['none' for _ in range(ncol)] for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
 rain_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
 end_time_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
-#name_matrix = [['' for _ in range(ncol)] for _ in range(len(T_eff_list))] # for testing data collection
-#for j,star in enumerate(star_df.Name):
 j = 0
-for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log):
-    #new_a_list = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = 1.1)
-    #new_Seff_list = pf.Seff_list(star_df, star, nsim_dist, factor = 1.1)
+for star,a_min,a_max,Llog,Teff in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log, star_df.T_eff):
+    #rain_dict[star] = np.zeros(ncol)
+    #end_time_dict[star] = np.zeros(ncol)
     a_star = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
     new_Seff_list = np.power(10, Llog) / np.power(a_star, 2)
     row_idx = j
     i = 0
     for f in sorted(os.listdir(output_folder)):
         # making sure to only chose output files for the given network
+        if f.startswith('cfg'):
+            continue
         if network == '_ncho' and 'ncho' not in f:
             continue
         elif network == '' and 'ncho' in f:
             continue
         if 'star_' + star in f and 'rerun' not in f: # they are not in separate folder so dealing with only relevant files, also not reruns here to avoid confusion
             sim = f
-            og_time = 0.
+            rerun_time = 0.
+            rain_rate = 0.
+            with open(os.path.join(output_folder, sim), 'rb') as handle:
+                data = pickle.load(handle)
+            rain_rate = rainout(data)
             if os.path.isfile(f[:-4]+'_rerun.vul'): # if this simulation needed a rerun, use data from there
                 sim = f[:-4]+'_rerun.vul'
                 # need to get time of original simulation (og_time)
                 with open(os.path.join(output_folder, f), 'rb') as handle:
                     data = pickle.load(handle)
-                og_time = data['variable']['t']
-            column_idx = Seff_list.index(new_Seff_list[i])#np.where(Seff_list == new_Seff_list[i])[0][0]
-            with open(os.path.join(output_folder, sim), 'rb') as handle:
-                data = pickle.load(handle)
-            
-            conv_matrix[row_idx][column_idx] = check_convergence(data)
-            rain_matrix[row_idx][column_idx] = rainout(data)
-            end_time_matrix[row_idx][column_idx] = og_time + data['variable']['t']
-            #name_matrix[row_idx][column_idx] = f
+                rerun_time = data['variable']['t']
+                rain_rate = rainout(data)
+            #column_idx = S_eff_all.index(new_Seff_list[i])
+            #conv_matrix[row_idx][column_idx] = check_convergence(data)
+            #rain_matrix[row_idx][column_idx] = rainout(data)
+            #end_time_matrix[row_idx][column_idx] = data['variable']['t'] + rerun_time
+            #rain_dict[star][column_idx] = rain_rate
+            #end_time_dict[star][column_idx] = data['variable']['t'] + rerun_time
+            rain_list.append(rain_rate)
+            end_time_list.append(data['variable']['t'] + rerun_time)
+            Teff_list.append(Teff)
+            Seff_list.append(new_Seff_list[i])
             i += 1
     j += 1
 #%%
@@ -162,16 +180,21 @@ for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, sta
 #a_max2 = sorted(a_list)[-2]
 #a_list.append(a_max + (a_max-a_max2))
 # %%
-flat_conv = []
-for row in conv_matrix:
-    flat_conv.extend(row)
-print('#converged: {}'.format(flat_conv.count('black')))
+#flat_conv = []
+#for row in conv_matrix:
+#    flat_conv.extend(row)
+#print('#converged: {}'.format(flat_conv.count('black')))
+
+#plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint.pdf')
+#plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf', met_flux = False)
 #%%
-plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint.pdf')
-#%%
-plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', norm = mc.LogNorm(vmin = 1e-14), figname = 'HCN_rainout_conjoint_S_eff.pdf')
+#vmin_rain = 0.5*min(np.array(min(rain_matrix))[np.array(min(rain_matrix))>0])
+plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', norm = mc.LogNorm(), figname = 'HCN_rainout_conjoint_S_eff'+network+'.pdf')
+plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', norm = mc.LogNorm(), figname = 'endtime_conjoint_S_eff'+network+'.pdf', met_flux = False)
 # %%
-plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf', met_flux = False)
+plt.hist2d(x=Seff_list, y=Teff_list, bins = 10, weights=rain_list, norm = mc.LogNorm(), cmap = 'magma')
+plt.colorbar()
+plt.plot(0.72, 5390, color = 'orange', marker = '*') # values do not match ones from csv but this way the marker is in the middle of the pixel
+plt.gca().invert_xaxis()
 # %%
-plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', norm = mc.LogNorm(), figname = 'endtime_conjoint_S_eff.pdf', met_flux = False)
-# %%
+# try pcolormesh?
