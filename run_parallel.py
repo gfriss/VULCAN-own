@@ -59,7 +59,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     # build files for simulation
     out_file = sim + network + '.vul'
     out_change = 'out_name,' + out_file + ',str'
-    new_cfg = os.path.join(sim_folder,'/vulcan_cfg.py')
+    new_cfg = os.path.join(sim_folder,'vulcan_cfg.py')
     # first create simulation folder
     subprocess.check_call(['mkdir', sim_folder])
     if run_type == 'meteor':
