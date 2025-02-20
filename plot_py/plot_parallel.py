@@ -45,6 +45,9 @@ helios_output_folder = '/scratch/s2555875/HELIOS/output/'
 # setting up the local case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
 
+# setting up the TOA pressure case
+p_t_list = np.linspace(1e-2, 1e-1, 15, endpoint = True)/1e6
+
 # setting chemical network and  top layer ignore for naming (empty if crahcno/no ignore as these are the defaults)
 network = ''
 #network = '_ncho'
@@ -113,6 +116,8 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         extra_str = '_dist'+network+'.vul'
     elif sim_type == 'local':
         extra_str = '_local'+network+'.vul'
+    elif sim_type == 'pressure':
+        extra_str = '_pressure'+network+'.vul'
     for i in range(number_of_sim):
         sim = start_str + 'sim_' # setting up the names of files
         if i < 10:
@@ -153,7 +158,7 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
             surface_temp = np.genfromtxt(helios_output_folder + sim_name_for_param + '/{}_tp.dat'.format(sim_name_for_param), dtype = None, skip_header = 2, usecols = (1))[0]
             T_surface.append(surface_temp)
         elif sim_type == 'local':
-            mixing_H2.append(calc_mixing_h2(h2_bar_list))
+            mixing_H2.append(calc_mixing_h2(h2_bar_list))    
 
     if sim_type == 'BC':
         return dat_list, H2_flux
@@ -163,7 +168,7 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         return dat_list, T_surface
     elif sim_type == 'local':
         return dat_list, mixing_H2
-    else:
+    elif sim_type == 'pressure':
         return dat_list
 
 def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
@@ -319,6 +324,8 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figname = None):
             ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = 'd = {:.2f} AU'.format(param_list[i]))
         elif sim_type == 'local':
             ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'X$_{H_2}$'+'= {:.2f}'.format(param_list[i]))
+        elif sim_type == 'pressure':
+            ax.plot(dat_list[i]['variable']['y'][:, dat_list[i]['variable']['species'].index(spec)], dat_list[i]['atm']['zco'][1:]/1e5, label = r'P$_t$'+'= {:.2e} bar'.format(param_list[i]))
         
     ax.set_xscale('log')
     ax.set_xlabel(r'n [cm$^{-3}$]')
@@ -414,6 +421,8 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
         param_archean = 1.
     elif sim_type == 'local':
         param_archean = 0
+    elif sim_type == 'pressure':
+        param_archean = 5e-8
 
     popt, pcov = curve_fit(lin, conv_param_list, conv_rain_list)
     param_x = np.linspace(conv_param_list[0], conv_param_list[-1], 42, endpoint = True)
@@ -789,4 +798,26 @@ plot_pt(data_dist, a_list, 'dist', figname = 'PT_dist.pdf')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figname = 'rain_vertical_pt'+network+'.pdf')
+# %%
+#%%
+# pressure case
+data_pressure = read_in('pressure', nsim)
+
+hcn_rain = [] # storing the rainout rates
+for d in data_pressure:
+    hcn_rain.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+
+rain = [] # storing the rainout rates
+for d in data_pressure:
+    rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+
+plot_vertical_n(data_pressure, 'HCN', p_t_list, 'pressure', figname = 'HCN_air_pressure'+network+'.pdf')
+plot_vertical_n(data_pressure, 'H2O_l_s', p_t_list, 'pressure', figname = 'H2O_condensed_air_pressure'+network+'.pdf')
+plot_end_time(data_pressure, figname = 'end_time_pressure'+network+'.pdf')
+plot_evo_layer(data_pressure, 'HCN', figname = 'hcn_evo_pressure'+network+'.pdf')
+plot_convergence(data_pressure, figname = 'convergence_pressure'+network+'.pdf')
+plot_rain_converged(data_pressure, hcn_rain, p_t_list, 'pressure', figname = 'conv_pressure_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain')
+plot_rain_converged(data_pressure, rain, p_t_list, 'pressure', figname = 'conv_pressure_rain'+network+'.pdf', rain_spec = 'H2O_rain')
+plot_rain_converged(data_pressure, hcn_rain, p_t_list, 'pressure', figname = 'conv_nonconv_pressure_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
+plot_rain_converged(data_pressure, rain, p_t_list, 'pressure', figname = 'conv_nonconv_pressure_rain'+network+'.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
 # %%

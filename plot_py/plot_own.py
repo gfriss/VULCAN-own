@@ -371,7 +371,7 @@ with open(vul_data_ncho_ignore_5, 'rb') as handle:
 import plot_reset as pr
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
 #%%
-sp_to_plot = 'H2O_l_s'
+sp_to_plot = 'HCN'
 fig, ax = plt.subplots(tight_layout = True)
 ax.plot(data_crahcno['variable']['ymix'][:,data_crahcno['variable']['species'].index(sp_to_plot)], data_crahcno['atm']['pco']/1.e6, label = 'CRAHCNO', color = 'blue', linestyle = '-')
 ax.plot(data_crahcno_ignore_5['variable']['ymix'][:,data_crahcno_ignore_5['variable']['species'].index(sp_to_plot)], data_crahcno_ignore_5['atm']['pco']/1.e6, label = 'CRAHCNO - ignore 5', linestyle = '--', color = 'orange')
@@ -386,7 +386,7 @@ ax.invert_yaxis()
 fig.legend(loc = (0.65,0.75))
 fig.savefig(scratch + 'plot/networks_{}.pdf'.format(sp_to_plot))
 # %%
-rain_spec = 'H2O_rain'
+rain_spec = 'HCN_rain'
 dat_list = [data_crahcno, data_crahcno_ignore_5, data_ncho, data_ncho_ignore_5]
 name_list = ['CRAHCNO', 'CRAHCNO_ignore_5', 'NCHO', 'NCHO_ignore_5']
 rain_rate = []
@@ -428,7 +428,7 @@ ax.set_xlabel('n_{} [cm^-3]'.format(sp_to_plot))
 ax.set_ylabel('Pressure [bar]')
 ax.set_xscale('log')
 ax.set_yscale('log')
-ax.set_xlim((1e-2, 1e12))
+#ax.set_xlim((1e-2, 1e12))
 #ax.set_xlim((None, 1e-21))
 ax.invert_yaxis()
 fig.legend(loc = (0.12,0.45))

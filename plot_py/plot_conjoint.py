@@ -196,5 +196,8 @@ plt.hist2d(x=Seff_list, y=Teff_list, bins = 10, weights=rain_list, norm = mc.Log
 plt.colorbar()
 plt.plot(0.72, 5390, color = 'orange', marker = '*') # values do not match ones from csv but this way the marker is in the middle of the pixel
 plt.gca().invert_xaxis()
+plt.xlabel(u'S$_{eff}$ [S$_\u2295$]')
+plt.ylabel(r'T$_{eff}$ [K]')
+plt.savefig(os.path.join(plot_folder, 'HCN_rainout_hist2d_S_eff'+network+'.pdf'))
 # %%
 # try pcolormesh?
