@@ -12,7 +12,7 @@ helios_folder = os.path.join(scratch, 'HELIOS')
 og_param = os.path.join(helios_folder, 'param.dat')
 output = os.path.join(helios_folder, 'output')
 star_df = pd.read_csv(os.path.join(scratch, 'stellar_flux', 'stellar_params.csv'))
-nsim_dist = 15
+nsim = 15
 #%%
 def change_line(line, bit_id, new_val):
     bits = line.split()
@@ -35,10 +35,12 @@ def create_param_file(sim_name, dist = None, sname = None, manual = False, r_sta
                 new_str += change_line(line, 6, str(dist))
             elif sname != None and 'path to stellar spectrum file' in line: # by default it asks for dile in param.dat
                 new_str += change_line(line, 8, './star_tool/output/{}.h5'.format(sname.lower()))
-            elif sname != None and sname not in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
-                new_str += change_line(line, 8, '/r50_kdistr/muscles/{}'.format(sname.lower()))
-            elif sname != None and sname in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
-                new_str += change_line(line, 8, '/r50_kdistr/ascii/{}'.format(sname.lower()))
+            elif sname != None and 'dataset in stellar spectrum file' in line: # by default it asks for dile in param.dat
+                new_str += change_line(line, 8, '/r50_kdistr/phoenix/{}'.format(sname.lower()))
+            #elif sname != None and sname not in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
+            #    new_str += change_line(line, 8, '/r50_kdistr/muscles/{}'.format(sname.lower()))
+            #elif sname != None and sname in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
+            #    new_str += change_line(line, 8, '/r50_kdistr/ascii/{}'.format(sname.lower()))
             elif sname != None and 'planet =' in line:
                 if manual:
                     new_str += change_line(line, 2, 'manual')
@@ -79,7 +81,7 @@ def create_new_vulcan_pt(sim_name, subfolder = ''):
 #%%
 #create_new_vulcan_pt('archean')
 #%%
-a_list = np.linspace(0.85, 1.35, nsim_dist, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
+a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
 
 def run_many_dist(dist_list):
     for i,a in enumerate(dist_list):
@@ -115,18 +117,61 @@ def run_many_planets(star_table):
         create_new_vulcan_pt(sim)
 #run_many_planets(star_df)
 #%%
+import astropy.io.fits as fits
+
+def get_R_star(Teff, logg, m):
+    R_sun = 6.9634e10 # cm
+    R = []
+    for T,g in zip(Teff,logg):
+        hdul = fits.open('/scratch/s2555875/phoenix_fits/{:05d}_{:.2f}_{:.1f}.fits'.format(T,g,m))
+        R.append(hdul[0].header['PHXREFF']/R_sun)
+    return R
+        
+def guess_semi_major(Teff, logg, m, Seff_0 = 0.728):
+    L_sun = 3.846e33 # erg/s
+    d = []
+    for T,g in zip(Teff,logg):
+        hdul = fits.open('/scratch/s2555875/phoenix_fits/{:05d}_{:.2f}_{:.1f}.fits'.format(T,g,m))
+        d.append( np.sqrt( (hdul[0].header['PHXLUM']/L_sun) / Seff_0 ) )
+    return d
+
+Teff_list = np.array([2600+i*300 for i in range(nsim)])
+logg_list = np.array([5. for i in range(nsim)])
+logg_list[(Teff_list>=4000)&(Teff_list<6000)] = 4.5
+logg_list[Teff_list>=6000] = 4.0
+m = 0. # solar metallicity
+R_list = get_R_star(Teff_list, logg_list, m)
+dist_list = guess_semi_major(Teff_list, logg_list, m)
+#dist_list = [0.02, 0.065, 0.071, 0.148, 0.172, 0.368, 0.469, 0.602, 0.661, 0.692, 1.111, 1.735, 1.964, 2.301, 2.635]
+def run_many_star(T_list, rad_list, a_list):
+    for i,Teff in enumerate(T_list):
+        sim = ''
+        if i < 10:
+            sim = 'sim_0{}_star'.format(str(i))
+        else:
+            sim = 'sim_{}_star'.format(str(i))
+        
+        wd = os.getcwd()
+        os.chdir(helios_folder)
+        new_p = create_param_file(sim, sname = sim, manual = True, T_star = Teff, r_star = rad_list[i], dist = a_list[i])
+        subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
+        os.chdir(wd)
+        create_new_vulcan_pt(sim)
+run_many_star(Teff_list, R_list, dist_list)
+print(dist_list)
+#%%
 def run_star_dist(star_table, factor = 1.1):
     param_matrix = []
     for star,a_min,a_max in zip(star_table.Name, star_table.a_min, star_table.a_max):
         #dist = pf.semi_major_list_from_Seff(star_df, star, nsim_dist, factor = factor)
         # for a few starts the original method got too cold surface temperatures so decided to test 
         # and make sure surface temperature are between 0and 100 Celsiusfor all
-        dist = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
+        dist = np.linspace(a_min, a_max, nsim, endpoint = True)
         for d in dist:
             param_matrix.append([star, d])
 
     for i,sim_i in enumerate(param_matrix):
-        i_dist = i%nsim_dist
+        i_dist = i%nsim
         #if i_dist not in [0,14]:
         #    continue # testing extremities
         #if sim_i[0] in ['EARLY_SUN', 'SUN', 'GJ1214', 'GJ674', 'GJ15A', 'HD40307', 'TRAPPIST-1', 'GJ676A', 'HD97658', 'HD149026', 'WASP17','GJ729']:
@@ -146,7 +191,7 @@ def run_star_dist(star_table, factor = 1.1):
         subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
         os.chdir(wd)
         create_new_vulcan_pt(sim, subfolder = 'star_dist')
-run_star_dist(star_df)
+#run_star_dist(star_df)
 #%%
 # creating fastchem styled mixing ratio file for HELIOS
 location_early = '/scratch/s2555875/HELIOS/input/chemistry/early_earth/chem.dat'
