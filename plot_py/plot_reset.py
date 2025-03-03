@@ -24,7 +24,7 @@ def reset_plt(ticksize, fontsize, fxsize, fysize):
     plt.rcParams['axes.grid'] = True
     plt.rcParams['grid.alpha'] = 0.6
     plt.rcParams['figure.figsize'] = (fxsize,fysize)
-    plt.rcParams['figure.autolayout'] = True
+    #plt.rcParams['figure.autolayout'] = True
     cm = plt.get_cmap('nipy_spectral')
     n_colours = 16
     lst = ['-', '--', '-.', ':']

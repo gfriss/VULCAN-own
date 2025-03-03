@@ -8,13 +8,13 @@ use_lowT_limit_rates = False
 
 # ====== Setting up paths and filenames for the input and output files  ======
 # input:
-network = '/scratch/s2555875/CRAHCNO_v3/CRAHCNO_V3.txt'
-#network = '/home/s2555875/VULCAN-2/thermo/NCHO_full_photo_network.txt'
+#network = '/scratch/s2555875/CRAHCNO_v3/CRAHCNO_V3.txt'
+network = '/home/s2555875/VULCAN-2/thermo/NCHO_full_photo_network.txt'
 use_lowT_limit_rates = False
 gibbs_text = '/home/s2555875/VULCAN-2/thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
 cross_folder = '/home/s2555875/VULCAN-2/thermo/photo_cross/'
-com_file = '/scratch/s2555875/CRAHCNO_v3/all_compose.txt'
-#com_file = '/home/s2555875/VULCAN-2/thermo/all_compose.txt'
+#com_file = '/scratch/s2555875/CRAHCNO_v3/all_compose.txt'
+com_file = '/home/s2555875/VULCAN-2/thermo/all_compose.txt'
 atm_file = '/scratch/s2555875/TP_files/archean.txt' # TP and Kzz (optional) file
 sflux_file = '/scratch/s2555875/stellar_flux/early_sun.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_top_Earth.txt' # the file for the top boundary conditions
@@ -25,7 +25,7 @@ vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt' # the file to i
 output_dir = '/home/s2555875/scratch/output/'
 plot_dir = '/home/s2555875/scratch/plot/'
 movie_dir = '/home/s2555875/scratch/plot/movie/'
-out_name = 'archean_ignore_5.vul' # output file name
+out_name = 'archean_ncho.vul' # output file name
 
 
 # ====== Setting up the elemental abundance ======
@@ -120,11 +120,11 @@ condense_sp = ["H2O"]
 non_gas_sp = [ 'H2O_l_s']
 rain_sp = ['H2O', 'HCN']
 non_gas_rain_sp = ['H2O_rain', 'HCN_rain']
-Henrys = 7.498
+Henrys = 7.577 # M/atm
 fix_species = ['H2O','H2O_l_s'] # fixed the condensable species after condensation-evapoation EQ has reached  
 fix_species_time = 5e8 # after this time to fix the condensable species
 use_ini_cold_trap = True
-stop_conden_time = 1e22
+stop_conden_time = 5e8 #5e8 for CRAHCN-O
 fix_species_from_coldtrap_lev = True
 
 # ====== steady state check ======
@@ -153,16 +153,16 @@ nega_cut = -1.
 loss_eps = 1e12 # for using BC
 yconv_cri = 0.01 # for checking steady-state
 slope_cri = 1.e-4
-yconv_min = 0.1
+yconv_min = 0.105
 flux_cri = 0.1
 flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)
-ignore_layers = True
+ignore_layers = False
 nl_ignore = 5
 longdy_ignore = 1.
 
 # ====== Setting up numerical parameters for Ros2 ODE solver ====== 
-rtol = 5e-2              # relative tolerence for adjusting the stepsize 
-post_conden_rtol = 0.2# switched to this value after fix_species_time
+rtol = 0.05              # relative tolerence for adjusting the stepsize 
+post_conden_rtol = 0.01 # switched to this value after fix_species_time
 
 # ====== Setting up for ouwtput and plotting ======
 # plotting:

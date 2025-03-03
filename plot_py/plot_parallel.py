@@ -49,8 +49,8 @@ h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
 p_t_list = np.linspace(1e-2, 1e-1, 15, endpoint = True)/1e6
 
 # setting chemical network and  top layer ignore for naming (empty if crahcno/no ignore as these are the defaults)
-network = ''
-#network = '_ncho'
+#network = ''
+network = '_ncho'
 ignore = ''
 #ignore = '_ignore_5'
 # base simulation of Archean
@@ -168,7 +168,7 @@ def read_in(sim_type, number_of_sim, start_number = '0', start_str = ''):
         return dat_list, T_surface
     elif sim_type == 'local':
         return dat_list, mixing_H2
-    elif sim_type == 'pressure':
+    else:
         return dat_list
 
 def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
@@ -798,7 +798,6 @@ plot_pt(data_dist, a_list, 'dist', figname = 'PT_dist.pdf')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figname = 'rain_vertical_pt'+network+'.pdf')
-# %%
 #%%
 # pressure case
 data_pressure = read_in('pressure', nsim)

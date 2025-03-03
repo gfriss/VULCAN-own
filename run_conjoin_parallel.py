@@ -90,6 +90,6 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
             subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, 'rerun', sim])
             os.chdir(sim_folder)
             subprocess.check_call(['python', 'vulcan.py', '-n'])
+            os.chdir(wd)
     # then exit simulation folder and delete it
-    os.chdir(wd)
     subprocess.check_call(['rm', '-rf', sim_folder])

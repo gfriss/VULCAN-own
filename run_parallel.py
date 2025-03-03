@@ -38,9 +38,11 @@ helios_tp = ''
 #helios_tp = 'helios_tp_'
 # local meteorite case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
+# TOA pressure case
+p_t_list = np.linspace(1e-2, 1e-1, 15, endpoint = True)
 # defining network (crahcno is defualt), only used to identify sim folders and outputs
-network = ''
-#network = '_ncho'
+#network = ''
+network = '_ncho'
 # Boolian to check convergence and rerun if needed
 check_conv = True
 
@@ -112,6 +114,10 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         # assumed to keep P-T profile and surface pressure the same
         # then change vulcan_cfg.py file
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, atol_change, rtol_change, out_change])
+    elif run_type == 'pressure':
+        # change top of atmosphere pressure
+        p_t_change = ','.join(['P_t', str(p_t_list[i]), 'val'])
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, p_t_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     #subprocess.check_call(['cp', '-p', 'build_atm.py', 'chem_funs.py', 'op.py', 'phy_const.py', 'store.py', 'vulcan.py', sim_folder])
     wd = os.getcwd()
