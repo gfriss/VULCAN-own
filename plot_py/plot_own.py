@@ -367,16 +367,21 @@ with open(vul_data_ncho, 'rb') as handle:
 vul_data_ncho_ignore_5 = scratch + 'output/archean_ncho_ignore_5.vul'
 with open(vul_data_ncho_ignore_5, 'rb') as handle:
   data_ncho_ignore_5 = pickle.load(handle)
+  
+vul_data_ncho_fix_bt_sp = scratch + 'output/archean_ncho_fix_bt_sp.vul'
+with open(vul_data_ncho_fix_bt_sp, 'rb') as handle:
+  data_ncho_fix_bt_sp = pickle.load(handle)
 # %%
 import plot_reset as pr
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
 #%%
-sp_to_plot = 'HCN'
+sp_to_plot = 'H2O_l_s'
 fig, ax = plt.subplots(tight_layout = True)
-ax.plot(data_crahcno['variable']['ymix'][:,data_crahcno['variable']['species'].index(sp_to_plot)], data_crahcno['atm']['pco']/1.e6, label = 'CRAHCNO', color = 'blue', linestyle = '-')
-ax.plot(data_crahcno_ignore_5['variable']['ymix'][:,data_crahcno_ignore_5['variable']['species'].index(sp_to_plot)], data_crahcno_ignore_5['atm']['pco']/1.e6, label = 'CRAHCNO - ignore 5', linestyle = '--', color = 'orange')
+#ax.plot(data_crahcno['variable']['ymix'][:,data_crahcno['variable']['species'].index(sp_to_plot)], data_crahcno['atm']['pco']/1.e6, label = 'CRAHCNO', color = 'blue', linestyle = '-')
+#ax.plot(data_crahcno_ignore_5['variable']['ymix'][:,data_crahcno_ignore_5['variable']['species'].index(sp_to_plot)], data_crahcno_ignore_5['atm']['pco']/1.e6, label = 'CRAHCNO - ignore 5', linestyle = '--', color = 'orange')
 ax.plot(data_ncho['variable']['ymix'][:,data_ncho['variable']['species'].index(sp_to_plot)], data_ncho['atm']['pco']/1.e6, label = 'NCHO', color = 'green', linestyle = '-')
-ax.plot(data_ncho_ignore_5['variable']['ymix'][:,data_ncho_ignore_5['variable']['species'].index(sp_to_plot)], data_ncho_ignore_5['atm']['pco']/1.e6, label = 'NCHO - ignore 5', linestyle = '--', color = 'red')
+#ax.plot(data_ncho_ignore_5['variable']['ymix'][:,data_ncho_ignore_5['variable']['species'].index(sp_to_plot)], data_ncho_ignore_5['atm']['pco']/1.e6, label = 'NCHO - ignore 5', linestyle = '--', color = 'red')
+ax.plot(data_ncho_fix_bt_sp['variable']['ymix'][:,data_ncho_fix_bt_sp['variable']['species'].index(sp_to_plot)], data_ncho_fix_bt_sp['atm']['pco']/1.e6, label = 'fix bt sp', color = 'red', linestyle = '-')
 ax.set_xlabel('X_{}'.format(sp_to_plot))
 ax.set_ylabel('Pressure [bar]')
 ax.set_xscale('log')
@@ -384,11 +389,13 @@ ax.set_yscale('log')
 ax.set_xlim((1e-12, None))
 ax.invert_yaxis()
 fig.legend(loc = (0.65,0.75))
-fig.savefig(scratch + 'plot/networks_{}.pdf'.format(sp_to_plot))
+#fig.savefig(scratch + 'plot/networks_{}.pdf'.format(sp_to_plot))
 # %%
 rain_spec = 'HCN_rain'
-dat_list = [data_crahcno, data_crahcno_ignore_5, data_ncho, data_ncho_ignore_5]
-name_list = ['CRAHCNO', 'CRAHCNO_ignore_5', 'NCHO', 'NCHO_ignore_5']
+#dat_list = [data_crahcno, data_crahcno_ignore_5, data_ncho, data_ncho_ignore_5]
+#name_list = ['CRAHCNO', 'CRAHCNO_ignore_5', 'NCHO', 'NCHO_ignore_5']
+dat_list = [data_ncho, data_ncho_fix_bt_sp]
+name_list = ['NCHO', 'NCHO_fix_bt_sp']
 rain_rate = []
 end_time = []
 for dat in dat_list:
@@ -399,7 +406,7 @@ ax.scatter(name_list, rain_rate, c = 'red')
 ax.set_ylabel('{} rate [kg/m2yr]'.format(rain_spec))
 ax.set_yscale('log')
 ax.set_ylim((min(rain_rate)/2, None))
-fig.savefig(scratch + 'plot/network_{}.pdf'.format(rain_spec))
+#fig.savefig(scratch + 'plot/network_{}.pdf'.format(rain_spec))
 # %%
 fig, ax = plt.subplots(tight_layout = True)
 ax.scatter(name_list, end_time, c = 'red')
@@ -434,4 +441,20 @@ ax.invert_yaxis()
 fig.legend(loc = (0.12,0.45))
 fig.colorbar(mapper, label = 'Time [s]')
 fig.savefig(scratch + 'plot/networks_evo_{}.pdf'.format(sp_to_plot))
+# %%
+# comparing synthetic and MUSCLES spectra
+import numpy as np
+import matplotlib.pyplot as plt
+
+muscles = np.genfromtxt('/scratch/s2555875/stellar_flux/hd97658.txt', comments = '#', names = ['lambda', 'flux'])
+synthetic = np.genfromtxt('/scratch/s2555875/stellar_flux/sim_06_star.txt', comments = '#', names = ['lambda', 'flux'])
+plt.plot(muscles['lambda'], muscles['flux'], label = 'MUSCLES - HD97658')
+plt.plot(synthetic['lambda'], synthetic['flux'], label = 'Synthetic - 5300K')
+plt.xlabel('Wavelength [nm]')
+plt.ylabel('Flux [ergs/cm^2/s/nm]')
+plt.yscale('log')
+plt.xscale('log')
+plt.ylim((1e-1, 5e8))
+plt.legend(loc = 'lower left')
+plt.savefig('/scratch/s2555875/plot/synthetic_muscles_T5300.pdf')
 # %%
