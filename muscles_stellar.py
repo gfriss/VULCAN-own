@@ -82,3 +82,21 @@ for wl,flux in zip(lam,F):
 new_file = os.path.join(flux_dir, 'early_sun.txt')
 with open(new_file, 'w') as g:
     g.write(new_str)
+#%%
+import h5py
+h5_dir = '/scratch/s2555875/HELIOS/star_tool/output'
+flux_dir = '/scratch/s2555875/stellar_flux'
+wl_conv = 1e7 # converting from cm to nm
+flux_conv = 1e-7 # converting from erg/cm**3/s to erg/cm**2/s/nm
+for filename in os.listdir(h5_dir):
+    if 'sim' not in filename:
+        continue
+    sim = filename[:-3] # without .h5
+    new_str = '# WL(nm)\t Flux(ergs/cm**2/s/nm)\n'
+    f = h5py.File(os.path.join(h5_dir, filename), 'r')
+    for wl, flux in zip(f['original']['phoenix']['lambda'][:], f['original']['phoenix'][sim][:]):
+        new_str += '{:<12}'.format(wl*wl_conv) + "{:>12.2E}".format(flux*flux_conv) + '\n'
+    f.close()
+    with open(os.path.join(flux_dir, sim + '.txt'), 'w') as g:
+        g.write(new_str)
+# %%

@@ -141,8 +141,8 @@ logg_list[(Teff_list>=4000)&(Teff_list<6000)] = 4.5
 logg_list[Teff_list>=6000] = 4.0
 m = 0. # solar metallicity
 R_list = get_R_star(Teff_list, logg_list, m)
-dist_list = guess_semi_major(Teff_list, logg_list, m)
-#dist_list = [0.02, 0.065, 0.071, 0.148, 0.172, 0.368, 0.469, 0.602, 0.661, 0.692, 1.111, 1.735, 1.964, 2.301, 2.635]
+#dist_list = guess_semi_major(Teff_list, logg_list, m)
+dist_list = [0.0510, 0.0724, 0.0994, 0.1320, 0.1710, 0.3840, 0.4777, 0.5834, 0.7026, 0.8300, 0.9810, 1.1418, 2.5660, 2.9330, 3.3610]
 def run_many_star(T_list, rad_list, a_list):
     for i,Teff in enumerate(T_list):
         sim = ''
@@ -158,7 +158,6 @@ def run_many_star(T_list, rad_list, a_list):
         os.chdir(wd)
         create_new_vulcan_pt(sim)
 run_many_star(Teff_list, R_list, dist_list)
-print(dist_list)
 #%%
 def run_star_dist(star_table, factor = 1.1):
     param_matrix = []
