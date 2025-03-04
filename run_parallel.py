@@ -3,6 +3,7 @@ import subprocess # to run bash commands like in a terminal
 import sys
 import numpy as np
 import parallel_functions as pf
+from astropy.io import fits
 from mpi4py.MPI import COMM_WORLD as CW # for paralellisation
 
 run_type = sys.argv[1] # 'meteor' or 'CtoO' or 'star' according to which experiment we run, used to make loop at end more readable
@@ -29,8 +30,16 @@ m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
 # C/O ratio
 co2_for_CtoO_range = np.linspace(0.001,0.1,nsim, endpoint = True)
 # star type
-star_df = pf.read_stellar_data(os.path.join(main_folder,'stellar_flux/stellar_params.csv')) # NOT necessarily nsim long...
-a_star_list  = [0.0296, 0.0770, 0.0780, 0.1550, 0.1780, 0.3840, 0.4945, 0.6295, 0.6976, 1., 1.1623, 1.9047, 2.3155]
+#star_df = pf.read_stellar_data(os.path.join(main_folder,'stellar_flux/stellar_params.csv')) # NOT necessarily nsim long...
+#a_star_list  = [0.0296, 0.0770, 0.0780, 0.1550, 0.1780, 0.3840, 0.4945, 0.6295, 0.6976, 1., 1.1623, 1.9047, 2.3155]
+phoenix_folder = os.path.join(main_folder, 'phoenix_fits')
+a_star_list = [0.0510, 0.0724, 0.0994, 0.1320, 0.1710, 0.3840, 0.4777, 0.5834, 0.7026, 0.8300, 0.9810, 1.1418, 2.5660, 2.9330, 3.3610]
+R_sol = 6.96e10 # cm
+Teff_list = np.array([2600+i*300 for i in range(nsim)])
+logg_list = np.array([5. for i in range(nsim)])
+logg_list[(Teff_list>=4000)&(Teff_list<6000)] = 4.5
+logg_list[Teff_list>=6000] = 4.0
+m = 0. # solar metallicity
 # distance case
 a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
 # in case new sims with HELIOS TP
@@ -49,8 +58,8 @@ check_conv = True
 # ------end of parameter set up-----
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
                                                             # this is the magic, after this just think of it as a normal, sequential loop
-    if run_type == 'star' and i >= len(star_df.Name): # fewer stars than 15...
-        continue
+    #if run_type == 'star' and i >= len(star_df.Name): # fewer stars than 15...
+    #    continue
     sim = ''
     if i < 10:
         sim = helios_tp + 'sim_0' + str(i) + '_' + run_type # due to using this variable to allocate input files that are same for all the networks
@@ -83,12 +92,14 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
     elif run_type == 'star':
         # new stellar radiation files already created, need to update vulcan_cfg with filename and r_star and orbit_radius
-        star_name = star_df.Name.iloc[i]
+        #star_name = star_df.Name.iloc[i]
+        star_name = sim
         new_rad_file = pf.get_rad_prof(star_name)
         rad_file_change = ','.join(['sflux_file', new_rad_file, 'str'])
-        new_r_star = str(star_df.loc[star_df.Name == star_name].R.iloc[0])
-        r_star_change = ','.join(['r_star', new_r_star, 'val'])
-        #new_orbit_radius = str(pf.semi_major_from_S_eff(star_df, star_name))
+        #new_r_star = str(star_df.loc[star_df.Name == star_name].R.iloc[0])
+        fits_file = os.path.join(phoenix_folder, '{:05d}_{:.2f}_{:.1f}.fits'.format(Teff_list[i],logg_list[i],m))
+        new_r_star = fits.open(fits_file)[0].header['PHXREFF'] / R_sol
+        r_star_change = ','.join(['r_star', str(new_r_star), 'val'])
         new_orbit_radius = str(a_star_list[i])
         orbit_radius_change = ','.join(['orbit_radius', new_orbit_radius, 'val'])
         # new TP files are already created with HELIOS, need to update vulcan_cfg with filename and orbit_radius
