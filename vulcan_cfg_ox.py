@@ -8,13 +8,13 @@ use_lowT_limit_rates = False
 
 # ====== Setting up paths and filenames for the input and output files  ======
 # input:
-#network = '/scratch/s2555875/CRAHCNO_v3/CRAHCNO_V3.txt'
-network = '/home/s2555875/VULCAN-2/thermo/NCHO_full_photo_network.txt'
+#network = 'thermo/CRAHCNO_V3.txt'
+network = 'thermo/NCHO_full_photo_network.txt'
 use_lowT_limit_rates = False
-gibbs_text = '/home/s2555875/VULCAN-2/thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
-cross_folder = '/home/s2555875/VULCAN-2/thermo/photo_cross/'
-#com_file = '/scratch/s2555875/CRAHCNO_v3/all_compose.txt'
-com_file = '/home/s2555875/VULCAN-2/thermo/all_compose.txt'
+gibbs_text = 'thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
+cross_folder = 'thermo/photo_cross/'
+#com_file = 'thermo/all_compose_crahcno.txt'
+com_file = 'thermo/all_compose.txt'
 atm_file = '/scratch/s2555875/TP_files/archean.txt' # TP and Kzz (optional) file
 sflux_file = '/scratch/s2555875/stellar_flux/early_sun.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_top_Earth.txt' # the file for the top boundary conditions
@@ -123,7 +123,7 @@ Henrys = 7.577 # M/atm
 fix_species = ['H2O','H2O_l_s'] # fixed the condensable species after condensation-evapoation EQ has reached  
 fix_species_time = 5e8 # after this time to fix the condensable species
 use_ini_cold_trap = True
-stop_conden_time = 5e20
+stop_conden_time = 5e8
 fix_species_from_coldtrap_lev = True
 
 # ====== steady state check ======

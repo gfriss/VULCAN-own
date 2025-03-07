@@ -8,13 +8,13 @@ use_lowT_limit_rates = False
 
 # ====== Setting up paths and filenames for the input and output files  ======
 # input:
-#network = '/scratch/s2555875/CRAHCNO_v3/CRAHCNO_V3.txt'
-network = '/home/s2555875/VULCAN-2/thermo/NCHO_full_photo_network.txt'
+#network = 'thermo/CRAHCNO_V3.txt'
+network = 'thermo/NCHO_full_photo_network.txt'
 use_lowT_limit_rates = False
 gibbs_text = '/home/s2555875/VULCAN-2/thermo/gibbs_text.txt' # (all the nasa9 files must be placed in the folder: thermo/NASA9/)
 cross_folder = '/home/s2555875/VULCAN-2/thermo/photo_cross/'
-#com_file = '/scratch/s2555875/CRAHCNO_v3/all_compose.txt'
-com_file = '/home/s2555875/VULCAN-2/thermo/all_compose.txt'
+#com_file = 'thermo/all_compose_crahcno.txt'
+com_file = 'thermo/all_compose.txt'
 atm_file = '/scratch/s2555875/TP_files/archean.txt' # TP and Kzz (optional) file
 sflux_file = '/scratch/s2555875/stellar_flux/early_sun.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_top_Earth.txt' # the file for the top boundary conditions
@@ -25,7 +25,7 @@ vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt' # the file to i
 output_dir = '/home/s2555875/scratch/output/'
 plot_dir = '/home/s2555875/scratch/plot/'
 movie_dir = '/home/s2555875/scratch/plot/movie/'
-out_name = 'archean_ncho.vul' # output file name
+out_name = 'archean_ncho_3.vul' # output file name
 
 
 # ====== Setting up the elemental abundance ======
