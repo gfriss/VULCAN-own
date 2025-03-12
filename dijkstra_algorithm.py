@@ -1,5 +1,5 @@
-''' Implementation of the Dijkstra algorithm. Code skeleton taken from www.datacamp.com which
-    I extended with the making of the graph (make_graph() funciton) and tracking of reactions.'''
+''' Implementation of the Dijkstra algorithm. Code skeleton taken from www.datacamp.com and www.udacity.com 
+    which I extended with the making of the graph (make_graph() funciton) and tracking of reactions.'''
 #%%
 import numpy as np
 from heapq import heapify, heappop, heappush
@@ -47,48 +47,37 @@ class Graph:
                     else: # mono- and bimolecular reactions
                         rate *= self.dat['variable']['y'][n_layer, self.spec_list.index(reactant)]
             # then fill up the dictionary
-            duplicate_reactant = False
+            duplicate_reactant = []
             for reactant in reactant_list:
                 # avoid repetition and third body
-                if duplicate_reactant:
-                    duplicate_reactant = False # in case there would be a double team up of species
-                    continue
-                if reactant == 'M':
+                if  reactant in duplicate_reactant or reactant == 'M':
                     continue
                 # if reactant is in reaction twice, need to double the rate so the weight would be quicker (shorter lifetime)
                 rate_sp = copy.copy(rate)
                 if reactant_list.count(reactant) == 2:
-                    rate_sp *= 2
-                    duplicate_reactant = True
+                    duplicate_reactant.append(reactant)
                 # setting weight, default is inf when unconnected, i.e. rate = 0, or it's a loop
                 # otherwise weight is lifetime tau_i = n/(k*n_i*nr) where nr is the number density oh the rest of reactants and rate = k*n*nr
-                lifetime_reactant = np.inf
+                lifetime = np.inf
                 if rate_sp > 0:
-                    lifetime_reactant = self.dat['variable']['y'][n_layer, self.spec_list.index(reactant)] / rate_sp
-                duplicate_product = False
+                    lifetime = self.dat['variable']['y'][n_layer, self.spec_list.index(reactant)] / rate_sp
+                duplicate_product = []
                 for product in product_list:
                     # avoiding third body and repetation
-                    if product == 'M':
+                    if product in duplicate_product or product == 'M':
                         continue
-                    if duplicate_product:
-                        duplicate_product = False
-                        continue
-                    lifetime_product = copy.copy(lifetime_reactant)
-                    rate_sp_product = copy.copy(rate_sp)
                     if product_list.count(product) == 2: # if twice as much is produced, this route is favoured, takes half the time for the same amount
-                        duplicate_product = True
-                        lifetime_product /= 2
-                        rate_sp_product *= 2
+                        duplicate_product.append(product)
                     if product not in self.graph[reactant]: # if first entry for this edge, simply assign values
-                        self.graph[reactant][product] = copy.copy(lifetime_product)
-                        self.g_reactions[reactant][product] = [copy.copy(re_id), copy.copy(rate_sp_product), copy.copy(rate_sp_product), copy.copy(lifetime_product)] # reaction ID, rate, total reaction rate and lifetime
+                        self.graph[reactant][product] = copy.copy(lifetime)
+                        self.g_reactions[reactant][product] = [copy.copy(re_id), copy.copy(rate_sp), copy.copy(rate_sp), copy.copy(lifetime)] # reaction ID, rate, total reaction rate and lifetime
                     else: # if there is already a value for this edge, could override if new reaction is faster (shorter lifetime)
-                        self.g_reactions[reactant][product][2] += copy.copy(rate_sp_product) # adding to the total reaction rate
-                        if lifetime_product < self.graph[reactant][product]: # override if faster
-                            self.graph[reactant][product] = copy.copy(lifetime_product)
+                        self.g_reactions[reactant][product][2] += copy.copy(rate_sp) # adding to the total reaction rate
+                        if lifetime < self.graph[reactant][product]: # override if faster
+                            self.graph[reactant][product] = copy.copy(lifetime)
                             self.g_reactions[reactant][product][0] = copy.copy(re_id)
-                            self.g_reactions[reactant][product][1] = copy.copy(rate_sp_product) 
-                            self.g_reactions[reactant][product][3] = copy.copy(lifetime_product) 
+                            self.g_reactions[reactant][product][1] = copy.copy(rate_sp) 
+                            self.g_reactions[reactant][product][3] = copy.copy(lifetime) 
         
     def get_species(self, eq_side):
         ''' Returns the species in a given reaction side in a list.'''
@@ -280,12 +269,30 @@ def patway_analysis(pressures, start_sp, end_sp, sim_type, network, nsim):
             with redirect_stdout(f):
                 G.print_result(start_node = start_sp, target_node = end_sp)
         f.close()
+        
+def pathway_archean(pressures, start_sp, end_sp, network):
+    ''' Performs the pathway analysis for the Archean network at the given pressure levels.'''
+    pathways_file = os.path.join(pathway_folder, '{}->{}_archean{}.txt'.format(start_sp, end_sp, network))
+    f = open(pathways_file, 'w')
+    f.write('# This file contains the pathway analysis of the Archean{} simulation, starting from {} and ending in {} throughout various pressure levels\n'.format(network, start_sp, end_sp))
+    for p in pressures:
+        f.write('\nPressure: {:.1e} bar\n'.format(p))
+        with open(os.path.join(output_folder, 'archean{}.vul'.format(network)), 'rb') as handle:
+            data_archean = pickle.load(handle)
+        n_layer = get_layer(data_archean, p)
+        A = Graph(dat=data_archean)
+        A.make_graph(n_layer)
+        A.dijkstra_algorithm(start_node = start_sp)
+        with redirect_stdout(f):
+            A.print_result(start_node = start_sp, target_node = end_sp)
+    f.close()
 #%%
-network = ''
-#network = '_ncho'
+#network = ''
+network = '_ncho'
 pressures = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
-start_sp = 'CH4'
+start_sp = 'NH3'
 end_sp = 'HCN'
+pathway_archean(pressures = pressures, start_sp = start_sp, end_sp = end_sp, network = network)
 patway_analysis(pressures = pressures, start_sp = start_sp, end_sp = end_sp, sim_type = 'meteor', network = network, nsim = 15)
 patway_analysis(pressures = pressures, start_sp = start_sp, end_sp = end_sp, sim_type = 'CtoO', network = network, nsim = 15)
 patway_analysis(pressures = pressures, start_sp = start_sp, end_sp = end_sp, sim_type = 'dist', network = network, nsim = 15)
