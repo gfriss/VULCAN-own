@@ -446,15 +446,78 @@ fig.savefig(scratch + 'plot/networks_evo_{}.pdf'.format(sp_to_plot))
 import numpy as np
 import matplotlib.pyplot as plt
 
-muscles = np.genfromtxt('/scratch/s2555875/stellar_flux/hd97658.txt', comments = '#', names = ['lambda', 'flux'])
-synthetic = np.genfromtxt('/scratch/s2555875/stellar_flux/sim_06_star.txt', comments = '#', names = ['lambda', 'flux'])
-plt.plot(muscles['lambda'], muscles['flux'], label = 'MUSCLES - HD97658')
-plt.plot(synthetic['lambda'], synthetic['flux'], label = 'Synthetic - 5300K')
+muscles = np.genfromtxt('/scratch/s2555875/stellar_flux/hd40307.txt', comments = '#', names = ['lambda', 'flux'])
+#synthetic = np.genfromtxt('/scratch/s2555875/stellar_flux/sim_06_star.txt', comments = '#', names = ['lambda', 'flux'])
+bosz_wl = np.genfromtxt('/scratch/s2555875/BOSZ_spectra/bosz2024_wave_r500.txt', comments = '#')
+bosz_wl *= 1e-1 # nm
+bosz_F = np.genfromtxt('/scratch/s2555875/BOSZ_spectra/bosz2024_mp_t5000_g+4.5_m+0.00_a+0.00_c+0.00_v0_r500_resam.txt', comments = '#', usecols = 0)
+bosz_F *= 4*np.pi * 10 # erg/cm2/s/nm
+nccs = np.genfromtxt('/scratch/s2555875/stellar_flux/hd22049.txt', comments = '#', names = ['lambda', 'flux'], skip_header = 16, skip_footer = 1)
+plt.plot(muscles['lambda'], muscles['flux'], label = 'MUSCLES - HD40307')
+plt.plot(nccs['lambda']/10, nccs['flux']*10*(0.53*1.5e11 / 5.1156e8)**2, label = 'NCCS - HD22049') # planet at 0.53 AU from star according to Seguro et al 2003
+plt.plot(bosz_wl, bosz_F, label = 'BOSZ - 5000K')
 plt.xlabel('Wavelength [nm]')
 plt.ylabel('Flux [ergs/cm^2/s/nm]')
 plt.yscale('log')
 plt.xscale('log')
-plt.ylim((1e-1, 5e8))
+plt.ylim((9e-2, 5e8))
 plt.legend(loc = 'lower left')
-plt.savefig('/scratch/s2555875/plot/synthetic_muscles_T5300.pdf')
+plt.savefig('/scratch/s2555875/plot/syntheticnccs_muscles_T5000.pdf')
 # %%
+vul_data_ncho_1 = scratch + 'output/archean_ncho_1.vul'
+with open(vul_data_ncho_1, 'rb') as handle:
+  data_ncho_1 = pickle.load(handle)
+  
+vul_data_ncho_2 = scratch + 'output/archean_ncho_2.vul'
+with open(vul_data_ncho_2, 'rb') as handle:
+  data_ncho_2 = pickle.load(handle)
+  
+vul_data_ncho_3 = scratch + 'output/archean_ncho_3.vul'
+with open(vul_data_ncho_3, 'rb') as handle:
+  data_ncho_3 = pickle.load(handle)
+  
+vul_data_ncho_4 = scratch + 'output/archean_ncho_4.vul'
+with open(vul_data_ncho_4, 'rb') as handle:
+  data_ncho_4 = pickle.load(handle)
+  
+vul_data_ncho_5 = scratch + 'output/archean_ncho_5.vul'
+with open(vul_data_ncho_5, 'rb') as handle:
+  data_ncho_5 = pickle.load(handle)
+  
+vul_data_ncho_6 = scratch + 'output/archean_ncho_6.vul'
+with open(vul_data_ncho_6, 'rb') as handle:
+  data_ncho_6 = pickle.load(handle)
+#%%
+sp_to_plot = ['H2CO', 'CH3', 'CH4', 'H2O_l_s', 'HCN', 'H2', 'H', 'H2O', 'CO2', 'CO', 'OH']
+for sp in sp_to_plot:
+  fig, ax = plt.subplots(tight_layout = True)
+  ax.plot(data_ncho_1['variable']['ymix'][:,data_ncho_1['variable']['species'].index(sp)], data_ncho_1['atm']['pco']/1.e6, label = '1', color = 'blue', linestyle = '-')
+  ax.plot(data_ncho_2['variable']['ymix'][:,data_ncho_2['variable']['species'].index(sp)], data_ncho_2['atm']['pco']/1.e6, label = '2', linestyle = '--', color = 'orange')
+  ax.plot(data_ncho_3['variable']['ymix'][:,data_ncho_3['variable']['species'].index(sp)], data_ncho_3['atm']['pco']/1.e6, label = '3', color = 'green', linestyle = '-')
+  ax.plot(data_ncho_4['variable']['ymix'][:,data_ncho_4['variable']['species'].index(sp)], data_ncho_4['atm']['pco']/1.e6, label = '4', linestyle = '--', color = 'red')
+  ax.plot(data_ncho_5['variable']['ymix'][:,data_ncho_5['variable']['species'].index(sp)], data_ncho_5['atm']['pco']/1.e6, label = '5', linestyle = ':', color = 'black')
+  ax.plot(data_ncho_6['variable']['ymix'][:,data_ncho_6['variable']['species'].index(sp)], data_ncho_6['atm']['pco']/1.e6, label = '6', linestyle = '.-', color = 'magenta')
+  ax.set_xlabel('X_{}'.format(sp_to_plot))
+  ax.set_ylabel('Pressure [bar]')
+  ax.set_xscale('log')
+  ax.set_yscale('log')
+  #ax.set_xlim((1e-12, None))
+  ax.invert_yaxis()
+  fig.legend()
+  fig.savefig(scratch + 'plot/ncho_rtoltest_{}.pdf'.format(sp_to_plot))
+#%%
+rain_spec = ['H2O_rain', 'HCN_rain']
+dat_list = [data_ncho_1, data_ncho_2, data_ncho_3, data_ncho_4, data_ncho_5, data_ncho_6]
+name_list = ['1', '2', '3', '4', '5', '6']
+for rain_sp in rain_spec:
+  rain_rate = []
+  end_time = []
+  for dat in dat_list:
+    rain_rate.append((np.sum(dat['variable']['y_rain'][rain_sp][:-1] * dat['atm']['dzi']) / dat['variable']['dt'])*5.237e-13*(27/1000.)) # kg/m2yr
+    end_time.append(dat['variable']['t'])
+  fig, ax = plt.subplots(tight_layout = True)
+  ax.scatter(name_list, rain_rate, c = 'red')
+  ax.set_ylabel('{} rate [kg/m2yr]'.format(rain_sp))
+  ax.set_yscale('log')
+  #ax.set_ylim((min(rain_rate)/2, None))
+  fig.savefig(scratch + 'plot/ncho_rtol_test_{}.pdf'.format(rain_sp))
