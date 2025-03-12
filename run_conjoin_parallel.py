@@ -68,28 +68,27 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     wd = os.getcwd()
     os.chdir(sim_folder)
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/build_atm.py', 'build_atm.py'])
-    subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/chem_funs.py', 'chem_funs.py'])
+    subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/make_chem_funs.py', 'make_chem_funs.py'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/op.py', 'op.py'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/phy_const.py', 'phy_const.py'])
-    subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/store.py', 'store.py'])
+    subprocess.check_call(['cp', '-p', '/home/s2555875/VULCAN-2/store.py', 'store.py'])
     subprocess.check_call(['cp', '-p', '/home/s2555875/VULCAN-2/vulcan.py', 'vulcan.py'])
-    subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/thermo', 'thermo'])
+    subprocess.check_call(['cp', '-r', '/home/s2555875/VULCAN-2/thermo', 'thermo'])
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/atm', 'atm'])
+    subprocess.check_call(['cp', '-p', '/home/s2555875/VULCAN-2/gen_cfg.py', 'gen_cfg.py'])
     # then run vulcan.py
-    subprocess.check_call(['python', 'vulcan.py', '-n'])
+    subprocess.check_call(['python', 'vulcan.py'])
     # then check convergence and rerun once if needed:
-    os.chdir(wd)
     if check_conv:
         with open(conv_file, 'r') as f:
             conv_text = f.read()
         if out_file not in conv_text:
             vul_ini_change = ','.join(['vul_ini', os.path.join(output_folder,out_file), 'str'])
             ini_mix_change = ','.join(['ini_mix', 'vulcan_ini', 'str'])
+            yconv_min_change = ','.join(['yconv_min', str(0.2), 'val']) # 0.1 is the default, allow double
             out_file = sim + network + '_rerun.vul' # change this last so the initial composition will use the previous run
             out_change = ','.join(['out_name', out_file, 'str'])
-            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, 'rerun', sim])
-            os.chdir(sim_folder)
+            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, yconv_min_change, 'rerun', sim])
             subprocess.check_call(['python', 'vulcan.py', '-n'])
-            os.chdir(wd)
     # then exit simulation folder and delete it
     subprocess.check_call(['rm', '-rf', sim_folder])
