@@ -27,13 +27,18 @@ for filename in os.listdir(fits_dir):
     new_str = '# WL(nm)\t Flux(ergs/cm**2/s/nm)\n'
     r_star = r_sun * stellar_table.loc[stellar_table.Name == star.upper()].R.iloc[0]
     d_star = stellar_table.loc[stellar_table.Name == star.upper()].Distance.iloc[0] * pc / u.m
-
-    for wl,flux in zip(spec['WAVELENGTH'],spec['FLUX']):
-        #if flux > 0: # there's negative values..., could do something smoother because it's still a big drop many a times
-        new_str += '{:<12}'.format(wl*0.1) + "{:>12.2E}".format(float(flux*10. *(d_star/r_star)**2        )) + '\n'
-        #else:
-        #    new_str += '{:<12}'.format(wl*0.1) + "{:>12.2E}".format(0.5) + '\n' # trying whether zeros affect the convergence
-    
+    fl_prev = 1e1
+    for wavel,flux in zip(spec['WAVELENGTH'],spec['FLUX']):
+        wl = wavel*0.1 # converting to nm
+        fl = flux*10. *(d_star/r_star)**2 # converting to ergs/cm**2/s/nm
+        if wl < 1: # ignoring below 1nm...
+            continue 
+        if fl < 1e1: # ignoring negative fluxes and irrationally big plummets in spectra
+            new_str += '{:<12}{:>12.2E}\n'.format(wl,fl_prev)
+        else:
+            new_str += '{:<12}{:>12.2E}\n'.format(wl,fl)
+            fl_prev = fl
+        
     new_file = os.path.join(flux_dir,star + '.txt')
     with open(new_file, 'w') as g:
         g.write(new_str)
