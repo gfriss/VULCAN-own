@@ -14,7 +14,6 @@ import os
 import pandas as pd
 wd = os.getcwd()
 os.chdir('../')
-from chem_funs import nr, re_wM_dict, re_dict
 from vulcan_cfg import yconv_cri, yconv_min, slope_cri, nl_ignore
 os.chdir(wd)
 # setting up plot style
@@ -38,7 +37,8 @@ mixing_folder = '/scratch/s2555875/mixing_files/'
 # setting up star case
 star_df = pd.read_csv('/scratch/s2555875/stellar_flux/stellar_params.csv')
 T_eff = star_df.T_eff
-
+#T_eff = [2600+i*300 for i in range(nsim)]
+#T_eff = [2800, 3100, 3400, 3700, 4000, 4250, 4500, 4750, 5000, 5250, 5500, 5750, 6000, 6250, 6500]
 # setting up the distance case
 helios_output_folder = '/scratch/s2555875/HELIOS/output/'
 
@@ -252,6 +252,8 @@ def calc_rate(dat, spec_list, re_id, n):
     for sp in spec_list:
         if sp != 'M':
             rate *= dat['variable']['y'][n, dat['variable']['species'].index(sp)]
+        else:
+            rate *= dat['atm']['n_0'][n]
     return rate
 
 def get_species(eq_side):
@@ -462,18 +464,27 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figname = Non
     if figname != None:
         fig.savefig(plot_folder + figname)
     
+def get_species(eq_side):
+    ''' Returns the species in a given reaction side in a list.'''
+    side_split = eq_side.split('+')
+    side_split = [r.strip() for r in side_split] # stripping them from white spaces
+    return side_split
+    
 def get_total_reaction_rate(dat, diag_sp = 'HCN'):
     species = dat['variable']['species']
     total_re_list = np.zeros_like(dat['atm']['pco'])
-    for re in range(1,nr+1):
-        if diag_sp in re_wM_dict[re][0] or diag_sp in re_wM_dict[re][1]:
-            rate = dat['variable']['k'][re].astype(float)
-            for sp in re_wM_dict[re][0]: # [0]: reactants; [1]: prodcuts
+    for re_id,rea in dat['variable']['Rf'].items():
+        reagents_products = rea.split('->')
+        reagents = get_species(reagents_products[0])
+        products = get_species(reagents_products[1])
+        if diag_sp in reagents or diag_sp in products: # TO DO: treat forward and backward reactions separately
+            rate = dat['variable']['k'][re_id].astype(float)
+            for sp in reagents: # [0]: reactants; [1]: prodcuts
                 if sp == 'M': rate *= dat['atm']['n_0']
                 else: rate *= dat['variable']['y'][:,species.index(sp)]
-            if diag_sp in re_dict[re][0]:
+            if diag_sp in reagents:
                 total_re_list -= np.array(rate)
-            elif diag_sp in re_dict[re][1]:
+            elif diag_sp in products:
                 total_re_list += np.array(rate)
     return total_re_list    
     
@@ -769,9 +780,9 @@ plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_sta
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain')
 plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_nonconv_star_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
-#plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star'+network+'.pdf')
+plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star'+network+'.pdf')
 plot_pt(data_star, T_eff, 'star', figname = 'PT_star.pdf')
-plot_stellar_spectra('stellar_spectra_comp.pdf')
+#plot_stellar_spectra('stellar_spectra_comp.pdf')
 # %%
 # distance case
 a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
