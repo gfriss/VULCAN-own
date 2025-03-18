@@ -496,15 +496,15 @@ for sp in sp_to_plot:
   ax.plot(data_ncho_3['variable']['ymix'][:,data_ncho_3['variable']['species'].index(sp)], data_ncho_3['atm']['pco']/1.e6, label = '3', color = 'green', linestyle = '-')
   ax.plot(data_ncho_4['variable']['ymix'][:,data_ncho_4['variable']['species'].index(sp)], data_ncho_4['atm']['pco']/1.e6, label = '4', linestyle = '--', color = 'red')
   ax.plot(data_ncho_5['variable']['ymix'][:,data_ncho_5['variable']['species'].index(sp)], data_ncho_5['atm']['pco']/1.e6, label = '5', linestyle = ':', color = 'black')
-  ax.plot(data_ncho_6['variable']['ymix'][:,data_ncho_6['variable']['species'].index(sp)], data_ncho_6['atm']['pco']/1.e6, label = '6', linestyle = '.-', color = 'magenta')
-  ax.set_xlabel('X_{}'.format(sp_to_plot))
+  ax.plot(data_ncho_6['variable']['ymix'][:,data_ncho_6['variable']['species'].index(sp)], data_ncho_6['atm']['pco']/1.e6, label = '6', linestyle = '-.', color = 'magenta')
+  ax.set_xlabel('X_{}'.format(sp))
   ax.set_ylabel('Pressure [bar]')
   ax.set_xscale('log')
   ax.set_yscale('log')
   #ax.set_xlim((1e-12, None))
   ax.invert_yaxis()
   fig.legend()
-  fig.savefig(scratch + 'plot/ncho_rtoltest_{}.pdf'.format(sp_to_plot))
+  fig.savefig(scratch + 'plot/ncho_rtoltest_{}.pdf'.format(sp))
 #%%
 rain_spec = ['H2O_rain', 'HCN_rain']
 dat_list = [data_ncho_1, data_ncho_2, data_ncho_3, data_ncho_4, data_ncho_5, data_ncho_6]
@@ -519,5 +519,5 @@ for rain_sp in rain_spec:
   ax.scatter(name_list, rain_rate, c = 'red')
   ax.set_ylabel('{} rate [kg/m2yr]'.format(rain_sp))
   ax.set_yscale('log')
-  #ax.set_ylim((min(rain_rate)/2, None))
+  ax.set_ylim((min(rain_rate)/2, None))
   fig.savefig(scratch + 'plot/ncho_rtol_test_{}.pdf'.format(rain_sp))
