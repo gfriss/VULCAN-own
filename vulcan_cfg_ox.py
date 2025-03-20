@@ -120,11 +120,12 @@ non_gas_sp = [ 'H2O_l_s']
 rain_sp = ['H2O', 'HCN']
 non_gas_rain_sp = ['H2O_rain', 'HCN_rain']
 Henrys = 7.577 # M/atm
-fix_species = ['H2O','H2O_l_s'] # fixed the condensable species after condensation-evapoation EQ has reached  
+#fix_species = ['H2O','H2O_l_s'] # fixed the condensable species after condensation-evapoation EQ has reached  
+fix_species = [] # no fixing due to rainout
 fix_species_time = 5e8 # after this time to fix the condensable species
-use_ini_cold_trap = True
-stop_conden_time = 5e8
-fix_species_from_coldtrap_lev = True
+use_ini_cold_trap = False
+stop_conden_time = 5e20 # making sure it does not happen
+fix_species_from_coldtrap_lev = False
 
 # ====== steady state check ======
 st_factor = 0.5
@@ -144,7 +145,7 @@ dt_var_max = 2.
 dt_var_min = 0.5
 count_min = int(2E2) #120 # already built in minimum countto check
 count_max = int(1E5) #int(3E4)
-atol = 1.E-1 # Try decreasing this if the solutions are not stable
+atol = 1.E-5 # Try decreasing this if the solutions are not stable
 mtol = 1.E-22
 mtol_conv = 1.E-16
 pos_cut = 0

@@ -25,7 +25,7 @@ vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt' # the file to i
 output_dir = '/home/s2555875/scratch/output/'
 plot_dir = '/home/s2555875/scratch/plot/'
 movie_dir = '/home/s2555875/scratch/plot/movie/'
-out_name = 'archean_ncho_3.vul' # output file name
+out_name = 'archean_ncho.vul' # output file name
 
 
 # ====== Setting up the elemental abundance ======
@@ -121,11 +121,12 @@ non_gas_sp = [ 'H2O_l_s']
 rain_sp = ['H2O', 'HCN']
 non_gas_rain_sp = ['H2O_rain', 'HCN_rain']
 Henrys = 7.577 # M/atm
-fix_species = ['H2O','H2O_l_s'] # fixed the condensable species after condensation-evapoation EQ has reached  
+#fix_species = ['H2O','H2O_l_s'] # fixed the condensable species after condensation-evapoation EQ has reached  
+fix_species = [] # no fixing due to rainout
 fix_species_time = 5e8 # after this time to fix the condensable species
-use_ini_cold_trap = True
-stop_conden_time = 5e8 #5e8 for CRAHCN-O
-fix_species_from_coldtrap_lev = True
+use_ini_cold_trap = False
+stop_conden_time = 5e20 # making sure it does not happen
+fix_species_from_coldtrap_lev = False
 
 # ====== steady state check ======
 st_factor = 0.5
@@ -145,7 +146,7 @@ dt_var_max = 2.
 dt_var_min = 0.5
 count_min = int(2E2) #120 # already built in minimum countto check
 count_max = int(1E5) #int(3E4)
-atol = 1.E-1 # Try decreasing this if the solutions are not stable
+atol = 1.E-5 # Try decreasing this if the solutions are not stable
 mtol = 1.E-22
 mtol_conv = 1.E-16
 pos_cut = 0
@@ -153,7 +154,7 @@ nega_cut = -1.
 loss_eps = 1e12 # for using BC
 yconv_cri = 0.01 # for checking steady-state
 slope_cri = 1.e-4
-yconv_min = 0.105
+yconv_min = 0.1
 flux_cri = 0.1
 flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)
 ignore_layers = False
