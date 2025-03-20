@@ -86,10 +86,9 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
             vul_ini_change = ','.join(['vul_ini', os.path.join(output_folder,out_file), 'str'])
             ini_mix_change = ','.join(['ini_mix', 'vulcan_ini', 'str'])
             yconv_min_change = ','.join(['yconv_min', str(0.2), 'val']) # 0.1 is the default, allow double
-            atol_change = ','.join(['atol', str(1.E-4), 'val'])
             out_file = sim + network + '_rerun.vul' # change this last so the initial composition will use the previous run
             out_change = ','.join(['out_name', out_file, 'str'])
-            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, yconv_min_change, atol_change, 'rerun', sim])
+            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, yconv_min_change, 'rerun', sim])
             subprocess.check_call(['python', 'vulcan.py', '-n'])
     # then exit simulation folder and delete it
     os.chdir(wd)
