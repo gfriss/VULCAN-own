@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mc
+from matplotlib import ticker
 import pickle
 import os
 import sys
@@ -74,130 +75,158 @@ def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
 
-def plot_meshgrid(distance, teff, values, val_label, conv = None, figname = None, norm = 'linear', met_flux = True):
+def plot_meshgrid(x, y, values, val_label, edgec = 'none', figname = None, met_flux = True):
     ''' Plots values, let it be rainout rate, end-of-simulation time, convergence, etc., in a pcolormesh plot.
-        Diastance is X, teff is Y and values is C in documentation. Figure can be saved if needed.
-        It is possible to highlight converged simulations with an edge using conv which shoukld be a 1D list of
-        edgecolours.'''
+        Distance is X, Teff is Y. Figure can be saved if needed. Meteoritic flux can be added as well.'''
+    vmin = np.min(values)
+    if met_flux:
+        vmin = 0.9 * np.min([vmin, min_flux_met])
     fig, ax = plt.subplots(tight_layout = True)
-    a, T = np.meshgrid(distance, teff)
     cmap = plt.get_cmap('magma')
     cmap.set_under('none')
-    cm = ax.pcolormesh(a, T, values, cmap = cmap, norm = norm, edgecolor = conv, linewidth = 0.05, snap = True)
+    cm = ax.pcolormesh(x, y, values, cmap = cmap, norm = mc.LogNorm(vmin=vmin))
+    ax.pcolormesh(x, y, values, facecolors='none', edgecolors=edgec, lw = 2)
     cbar = fig.colorbar(cm)
     cbar.set_label(val_label)
     if met_flux:
-        cbar.ax.axhline(min_flux_met, c = 'w')
-        cbar.ax.axhline(max_flux_met, c = 'w')
-    #for i in range(conv.shape[0]):
-    #    for j in range(conv.shape[1]):
-    #        if conv[i][j] == 'black':
-    #            a_anchor = a[i][j]
-    #            a_size = a[i, j + 1] - a[i, j]
-    #            T_anchor = T[i][j]
-    #            T_size = T[i + 1, j] - T[i, j]
-    #            ax.add_patch(plt.Rectangle((a_anchor, T_anchor), a_size, T_size, fc='none', ec='black', lw=0.5, clip_on=False))
-    ax.plot(0.74, 5590, color = 'orange', marker = '*') # values do not match ones from csv but this way the marker is in the middle of the pixel
+        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
+        cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
     ax.set_ylabel(r'T$_{eff}$ [K]')
     ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
-    #ax.set_xscale('log')
+    ax.invert_xaxis()
+    if figname != None:
+        fig.savefig(os.path.join(plot_folder, figname))
+        
+def plot_contour(x, y, values, val_label, figname = None, met_flux = True):
+    ''' Plots values, let it be rainout rate, end-of-simulation time, convergence, etc., in a contour plot.
+        Distance is X, Teff is Y. Figure can be saved if needed. Meteoritic flux can be added as well.'''
+    vmin = np.min(values)
+    if met_flux:
+        vmin = 0.9 * np.min([vmin, min_flux_met])
+    fig, ax = plt.subplots(tight_layout = True)
+    cmap = plt.get_cmap('magma')
+    cmap.set_under('none')
+    cm = ax.contourf(x, y, values, cmap = cmap, norm = mc.LogNorm(vmin=vmin))
+    cbar = fig.colorbar(cm)
+    cbar.set_label(val_label)
+    if met_flux:
+        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
+        cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
+    ax.plot(0.74, 5590, color = 'green', marker = '*', markersize = 10)
+    ax.set_ylabel(r'T$_{eff}$ [K]')
+    ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
     ax.invert_xaxis()
     if figname != None:
         fig.savefig(os.path.join(plot_folder, figname))
 
-
+def plot_tricontour(x, y, z, x_label, y_label, z_label, figname = None, met_flux = True):
+    vmin = np.min(z)
+    if met_flux:
+        vmin = 0.9 * np.min([vmin, min_flux_met])
+    fig, ax = plt.subplots(tight_layout = True)
+    cmap = plt.get_cmap('magma')
+    cmap.set_under('none')
+    cm = ax.tricontourf(x, y, z, cmap = cmap, norm = mc.LogNorm(vmin = vmin))
+    cbar = fig.colorbar(cm)
+    cbar.set_label(z_label)
+    if met_flux:
+        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
+        cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
+    ax.plot(0.72, 5390, color = 'green', marker = '*', markersize = 10)
+    ax.invert_xaxis()
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    if figname != None:
+        fig.savefig(os.path.join(plot_folder, figname))
+        
+def plot_hist2d(x, y, weights, bins, norm, cmap, figname = None):
+    fig, ax = plt.subplots(tight_layout = True)
+    cm = ax.hist2d(x=x, y=y, bins = bins, weights=weights, norm = norm, cmap = cmap)
+    cbar = fig.colorbar(cm[3])
+    cbar.set_label(r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]')
+    ax.plot(0.72, 5390, color = 'orange', marker = '*') # try to highlight that square instead?
+    ax.invert_xaxis()
+    ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
+    ax.set_ylabel(r'T$_{eff}$ [K]')
+    if figname != None:
+        fig.savefig(os.path.join(plot_folder, figname))
 #%%
-T_eff_list = list(star_df.T_eff)
-Seff_dict = {}
-Seff_list = []
-rain_list, end_time_list, Teff_list = [], [], []
-#for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log):
-#    distances = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
-#    new_Seff_list = np.power(10, Llog) / np.power(distances, 2)
-#    Seff_dict[star] = list(new_Seff_list)
-#    Seff_list += list(new_Seff_list)
-            
-#rain_dict = {}
-#end_time_dict = {}
-#S_eff_all = []
-# first loop to get all the S_eff value and sort them, used later for the meshgrid
-#for star,a_min,a_max,Llog in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log):
-#    a_star = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
-#    new_Seff_list = np.power(10, Llog) / np.power(a_star, 2)
-#    S_eff_all += list(new_Seff_list)
-#S_eff_all = sorted(S_eff_all)
-# then second loop to get the data and fill in the meshgrid
-#ncol = len(S_eff_all)
-ncol = len(Seff_list)
-conv_matrix = [['none' for _ in range(ncol)] for _ in range(len(T_eff_list))] # matrix will be T_eff x a size (=ncol)
-rain_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
-end_time_matrix = [list(np.zeros(ncol)) for _ in range(len(T_eff_list))]
-j = 0
-for star,a_min,a_max,Llog,Teff in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log, star_df.T_eff):
-    #rain_dict[star] = np.zeros(ncol)
-    #end_time_dict[star] = np.zeros(ncol)
-    a_star = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
-    new_Seff_list = np.power(10, Llog) / np.power(a_star, 2)
-    row_idx = j
-    i = 0
-    for f in sorted(os.listdir(output_folder)):
-        # making sure to only chose output files for the given network
-        if f.startswith('cfg'):
-            continue
-        if network == '_ncho' and 'ncho' not in f:
-            continue
-        elif network == '' and 'ncho' in f:
-            continue
-        if 'star_' + star in f and 'rerun' not in f: # they are not in separate folder so dealing with only relevant files, also not reruns here to avoid confusion
-            sim = f
-            rerun_time = 0.
-            rain_rate = 0.
+# meshgrid version
+Teff_list, Seff_list, rain_matrix, end_time_matrix = [], [], [], []
+edge_matrix = []
+for star, a_min, a_max, Llog, T_eff in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log, star_df.T_eff):
+    distances = np.linspace(a_min, a_max, nsim_dist, endpoint=True)
+    new_Seff_list = np.power(10, Llog) / np.power(distances, 2)
+    Seff_list.append(list(new_Seff_list))
+    Teff_list.append(list(np.ones(nsim_dist)*T_eff))
+    rain_star, end_time_star = [], []
+    edge_matrix.append(['none']*nsim_dist)
+    if star == 'EARLY_SUN': # closest to the Archean Earth simulation
+        edge_matrix[-1][4] = 'g'
+    # now find file and make up matrices
+    for i in range(nsim_dist):
+        if i < 10:
+            sim = 'star_' + star + '_dist_0' + str(i) + network + '.vul'
+        else:
+            sim = 'star_' + star + '_dist_' + str(i) + network + '.vul'
+        rain_rate = 0.
+        end_time = 0.
+        sim_file = os.path.join(output_folder, sim)
+        with open(sim_file, 'rb') as handle:
+            data = pickle.load(handle)
+        rain_rate = rainout(data)
+        end_time = data['variable']['t']
+        if os.path.isfile(sim[:-4]+'_rerun.vul'):
+            sim = sim[:-4]+'_rerun.vul'
             with open(os.path.join(output_folder, sim), 'rb') as handle:
                 data = pickle.load(handle)
             rain_rate = rainout(data)
-            if os.path.isfile(f[:-4]+'_rerun.vul'): # if this simulation needed a rerun, use data from there
-                sim = f[:-4]+'_rerun.vul'
-                # need to get time of original simulation (og_time)
-                with open(os.path.join(output_folder, f), 'rb') as handle:
-                    data = pickle.load(handle)
-                rerun_time = data['variable']['t']
-                rain_rate = rainout(data)
-            #column_idx = S_eff_all.index(new_Seff_list[i])
-            #conv_matrix[row_idx][column_idx] = check_convergence(data)
-            #rain_matrix[row_idx][column_idx] = rainout(data)
-            #end_time_matrix[row_idx][column_idx] = data['variable']['t'] + rerun_time
-            #rain_dict[star][column_idx] = rain_rate
-            #end_time_dict[star][column_idx] = data['variable']['t'] + rerun_time
-            rain_list.append(rain_rate)
-            end_time_list.append(data['variable']['t'] + rerun_time)
-            Teff_list.append(Teff)
-            Seff_list.append(new_Seff_list[i])
-            i += 1
-    j += 1
+            end_time += data['variable']['t']
+        rain_star.append(rain_rate)
+        end_time_star.append(end_time)
+    rain_matrix.append(rain_star)
+    end_time_matrix.append(end_time_star)
 #%%
-#T_eff_list.append(T_eff_list[-1] + (T_eff_list[-1]-T_eff_list[-2]))
-#a_max = max(a_list)
-#a_max2 = sorted(a_list)[-2]
-#a_list.append(a_max + (a_max-a_max2))
-# %%
-#flat_conv = []
-#for row in conv_matrix:
-#    flat_conv.extend(row)
-#print('#converged: {}'.format(flat_conv.count('black')))
-
-#plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', conv = flat_conv, norm = mc.LogNorm(vmin = 1e-20), figname = 'HCN_rainout_conjoint.pdf')
-#plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', conv = flat_conv, norm = mc.LogNorm(), figname = 'endtime_conjoint.pdf', met_flux = False)
+plot_meshgrid(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', edgec = sum(edge_matrix,[]), figname = 'HCN_rainout_conjoint_S_eff'+network+'.pdf')
+plot_meshgrid(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', edgec = sum(edge_matrix,[]), figname = 'endtime_conjoint_S_eff'+network+'.pdf', met_flux = False)
+plot_contour(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'HCN_rainout_conjoint_S_eff'+network+'_contour.pdf')
+plot_contour(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', figname = 'endtime_conjoint_S_eff'+network+'_contour.pdf', met_flux = False)
 #%%
-#vmin_rain = 0.5*min(np.array(min(rain_matrix))[np.array(min(rain_matrix))>0])
-plot_meshgrid(Seff_list, T_eff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', norm = mc.LogNorm(), figname = 'HCN_rainout_conjoint_S_eff'+network+'.pdf')
-plot_meshgrid(Seff_list, T_eff_list, end_time_matrix, 'End-of-simulation time [s]', norm = mc.LogNorm(), figname = 'endtime_conjoint_S_eff'+network+'.pdf', met_flux = False)
+# tricontour version
+Seff_list = []
+rain_list, end_time_list, Teff_list = [], [], []
+for star,a_min,a_max,Llog,T_eff in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log, star_df.T_eff):
+    distances = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
+    new_Seff_list = np.power(10, Llog) / np.power(distances, 2)
+    Seff_list += list(new_Seff_list)
+    Teff_list += [T_eff]*nsim_dist
+    for i in range(nsim_dist):
+        if i < 10:
+            sim = 'star_' + star + '_dist_0' + str(i) + network + '.vul'
+        else:
+            sim = 'star_' + star + '_dist_' + str(i) + network + '.vul'
+        rain_rate = 0.
+        end_time = 0.
+        sim_file = os.path.join(output_folder, sim)
+        with open(sim_file, 'rb') as handle:
+            data = pickle.load(handle)
+        rain_rate = rainout(data)
+        end_time = data['variable']['t']
+        if os.path.isfile(sim[:-4]+'_rerun.vul'):
+            sim = sim[:-4]+'_rerun.vul'
+            with open(os.path.join(output_folder, sim), 'rb') as handle:
+                data = pickle.load(handle)
+            rain_rate = rainout(data)
+            end_time += data['variable']['t']
+        rain_list.append(rain_rate)
+        end_time_list.append(end_time)
+#%%
+plot_tricontour(Seff_list, Teff_list, rain_list, u'S$_{eff}$ [S$_\u2295$]', r'T$_{eff}$ [K]', r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'HCN_rainout_conjoint_S_eff'+network+'_tricontour.pdf')        
+plot_tricontour(Seff_list, Teff_list, end_time_list, u'S$_{eff}$ [S$_\u2295$]', r'T$_{eff}$ [K]', 'End-of-simulation time [s]', figname = 'endtime_conjoint_S_eff'+network+'_tricontour.pdf')        
 # %%
-plt.hist2d(x=Seff_list, y=Teff_list, bins = 10, weights=rain_list, norm = mc.LogNorm(), cmap = 'magma')
-plt.colorbar()
-plt.plot(0.72, 5390, color = 'orange', marker = '*') # values do not match ones from csv but this way the marker is in the middle of the pixel
-plt.gca().invert_xaxis()
-plt.xlabel(u'S$_{eff}$ [S$_\u2295$]')
-plt.ylabel(r'T$_{eff}$ [K]')
-plt.savefig(os.path.join(plot_folder, 'HCN_rainout_hist2d_S_eff'+network+'.pdf'))
+# 2D histogram version
+# uses the same data as the tricontour version
+plot_hist2d(Seff_list, Teff_list, rain_list, 10, mc.LogNorm(), 'magma', figname = 'HCN_rainout_conjoint_S_eff'+network+'_hist2D.pdf')
+plot_hist2d(Seff_list, Teff_list, end_time_list, 10, mc.LogNorm(), 'magma', figname = 'endtime_conjoint_S_eff'+network+'_hist2D.pdf')
 # %%
 # try pcolormesh?
