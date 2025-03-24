@@ -139,11 +139,17 @@ def plot_tricontour(x, y, z, x_label, y_label, z_label, figname = None, met_flux
     if figname != None:
         fig.savefig(os.path.join(plot_folder, figname))
         
-def plot_hist2d(x, y, weights, bins, norm, cmap, figname = None):
+def plot_hist2d(x, y, weights, bins, weights_label, figname = None, met_flux = True):
+    vmin = np.min(weights)
+    if met_flux:
+        vmin = 0.9 * np.min([vmin, min_flux_met])
     fig, ax = plt.subplots(tight_layout = True)
-    cm = ax.hist2d(x=x, y=y, bins = bins, weights=weights, norm = norm, cmap = cmap)
+    cm = ax.hist2d(x=x, y=y, bins = bins, weights=weights, norm = mc.LogNorm(vmin = vmin), cmap = 'magma')
     cbar = fig.colorbar(cm[3])
-    cbar.set_label(r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]')
+    cbar.set_label(weights_label)
+    if met_flux:
+        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
+        cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
     ax.plot(0.72, 5390, color = 'orange', marker = '*') # try to highlight that square instead?
     ax.invert_xaxis()
     ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
@@ -226,7 +232,6 @@ plot_tricontour(Seff_list, Teff_list, end_time_list, u'S$_{eff}$ [S$_\u2295$]', 
 # %%
 # 2D histogram version
 # uses the same data as the tricontour version
-plot_hist2d(Seff_list, Teff_list, rain_list, 10, mc.LogNorm(), 'magma', figname = 'HCN_rainout_conjoint_S_eff'+network+'_hist2D.pdf')
-plot_hist2d(Seff_list, Teff_list, end_time_list, 10, mc.LogNorm(), 'magma', figname = 'endtime_conjoint_S_eff'+network+'_hist2D.pdf')
+plot_hist2d(Seff_list, Teff_list, rain_list, 10, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'HCN_rainout_conjoint_S_eff'+network+'_hist2D.pdf')
+plot_hist2d(Seff_list, Teff_list, end_time_list, 10, 'End-of-simulation time [s]', figname = 'endtime_conjoint_S_eff'+network+'_hist2D.pdf', met_flux = False)
 # %%
-# try pcolormesh?
