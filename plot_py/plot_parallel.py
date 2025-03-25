@@ -472,21 +472,24 @@ def get_species(eq_side):
     
 def get_total_reaction_rate(dat, diag_sp = 'HCN'):
     species = dat['variable']['species']
-    total_re_list = np.zeros_like(dat['atm']['pco'])
+    total_rate = np.zeros_like(dat['atm']['pco'])
+    prod_rate = np.zeros_like(dat['atm']['pco'])
+    dest_rate = np.zeros_like(dat['atm']['pco'])
     for re_id,rea in dat['variable']['Rf'].items():
         reagents_products = rea.split('->')
         reagents = get_species(reagents_products[0])
         products = get_species(reagents_products[1])
-        if diag_sp in reagents or diag_sp in products: # TO DO: treat forward and backward reactions separately
+        if diag_sp in reagents or diag_sp in products:
             rate = dat['variable']['k'][re_id].astype(float)
             for sp in reagents: # [0]: reactants; [1]: prodcuts
                 if sp == 'M': rate *= dat['atm']['n_0']
                 else: rate *= dat['variable']['y'][:,species.index(sp)]
-            if diag_sp in reagents:
-                total_re_list -= np.array(rate)
-            elif diag_sp in products:
-                total_re_list += np.array(rate)
-    return total_re_list    
+            if diag_sp in reagents: # it gets destroyed when reactiong with something
+                dest_rate += np.array(rate)
+            elif diag_sp in products: # it is produced
+                prod_rate += np.array(rate)
+    total_rate = prod_rate - dest_rate
+    return prod_rate, dest_rate, total_rate    
     
 def colored_line(x, y, c, ax, **lc_kwargs):
     """
@@ -544,21 +547,21 @@ def colored_line(x, y, c, ax, **lc_kwargs):
 
     return ax.add_collection(lc)    
     
-def plot_prod_dest(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None):
+def plot_tot_rate(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None):
     pressure = dat_list[0]['atm']['pco']/1e6
     fig, ax = plt.subplots(tight_layout = True)
-    lab = ''
-    if sim_type == 'BC':
-        lab = 'Mdot = '
-    elif sim_type == 'CtoO':
-        lab = 'C/O = '
-    elif sim_type == 'star':
-        lab = r'T$_{eff}$ = '
-    elif sim_type == 'dist':
-        lab = 'a = '
+    
     for d,p in zip(dat_list, param_list):
-        tot_rea = get_total_reaction_rate(d, diag_sp)
-        ax.plot(tot_rea, pressure, label = lab+str(p))
+        p_rate, d_rate, tot_rate = get_total_reaction_rate(d, diag_sp)
+        if sim_type == 'BC':
+            ax.plot(tot_rate, pressure, label = 'Mdot = {:.2e} g/Gyr'.format(p))
+        elif sim_type == 'CtoO':
+            ax.plot(tot_rate, pressure, label = 'C/O = {:.3f}'.format(p))
+        elif sim_type == 'star':
+            ax.plot(tot_rate, pressure, label = r'T$_{eff}$ = ' + '{} K'.format(p))
+        elif sim_type == 'dist':
+            ax.plot(tot_rate, pressure, label = 'a = {:.3f}'.format(p))
+        
     ax.invert_yaxis()
     ax.set_yscale('log')
     ax.set_xscale('symlog')
@@ -568,39 +571,63 @@ def plot_prod_dest(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = No
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
         
-def plot_prod_dest_values(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None):
+def plot_prod_dest(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None):
     pressure = dat_list[0]['atm']['pco']/1e6
     fig, ax = plt.subplots(tight_layout = True)
-    all_rea = np.array([])
-    for d in dat_list:
-        tot_rea = get_total_reaction_rate(d, diag_sp)
-        all_rea = np.concatenate((all_rea, tot_rea))
-    norm = mpl.colors.Normalize(vmin = np.min(all_rea), vmax = np.max(all_rea))
-    s_m = mpl.cm.ScalarMappable(cmap = 'magma', norm = norm)
-    s_m.set_array([])
+    xlab = ''
+    if sim_type == 'BC':
+        xlab = 'Mdot [g/Gyr]'
+    elif sim_type == 'CtoO':
+        xlab = 'C/O'
+    elif sim_type == 'star':
+        xlab = r'T$_{eff}$ [K]'
+    elif sim_type == 'dist':
+        xlab = 'a [AU]'
     for d,p in zip(dat_list, param_list):
-        tot_rea = get_total_reaction_rate(d, diag_sp)
-        param = np.ones_like(pressure) * p
-        ax.plot(param, pressure, linestyle = '') # need this otherwise not plotting the next...
-        lines = colored_line(param, pressure, c=[s_m.to_rgba(c) for c in tot_rea], ax=ax, lw = 7)#, norm = mc.LogNorm(vmin = np.min(all_rea), vmax = np.max(all_rea)))
+        p_rate, d_rate, _ = get_total_reaction_rate(d, diag_sp)
+        if sim_type == 'BC':
+            ax.plot(tot_rate, pressure, label = 'Mdot = {:.2e} g/Gyr'.format(p))
+        elif sim_type == 'CtoO':
+            ax.plot(tot_rate, pressure, label = 'C/O = {:.3f}'.format(p))
+        elif sim_type == 'star':
+            ax.plot(tot_rate, pressure, label = r'T$_{eff}$ = ' + '{} K'.format(p))
+        elif sim_type == 'dist':
+            ax.plot(tot_rate, pressure, label = 'a = {:.3f}'.format(p))
+        
     ax.invert_yaxis()
     ax.set_yscale('log')
+    ax.set_xscale('symlog')
     ax.set_ylabel('Pressure [bar]')
-    ax.set_xscale('linear')
+    ax.set_xlabel(r'k$_{tot}$ [cm$^3$s$^{-1}$]')  
+    ax.legend(bbox_to_anchor = (1,0.95))
+    if figname != None:
+        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
+        
+def plot_prod_dest_layer(dat_list, param_list, sim_type, layer, diag_sp = 'HCN', figname = None):
+    fig, ax = plt.subplots(tight_layout = True)
+    xlab = ''
+    xscale = 'linear'
     if sim_type == 'BC':
-        ax.set_xscale('log')
-        ax.set_xlabel(r'Mass delivery rate [g Gyr$^{-1}$]')
-        ax.set_xlabel(r'H$_2$ flux [cm$^{-2}$ s$^{-1}$]')
-        ax.set_xscale('log')
+        xlab = 'Mdot [g/Gyr]'
+        xscale = 'log'
     elif sim_type == 'CtoO':
-        ax.set_xlabel('C/O')
+        xlab = 'C/O'
     elif sim_type == 'star':
-        ax.set_xlabel(r'T$_{eff}$ [K]')
+        xlab = r'T$_{eff}$ [K]'
     elif sim_type == 'dist':
-        ax.set_xlabel('Distance [AU]')
-    elif sim_type == 'local':
-        ax.set_xlabel(r'X$_{H_2}$')    
-    fig.colorbar(lines)
+        xlab = 'a [AU]'
+    prod, dest = [], []
+    for d,p in zip(dat_list, param_list):
+        p_rate, d_rate, _ = get_total_reaction_rate(d, diag_sp)
+        prod.append(p_rate[layer])
+        dest.append(d_rate[layer])
+    ax.plot(param_list, prod, label = 'Production', c = 'r')
+    ax.plot(param_list, dest, label = 'Destruction', c = 'k')
+    ax.set_xlabel(xlab)
+    ax.set_xscale(xscale)
+    ax.set_ylabel(r'Reaction rate [cm$^{-3}$s$^{-1}$]')    
+    ax.set_yscale('log')
+    fig.legend()
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
 
@@ -632,8 +659,8 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
     xscales = ['log', 'linear', 'linear', 'linear']
     xlabels = [r'Mass delivery rate [g Gyr$^{-1}$]', 'C/O', 'Distance [AU]', r'T$_{eff}$ [K]']
     labels_0 = [r'$\dot{M}_{del}$ = ', 'C/O = ', 'a = ', r'T$_{eff}$ = ']
-    labels_1 = ['{:.4e}', '{:.4f}', '{:.4f}', '{}']
-    labels_2 = [r' g Gyr$^{-1}$', '', ' AU', ' K']
+    labels_1 = ['{:.2e}', '{:.3f}', '{:.3f}', '{}']
+    labels_2 = [' g/Gyr', '', ' AU', ' K']
     # legends on the right
     #legend_xanchors = [1.425, 1.306, 1.183, 1.316] # otherwise legends are all over the place, not sure why...
     #legend_yanchors = [0.97, 0.72, 0.46, 0.21]
@@ -781,7 +808,7 @@ plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_sta
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain')
 plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_nonconv_star_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
-plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star'+network+'.pdf')
+plot_tot_rate(data_star, T_eff, 'star', figname = 'prod_dest_star'+network+'.pdf')
 plot_pt(data_star, T_eff, 'star', figname = 'PT_star.pdf')
 #plot_stellar_spectra('stellar_spectra_comp.pdf')
 # %%
