@@ -57,6 +57,9 @@ ignore = ''
 base_sim = out_folder+'archean'+network+ignore+'.vul'
 with open(base_sim, 'rb') as handle:
     data_archean = pickle.load(handle)
+
+# pressure levels for reaction rate plots
+pressure_levels = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
 #%%
 def lin(x, a, b):
     return a*x + b
@@ -479,15 +482,23 @@ def get_total_reaction_rate(dat, diag_sp = 'HCN'):
         reagents_products = rea.split('->')
         reagents = get_species(reagents_products[0])
         products = get_species(reagents_products[1])
-        if diag_sp in reagents or diag_sp in products:
-            rate = dat['variable']['k'][re_id].astype(float)
-            for sp in reagents: # [0]: reactants; [1]: prodcuts
-                if sp == 'M': rate *= dat['atm']['n_0']
-                else: rate *= dat['variable']['y'][:,species.index(sp)]
-            if diag_sp in reagents: # it gets destroyed when reactiong with something
-                dest_rate += np.array(rate)
-            elif diag_sp in products: # it is produced
-                prod_rate += np.array(rate)
+        if diag_sp not in reagents and diag_sp not in products: # if the species is not in the reaction, skip it
+            continue
+        forward_rate = dat['variable']['k'][re_id].astype(float)
+        reverse_rate = dat['variable']['k'][re_id+1].astype(float)
+        for sp in reagents: # calculating forward rate
+            if sp == 'M': forward_rate *= dat['atm']['n_0']
+            else: forward_rate *= dat['variable']['y'][:,species.index(sp)]
+        for sp in products: # calculating reverse rate
+            if sp == 'M': reverse_rate *= dat['atm']['n_0']
+            else: reverse_rate *= dat['variable']['y'][:,species.index(sp)]
+        
+        if diag_sp in reagents: 
+            dest_rate += np.array(forward_rate) # it gets destroyed when reactiong with something
+            prod_rate += np.array(reverse_rate) # it is produced in the reverse reaction
+        elif diag_sp in products: 
+            prod_rate += np.array(forward_rate) # it is produced in the forward reaction
+            dest_rate += np.array(reverse_rate) # it is destroyed when reacting with something
     total_rate = prod_rate - dest_rate
     return prod_rate, dest_rate, total_rate    
     
@@ -548,19 +559,12 @@ def colored_line(x, y, c, ax, **lc_kwargs):
     return ax.add_collection(lc)    
     
 def plot_tot_rate(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None):
-    pressure = dat_list[0]['atm']['pco']/1e6
+    lab = {'BC': 'Mdot = {:.2e} g/Gyr', 'CtoO': 'C/O = {:.3f}', 'star': r'T$_{{eff}}$ = {} K', 'dist': 'a = {:.3f} AU'}
     fig, ax = plt.subplots(tight_layout = True)
-    
     for d,p in zip(dat_list, param_list):
-        p_rate, d_rate, tot_rate = get_total_reaction_rate(d, diag_sp)
-        if sim_type == 'BC':
-            ax.plot(tot_rate, pressure, label = 'Mdot = {:.2e} g/Gyr'.format(p))
-        elif sim_type == 'CtoO':
-            ax.plot(tot_rate, pressure, label = 'C/O = {:.3f}'.format(p))
-        elif sim_type == 'star':
-            ax.plot(tot_rate, pressure, label = r'T$_{eff}$ = ' + '{} K'.format(p))
-        elif sim_type == 'dist':
-            ax.plot(tot_rate, pressure, label = 'a = {:.3f}'.format(p))
+        pressure = d['atm']['pco']/1e6
+        _, _, tot_rate = get_total_reaction_rate(d, diag_sp)
+        ax.plot(tot_rate, pressure, label = lab[sim_type].format(p))
         
     ax.invert_yaxis()
     ax.set_yscale('log')
@@ -572,62 +576,80 @@ def plot_tot_rate(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = Non
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
         
 def plot_prod_dest(dat_list, param_list, sim_type, diag_sp = 'HCN', figname = None):
-    pressure = dat_list[0]['atm']['pco']/1e6
     fig, ax = plt.subplots(tight_layout = True)
-    xlab = ''
-    if sim_type == 'BC':
-        xlab = 'Mdot [g/Gyr]'
-    elif sim_type == 'CtoO':
-        xlab = 'C/O'
-    elif sim_type == 'star':
-        xlab = r'T$_{eff}$ [K]'
-    elif sim_type == 'dist':
-        xlab = 'a [AU]'
-    for d,p in zip(dat_list, param_list):
+    colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    lab = {'BC': 'Mdot = {:.2e} g/Gyr', 'CtoO': 'C/O = {:.3f}', 'star': r'T$_{{eff}}$ = {} K', 'dist': 'a = {:.3f} AU'}
+    labels = ['Production', 'Destruction']
+    handles = [Line2D([0], [0], color='k', linestyle = '-'), Line2D([0], [0], color='k', linestyle = '--')] + [Line2D([0], [0], color = c, linestyle = '-') for c in colours]
+    for d,p,c in zip(dat_list, param_list, colours):
+        pressure = d['atm']['pco']/1e6
         p_rate, d_rate, _ = get_total_reaction_rate(d, diag_sp)
-        if sim_type == 'BC':
-            ax.plot(tot_rate, pressure, label = 'Mdot = {:.2e} g/Gyr'.format(p))
-        elif sim_type == 'CtoO':
-            ax.plot(tot_rate, pressure, label = 'C/O = {:.3f}'.format(p))
-        elif sim_type == 'star':
-            ax.plot(tot_rate, pressure, label = r'T$_{eff}$ = ' + '{} K'.format(p))
-        elif sim_type == 'dist':
-            ax.plot(tot_rate, pressure, label = 'a = {:.3f}'.format(p))
+        labels.append(lab[sim_type].format(p))
+        ax.plot(p_rate, pressure, linestyle = '-', c = c)
+        ax.plot(d_rate, pressure, linestyle = '--', c = c)
         
     ax.invert_yaxis()
     ax.set_yscale('log')
-    ax.set_xscale('symlog')
+    ax.set_xscale('log')
     ax.set_ylabel('Pressure [bar]')
-    ax.set_xlabel(r'k$_{tot}$ [cm$^3$s$^{-1}$]')  
-    ax.legend(bbox_to_anchor = (1,0.95))
+    ax.set_xlabel(r'k [cm$^3$s$^{-1}$]')  
+    ax.legend(labels = labels, handles = handles, bbox_to_anchor = (1,0.95))
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
         
 def plot_prod_dest_layer(dat_list, param_list, sim_type, layer, diag_sp = 'HCN', figname = None):
     fig, ax = plt.subplots(tight_layout = True)
-    xlab = ''
-    xscale = 'linear'
-    if sim_type == 'BC':
-        xlab = 'Mdot [g/Gyr]'
-        xscale = 'log'
-    elif sim_type == 'CtoO':
-        xlab = 'C/O'
-    elif sim_type == 'star':
-        xlab = r'T$_{eff}$ [K]'
-    elif sim_type == 'dist':
-        xlab = 'a [AU]'
+    xlab = {'BC': 'Mdot [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]', 'dist': 'a [AU]'}
+    xscale = {'BC': 'log', 'CtoO': 'linear', 'star': 'linear', 'dist': 'linear'}
     prod, dest = [], []
-    for d,p in zip(dat_list, param_list):
+    for d in dat_list:
         p_rate, d_rate, _ = get_total_reaction_rate(d, diag_sp)
         prod.append(p_rate[layer])
         dest.append(d_rate[layer])
     ax.plot(param_list, prod, label = 'Production', c = 'r')
     ax.plot(param_list, dest, label = 'Destruction', c = 'k')
-    ax.set_xlabel(xlab)
-    ax.set_xscale(xscale)
+    ax.set_xlabel(xlab[sim_type])
+    ax.set_xscale(xscale[sim_type])
     ax.set_ylabel(r'Reaction rate [cm$^{-3}$s$^{-1}$]')    
     ax.set_yscale('log')
     fig.legend()
+    if figname != None:
+        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
+
+def get_layer(dat, pressure):
+    ''' Returns the layer that is the closest to the given pressure (in bar) in the given VULCAN data.'''
+    return np.argmin(abs(dat['atm']['pco']/1e6 - pressure))
+
+def plot_prod_dest_many_layer(dat_list, param_list, sim_type, pressures, ncols, diag_sp = 'HCN', figname = None):
+    n = len(pressures)
+    nrows = n//ncols # setting up number of rows given columns
+    if n%ncols != 0: # if not divisible by ncols, add one row
+        nrows += 1
+    fig, ax = plt.subplots(ncols = ncols, nrows = nrows, figsize = (5*ncols,4*nrows), sharex = True, sharey = True, tight_layout = True)
+    ax = ax.flatten()
+    xlab = {'BC': 'Mdot [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]', 'dist': 'a [AU]'}
+    xscale = {'BC': 'log', 'CtoO': 'linear', 'star': 'linear', 'dist': 'linear'}
+    prod, dest = [], []
+    # first get the rates for all simulations (list, by pressures, of lists, by simulations)
+    for p in pressures:
+        prod_p, dest_p = [], []
+        for d in dat_list:
+            p_rate, d_rate, _ = get_total_reaction_rate(d, diag_sp)
+            prod_p.append(p_rate[get_layer(d, p)])
+            dest_p.append(d_rate[get_layer(d, p)])
+        prod.append(prod_p)
+        dest.append(dest_p)
+    
+    for i,axes in enumerate(ax):
+        axes.plot(param_list, prod[i], c = 'r')
+        axes.plot(param_list, dest[i], c = 'k')
+        if i%ncols == 0:
+            axes.set_ylabel('Pressure [bar]')
+        if i >= (nrows-1)*ncols:
+            axes.set_xlabel(xlab[sim_type])
+        axes.set_xscale(xscale[sim_type])
+        axes.set_yscale('log')
+        axes.legend(title = 'P = {:.1e} bar'.format(pressures[i]), loc = 'upper left')
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
 
@@ -764,7 +786,10 @@ plot_evo_layer(data_bc, 'HCN', figname = 'hcn_evo_meteor'+network+'.pdf')
 plot_convergence(data_bc, figname = 'convergence_meteor'+network+'.pdf')
 plot_rain_converged(data_bc, hcn_rain, bomb_rate, 'BC', figname = 'conv_BC_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', extra_list = bc_flux)
 plot_rain_converged(data_bc, rain, bomb_rate, 'BC', figname = 'conv_BC_rain'+network+'.pdf', rain_spec = 'H2O_rain', extra_list = bc_flux)
-#plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'prod_dest_meteor'+network+'.pdf')
+plot_tot_rate(data_bc, bomb_rate, 'BC', figname = 'prod_dest_total_meteor'+network+'.pdf')
+plot_prod_dest(data_bc, bomb_rate, 'BC', figname = 'prod_dest_meteor'+network+'.pdf')
+plot_prod_dest_layer(data_bc, bomb_rate, 'BC', 0, figname = 'prod_dest_layer_0_meteor'+network+'.pdf')
+plot_prod_dest_many_layer(data_bc, bomb_rate, 'BC', pressure_levels, 4, figname = 'prod_dest_many_layers_meteor'+network+'.pdf')
 #%%
 # C/O case with HELIOS tP
 
@@ -788,7 +813,10 @@ plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_Ct
 plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_CtoO_rain'+network+'.pdf', rain_spec = 'H2O_rain')
 plot_rain_converged(data_CtoO, hcn_rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
 plot_rain_converged(data_CtoO, rain_CtoO, C_to_O, 'CtoO', figname = 'conv_nonconv_CtoO_rain'+network+'.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
-#plot_prod_dest(data_CtoO, C_to_O, 'CtoO', figname = 'prod_dest_CtoO'+network+'.pdf')
+plot_tot_rate(data_CtoO, C_to_O, 'CtoO', figname = 'prod_dest_total_C_to_O'+network+'.pdf')
+plot_prod_dest(data_CtoO, C_to_O, 'CtoO', figname = 'prod_dest_C_to_O'+network+'.pdf')
+plot_prod_dest_layer(data_CtoO, C_to_O, 'CtoO', 0, figname = 'prod_dest_layer_0_C_to_O'+network+'.pdf')
+plot_prod_dest_many_layer(data_CtoO, C_to_O, 'CtoO', pressure_levels, 4, figname = 'prod_dest_many_layers_C_to_O'+network+'.pdf')
 # %%
 # star case
 data_star = read_in('star', number_of_sim = 13)
@@ -808,9 +836,11 @@ plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_sta
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain')
 plot_rain_converged(data_star, hcn_rain_star, T_eff, 'star', figname = 'conv_nonconv_star_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', plot_non_conv = True)
 plot_rain_converged(data_star, rain_star, T_eff, 'star', figname = 'conv_nonconv_star_rain'+network+'.pdf', rain_spec = 'H2O_rain', plot_non_conv = True)
-plot_tot_rate(data_star, T_eff, 'star', figname = 'prod_dest_star'+network+'.pdf')
 plot_pt(data_star, T_eff, 'star', figname = 'PT_star.pdf')
-#plot_stellar_spectra('stellar_spectra_comp.pdf')
+plot_tot_rate(data_star, T_eff, 'star', figname = 'prod_dest_total_star'+network+'.pdf')
+plot_prod_dest(data_star, T_eff, 'star', figname = 'prod_dest_star'+network+'.pdf')
+plot_prod_dest_layer(data_star, T_eff, 'star', 0, figname = 'prod_dest_layer_0_star'+network+'.pdf')
+plot_prod_dest_many_layer(data_star, T_eff, 'star', pressure_levels, 4, figname = 'prod_dest_many_layers_star'+network+'.pdf')
 # %%
 # distance case
 a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
@@ -832,8 +862,11 @@ plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_di
 plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_dist_rain'+network+'.pdf', rain_spec = 'H2O_rain', extra_list = T_surf)
 plot_rain_converged(data_dist, hcn_rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_hcn_rain'+network+'.pdf', rain_spec = 'HCN_rain', extra_list = T_surf, plot_non_conv = True)
 plot_rain_converged(data_dist, rain_dist, a_list, 'dist', figname = 'conv_nonconv_dist_rain'+network+'.pdf', rain_spec = 'H2O_rain', extra_list = T_surf, plot_non_conv = True)
-#plot_prod_dest(data_dist, a_list, 'dist', figname = 'prod_dest_dist'+network+'.pdf')
 plot_pt(data_dist, a_list, 'dist', figname = 'PT_dist.pdf')
+plot_tot_rate(data_dist, a_list, 'dist', figname = 'prod_dest_total_dist'+network+'.pdf')
+plot_prod_dest(data_dist, a_list, 'dist', figname = 'prod_dest_dist'+network+'.pdf')
+plot_prod_dest_layer(data_dist, a_list, 'dist', 0, figname = 'prod_dest_layer_0_dist'+network+'.pdf')
+plot_prod_dest_many_layer(data_dist, a_list, 'dist', pressure_levels, 4, figname = 'prod_dest_many_layers_dist'+network+'.pdf')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figname = 'rain_vertical_pt'+network+'.pdf')
