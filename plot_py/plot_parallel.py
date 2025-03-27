@@ -8,8 +8,6 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mc
 from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection
-from matplotlib.markers import MarkerStyle
-from matplotlib.transforms import Affine2D
 import pickle
 from scipy.optimize import curve_fit
 import os
@@ -588,6 +586,63 @@ def plot_prod_dest_many_layer(dat_list, param_list, sim_type, pressures, ncols, 
         axes.set_xscale(xscale[sim_type])
         axes.set_yscale('log')
         axes.legend(title = 'P = {:.1e} bar'.format(pressures[i]), loc = 'upper left')
+    if figname != None:
+        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
+
+def get_prod_dest_rates(dat, diag_sp = 'HCN'):
+    species = dat['variable']['species']
+    rates = {'Production': {}, 'Destruction': {}} # dict of dict to collect rates from relevant reactions
+    tot_prod_rate = np.zeros_like(dat['atm']['pco'])
+    tot_dest_rate = np.zeros_like(dat['atm']['pco'])
+    for re_id,rea in dat['variable']['Rf'].items():
+        reagents_products = rea.split('->')
+        reagents = get_species(reagents_products[0])
+        products = get_species(reagents_products[1])
+        if diag_sp not in reagents and diag_sp not in products: # if the species is not in the reaction, skip it
+            continue
+        forward_rate = dat['variable']['k'][re_id].astype(float)
+        reverse_rate = dat['variable']['k'][re_id+1].astype(float)
+        rev_rea = ' -> '.join((' + '.join(products), ' + '.join(reagents))) # reverse reaction to be used as key in rates
+        for sp in reagents: # calculating forward rate
+            if sp == 'M': forward_rate *= dat['atm']['n_0']
+            else: forward_rate *= dat['variable']['y'][:,species.index(sp)]
+        for sp in products: # calculating reverse rate
+            if sp == 'M': reverse_rate *= dat['atm']['n_0']
+            else: reverse_rate *= dat['variable']['y'][:,species.index(sp)]
+        
+        if diag_sp in reagents:
+            rates['Destruction'][rea] = forward_rate # it gets destroyed when reactiong with something
+            tot_dest_rate += np.array(forward_rate)
+            rates['Production'][rev_rea] = reverse_rate # it is produced in the reverse reaction
+            tot_prod_rate += np.array(reverse_rate)
+        elif diag_sp in products:
+            rates['Production'][rea] = forward_rate # it gets produced in the forward reaction
+            tot_prod_rate += np.array(forward_rate)
+            rates['Destruction'][rev_rea] = reverse_rate # it is destroyed when reacting with something
+            tot_dest_rate += np.array(reverse_rate)
+    return_rates = {'Production': {}, 'Destruction': {}}
+    for k,v in rates['Production'].items():
+        if any(v/tot_prod_rate > 1e-1): # use only >1% reactions
+            return_rates['Production'][k] = v
+    for k,v in rates['Destruction'].items():
+        if any(v/tot_dest_rate > 1e-1):
+            return_rates['Destruction'][k] = v
+    return return_rates
+
+def plot_prod_dest_rates(dat, rates, figname = None):
+    labels = [r'k$_{prod}$ [cm$^{-3}$s$^{-1}$]', r'k$_{dest}$ [cm$^{-3}$s$^{-1}$]']
+    fig, ax = plt.subplots(ncols=1, nrows=2, figsize = (8,10), sharex = True, tight_layout = True)
+    ax = ax.flatten()
+    for i,rate_type in enumerate(['Production', 'Destruction']):
+        for k,v in rates[rate_type].items():
+            ax[i].plot(v, dat['atm']['pco']/1e6, label = k)
+        ax[i].set_yscale('log')
+        ax[i].set_xscale('log')
+        ax[i].set_ylabel('Pressure [bar]')
+        ax[i].set_xlabel(labels[i])
+        ax[i].set_xlim(1e-9,None) # more clever way to set this? by 1% of total rate or something like that?
+        ax[i].invert_yaxis()
+    ax[0].legend()
     if figname != None:
         fig.savefig(plot_folder + figname, bbox_inches = 'tight')
 
