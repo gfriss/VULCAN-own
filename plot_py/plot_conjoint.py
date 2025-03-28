@@ -193,10 +193,10 @@ for star, a_min, a_max, Llog, T_eff in zip(star_df.Name, star_df.a_min, star_df.
     rain_matrix.append(rain_star)
     end_time_matrix.append(end_time_star)
 #%%
-plot_meshgrid(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', edgec = sum(edge_matrix,[]), figname = 'HCN_rainout_conjoint_S_eff'+network+'.pdf')
-plot_meshgrid(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', edgec = sum(edge_matrix,[]), figname = 'endtime_conjoint_S_eff'+network+'.pdf', met_flux = False)
-plot_contour(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'HCN_rainout_conjoint_S_eff'+network+'_contour.pdf')
-plot_contour(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', figname = 'endtime_conjoint_S_eff'+network+'_contour.pdf', met_flux = False)
+plot_meshgrid(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', edgec = sum(edge_matrix,[]), figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'.pdf')
+plot_meshgrid(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', edgec = sum(edge_matrix,[]), figname = 'end_time/endtime_conjoint_S_eff'+network+'.pdf', met_flux = False)
+plot_contour(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_contour.pdf')
+plot_contour(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', figname = 'end_time/endtime_conjoint_S_eff'+network+'_contour.pdf', met_flux = False)
 #%%
 # tricontour version
 Seff_list = []
@@ -227,11 +227,11 @@ for star,a_min,a_max,Llog,T_eff in zip(star_df.Name, star_df.a_min, star_df.a_ma
         rain_list.append(rain_rate)
         end_time_list.append(end_time)
 #%%
-plot_tricontour(Seff_list, Teff_list, rain_list, u'S$_{eff}$ [S$_\u2295$]', r'T$_{eff}$ [K]', r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'HCN_rainout_conjoint_S_eff'+network+'_tricontour.pdf')        
-plot_tricontour(Seff_list, Teff_list, end_time_list, u'S$_{eff}$ [S$_\u2295$]', r'T$_{eff}$ [K]', 'End-of-simulation time [s]', figname = 'endtime_conjoint_S_eff'+network+'_tricontour.pdf')        
+plot_tricontour(Seff_list, Teff_list, rain_list, u'S$_{eff}$ [S$_\u2295$]', r'T$_{eff}$ [K]', r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_tricontour.pdf')        
+plot_tricontour(Seff_list, Teff_list, end_time_list, u'S$_{eff}$ [S$_\u2295$]', r'T$_{eff}$ [K]', 'End-of-simulation time [s]', figname = 'end_time/endtime_conjoint_S_eff'+network+'_tricontour.pdf')        
 # %%
 # 2D histogram version
 # uses the same data as the tricontour version
-plot_hist2d(Seff_list, Teff_list, rain_list, 10, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'HCN_rainout_conjoint_S_eff'+network+'_hist2D.pdf')
-plot_hist2d(Seff_list, Teff_list, end_time_list, 10, 'End-of-simulation time [s]', figname = 'endtime_conjoint_S_eff'+network+'_hist2D.pdf', met_flux = False)
+plot_hist2d(Seff_list, Teff_list, rain_list, 10, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_hist2D.pdf')
+plot_hist2d(Seff_list, Teff_list, end_time_list, 10, 'End-of-simulation time [s]', figname = 'end_time/endtime_conjoint_S_eff'+network+'_hist2D.pdf', met_flux = False)
 # %%
