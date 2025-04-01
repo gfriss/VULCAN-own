@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from cycler import cycler
 
-def reset_plt(ticksize, fontsize, fxsize, fysize):
+def reset_plt(ticksize, fontsize, fxsize, fysize, grid = True):
     #plt.style.use('seaborn-white') # was seaborn-v0_8-white
     plt.rcParams['xtick.labelsize'] = ticksize
     plt.rcParams['ytick.labelsize'] = ticksize
@@ -21,8 +21,9 @@ def reset_plt(ticksize, fontsize, fxsize, fysize):
     plt.rcParams['legend.fontsize'] = ticksize
     plt.rcParams['axes.formatter.limits'] = (-2,4)
     plt.rcParams['axes.linewidth'] = 1.75
-    plt.rcParams['axes.grid'] = True
-    plt.rcParams['grid.alpha'] = 0.6
+    if grid:
+        plt.rcParams['axes.grid'] = True
+        plt.rcParams['grid.alpha'] = 0.6
     plt.rcParams['figure.figsize'] = (fxsize,fysize)
     plt.rcParams['figure.autolayout'] = True
     cm = plt.get_cmap('nipy_spectral')

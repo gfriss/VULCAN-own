@@ -10,7 +10,7 @@ sys.path.insert(0, '../') # including the upper level of directory for the path 
 import parallel_functions as pf
 # setting up plot style
 import plot_reset as pr
-pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 
 
 nsim_dist = 15 # distances, for now
