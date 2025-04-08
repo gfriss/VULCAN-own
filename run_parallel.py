@@ -4,17 +4,17 @@ import sys
 import numpy as np
 import parallel_functions as pf
 from astropy.io import fits
-from mpi4py.MPI import COMM_WORLD as CW # for paralellisation
+#from mpi4py.MPI import COMM_WORLD as CW # for paralellisation
 
 run_type = sys.argv[1] # 'meteor' or 'CtoO' or 'star' according to which experiment we run, used to make loop at end more readable
 
 
 
-rank = CW.Get_rank()
-size = CW.Get_size()
+#rank = CW.Get_rank()
+#size = CW.Get_size()
 
 nsim = 15
-sim_per_rank = int(nsim / size) # this is needed to distribure the tasks between tha CPUs
+#sim_per_rank = int(nsim / size) # this is needed to distribure the tasks between tha CPUs
 
 main_folder = '/scratch/s2555875' # place to store outputs
 output_folder = os.path.join(main_folder,'output')
@@ -28,7 +28,7 @@ vdep = '1.'#,1.e-4,0.,1.' # deposition velocity for H2, CO2, CH4, NH3 (CO from l
 prod_sp = {'H2':0.65}#, 'CO2':1.32, 'CH4':1e-6, 'NH3':7e-5} # produced amount per impactor os m_mass from Zahnle et al (2020)
 m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
 # C/O ratio
-co2_for_CtoO_range = np.linspace(0.001,0.1,nsim, endpoint = True)
+co2_for_CtoO_range = np.linspace(0.1, 0.001, nsim, endpoint = True)
 # star type
 star_df = pf.read_stellar_data(os.path.join(main_folder,'stellar_flux/stellar_params.csv')) # NOT necessarily nsim long...
 a_star_list  = [0.0296, 0.0770, 0.0780, 0.1550, 0.1780, 0.3840, 0.4945, 0.6295, 0.6976, 1., 1.1623, 1.9047, 2.3155]
@@ -56,8 +56,8 @@ network = '_ncho'
 check_conv = True
 
 # ------end of parameter set up-----
-for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
-                                                            # this is the magic, after this just think of it as a normal, sequential loop
+#for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
+for i in range(nsim):                                                            # this is the magic, after this just think of it as a normal, sequential loop
     if run_type == 'star' and i >= len(star_df.Name): # fewer stars than 15...
         continue
     sim = ''
@@ -114,23 +114,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         new_orbit_radius = str(a_list[i])
         orbit_radius_change = ','.join(['orbit_radius', new_orbit_radius, 'val'])
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, tp_change, orbit_radius_change, out_change])
-    elif run_type == 'local':
-        # generate new mixing ratios
-        new_mixing_file = os.path.join(main_folder, 'mixing_files', sim + 'mixing.txt')
-        mixing_change = ','.join(['vul_ini', new_mixing_file, 'str'])
-        pf.gen_mixing_local(h2_bar_list[i], new_mixing_file)
-        # H2 fiddles with cinvergence so reducing error tolerances
-        atol_change = ','.join(['atol', str(1.E-7), 'val'])
-        rtol_change = ','.join(['post_conden_rtol', str(0.5), 'val'])    
-        # assumed to keep P-T profile and surface pressure the same
-        # then change vulcan_cfg.py file
-        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, atol_change, rtol_change, out_change])
-    elif run_type == 'pressure':
-        # change top of atmosphere pressure
-        p_t_change = ','.join(['P_t', str(p_t_list[i]), 'val'])
-        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, p_t_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
-    #subprocess.check_call(['cp', '-p', 'build_atm.py', 'chem_funs.py', 'op.py', 'phy_const.py', 'store.py', 'vulcan.py', sim_folder])
     wd = os.getcwd()
     os.chdir(sim_folder)
     subprocess.check_call(['ln', '-s', '/home/s2555875/VULCAN-2/build_atm.py', 'build_atm.py'])
@@ -160,13 +144,3 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     # then exit simulation folder and delete it
     os.chdir(wd)
     subprocess.check_call(['rm', '-rf', sim_folder])
-
-# TO DO:
-# DONE  need something to prepare atmosphere and find a good place to store that, chemistry will be the same
-# DONE  similar for boundary conditions
-# DONE  make a generalised, probably with inputs, script for initial mixing ratios
-# DONE  write general vulcan_cfg generator -> NEED generic file to start from that has save structure
-# DONE  do I need to copy vulcan.py for each function or can I call the same file? -> can call the same as they run as different processes with their own memory, variables, etc.
-# DONE  after all these can the parallelisation run
-# DONE  plus figure out the output structure: how to name and what groupings should I save them in
-# DONE  so far every bit is in a different script, maybe can be as functions here, THINK about this -> less command line python stuff if they're here as functions...
