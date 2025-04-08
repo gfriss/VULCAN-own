@@ -4,16 +4,10 @@ import sys
 import numpy as np
 import parallel_functions as pf
 from astropy.io import fits
-from mpi4py.MPI import COMM_WORLD as CW # for paralellisation
 
 run_type = sys.argv[1] # 'meteor' or 'CtoO' or 'star' according to which experiment we run, used to make loop at end more readable
 
-rank = CW.Get_rank()
-size = CW.Get_size()
-
 nsim = 15
-sim_per_rank = int(nsim / size) # this is needed to distribure the tasks between tha CPUs
-
 main_folder = '/scratch/s2555875' # place to store outputs
 output_folder = os.path.join(main_folder,'output')
 conv_file = os.path.join(main_folder, 'converged.txt')
@@ -43,8 +37,7 @@ network = '_ncho'
 check_conv = True
 
 # ------end of parameter set up-----
-for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
-                                                            # this is the magic, after this just think of it as a normal, sequential loop
+for i in range(nsim):
     if run_type == 'star' and i >= len(star_df.Name): # fewer stars than 15...
         continue
     sim = ''
@@ -113,7 +106,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     # then run vulcan.py
     subprocess.check_call(['python', 'vulcan.py'])
     # check convergence and rerun once if needed:
-    if check_conv:# == True and n_round == 1:
+    if check_conv:
         with open(conv_file, 'r') as f:
             conv_text = f.read()
         if out_file not in conv_text:
