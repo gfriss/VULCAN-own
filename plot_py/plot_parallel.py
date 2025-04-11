@@ -35,7 +35,7 @@ bc_spec = 'H2'
 bc_linestyle = '-'
 
 # setting up the C/O case
-co2_for_CtoO_range = np.linspace(0.001,0.1,nsim, endpoint = True)
+co2_for_CtoO_range = np.linspace(0.1, 0.001, nsim, endpoint = True)
 mixing_folder = '/scratch/s2555875/mixing_files/'
 
 # setting up star case
@@ -45,6 +45,7 @@ T_eff = star_df.T_eff
 #T_eff = [2800, 3100, 3400, 3700, 4000, 4250, 4500, 4750, 5000, 5250, 5500, 5750, 6000, 6250, 6500]
 # setting up the distance case
 helios_output_folder = '/scratch/s2555875/HELIOS/output/'
+stellar_spectra_folder = '/scratch/s2555875/stellar_flux/'
 
 # setting up the local case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
@@ -186,7 +187,7 @@ def plot_rain(hcn_rain_list, param_list, sim_type, figsave, extra_list = [], ysc
         ax1.invert_xaxis()
 
     if figsave:
-        fig.savefig(plot_folder + 'rainout_rates/HCN_rainout'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'rainout_rates/'+rain_spec+'out'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
 
 def calc_rate(dat, spec_list, re_id, n):
     ''' Calculates the reaction rate by multiplying the reaction coefficient with the number densty of
@@ -558,6 +559,9 @@ def plot_prod_dest_many_layer(dat_list, param_list, sim_type, pressures, ncols, 
         fig.savefig(plot_folder + 'prod_dest/many_layers'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
 
 def get_prod_dest_rates(dat, diag_sp):
+    ''' Function to get the production and destruction rates for a given species (diag_sp) in a given, already read-in VULCAN simulation (dat).
+        It returns the rates and the important reactions that are >10% of the total rate in two dictionaries that both have sub-dictionaries
+        for production and destruction. The rates subdictionaries also have the total rate and the min and max xlim values for plotting.'''
     species = dat['variable']['species']
     rates = {'Production': {'xlim_min': 1e-1, 'xlim_max': 1e3, 'total': 0.}, 'Destruction': {'xlim_min': 1e-1, 'xlim_max': 1e3, 'total': 0.}}
     important_rates = {'Production': [], 'Destruction': []}
@@ -596,7 +600,7 @@ def get_prod_dest_rates(dat, diag_sp):
     rates['Destruction']['xlim_min'] = np.min(tot_dest_rate)*1e-1
     rates['Destruction']['xlim_max'] = np.max(tot_dest_rate)*5.
     for k,v in rates['Production'].items():
-        if any(v/tot_prod_rate > 1e-1): # use only >1% reactions
+        if any(v/tot_prod_rate > 1e-1): # use only >10% reactions
             important_rates['Production'].append(k)
     for k,v in rates['Destruction'].items():
         if any(v/tot_dest_rate > 1e-1):
@@ -682,7 +686,7 @@ def plot_pt(dat_list, param_list, sim_type, figsave):
     ax.legend(bbox_to_anchor = (1,0.95))
     if figsave:
         fig.savefig(plot_folder + 'TPs/'+end_str[sim_type][1:]+'.pdf', bbox_inches = 'tight')
-    
+
 def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists, figsave):
     fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27), tight_layout = True)#, figsize = (22,18)) # take out tight layout here if legends are below subplots
     ax = ax.flatten()
@@ -691,11 +695,13 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
     legend_xanchors = [0.5, 0.5, 0.5, 0.5] # otherwise legends are all over the place, not sure why...
     legend_yanchors = [0.756, 0.503, 0.243, -0.015]
     hcn_rain_archean = rainout(data_archean)
+    colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
     i = 0
     for dat_list,param_list,hcn_rain_list in zip(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists):
         st = sim_types[i//4]
         # plotting hcn rain rates in zeroth column
-        ax[i+0].plot(param_list, hcn_rain_list, color = 'navy', linestyle = '', marker = '.', markersize = 10)
+        for p,r,c in zip(param_list, hcn_rain_list, colours):
+            ax[i+0].plot(p, r, color = c, linestyle = '', marker = 'o', markersize = 10)
         ax[i+0].plot(archean_params[st], hcn_rain_archean, color = archean_colour, marker = archean_marker, markersize = 10)
         ax[i+0].set_ylabel(r'HCN rain-out rate [kg m$^{-2}$ yr$^{-1}$]')
         if i != 0:
@@ -717,10 +723,11 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         #ax[i+1].legend()
         ax[i+2].set_xscale('log')
         ax[i+2].set_xlabel(r'X$_{cloud}$')
+        ax[i+2].set_xlim((1e-15,1e-2)) # show relevant vertical mixing ratio interval
         ax[i+2].set_yscale('log')
         ax[i+2].set_ylabel('Pressure [bar]')
+        ax[i+2].set_ylim((1e-4,1e0)) # zoom on relevant pressure interval for clouds
         ax[i+2].invert_yaxis()
-        ax[i+2].set_xlim((1e-15,1e-2))
         # plotting the fixed T-P profiles for BC and CtoO simulations and setting scales and labels for all
         if sim_types[i//4] == 'BC' or sim_types[i//4] == 'CtoO':
             ax[i+3].plot(data_archean['atm']['Tco'], data_archean['atm']['pco']/1e6)
@@ -747,27 +754,27 @@ def get_rad_prof(star):
         rad_file = '/scratch/s2555875/stellar_flux/' + star.lower() + '.txt' # just to make sure it is lower case
     return rad_file
 
-def plot_stellar_spectra(figname = None):
-    fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27), sharex = True, sharey = True)
+def plot_stellar_spectra(figsave):
+    fig, ax = plt.subplots(nrows = 3, ncols = 1, sharex = True, sharey = True, tight_layout = True, figsize = (8, 10))
     ax = ax.flatten()
-    i = 0
-    lam = np.genfromtxt('../atm/stellar_flux/Gueymard_solar.txt', names = ['lambda', 'flux'], comments = '#')['lambda'] # in nm
-    for star,T in zip(star_df.Name, star_df.T_eff):
-        spectrum = np.genfromtxt(get_rad_prof(star), names = ['lambda', 'flux'], comments = '#')
-        ax[i].plot(spectrum['lambda'], spectrum['flux'], label = star)
-        ax[i].set_xscale('log')
+    colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    for i,star_name in enumerate(list(star_df.Name)):
+        if star_name == 'SUN':
+            star = np.genfromtxt('/home/s2555875/VULCAN-2/atm/stellar_flux/Gueymard_solar.txt', comments = '#', names = ['lambda', 'flux'])
+        else:
+            star = np.genfromtxt(stellar_spectra_folder + '/{}.txt'.format(star_name).lower(), comments = '#', names = ['lambda', 'flux'])
+        ax[i//5].plot(star['lambda'], star['flux'], label = star_name, c = colours[i])
+    ax[2].set_xlabel('Wavelength [nm]')
+    ax[1].set_ylabel(r'Flux [ergs/cm$^2$/s/nm]')
+    for i in range(3):
         ax[i].set_yscale('log')
-        ax[i].set_ylim((1e1,1e11))
-        ax[i].legend(loc = 'center right')
-        if i >= 12: 
-            ax[i].set_xlabel(r'$\lambda$ [nm]')
-        if i%4 == 0:
-            ax[i].set_ylabel(r'F [ergs cm$^{-2}$ s$^{-1}$ nm$^{-1}$]')
-        i += 1
+        ax[i].set_xscale('log')
+    ax[0].set_xlim((2, 700)) # VULCAN uses this range of the spectrum for photochemistry
+    ax[0].set_ylim((9e0, 3e8))
+    fig.legend(bbox_to_anchor=(1.22,0.72))
     
-        
-    if figname != None:
-        fig.savefig(plot_folder + figname, bbox_inches = 'tight')
+    if figsave:
+        fig.savefig(plot_folder + 'spectra_comp/stellar_spectra_comp.pdf', bbox_inches = 'tight')
 #%%
 # archean case
 #prod_dest_archean = get_prod_dest_rates(data_archean, 'HCN')
@@ -838,6 +845,7 @@ plot_prod_dest(data_star, T_eff, 'star', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_star, T_eff, 'star', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_star, T_eff, 'star', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_rates(data_star, T_eff, 'HCN', figsave = True, sim_type = 'star')
+plot_stellar_spectra(figsave = True)
 # %%
 # distance case
 a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au

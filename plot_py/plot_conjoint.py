@@ -2,7 +2,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mc
-from matplotlib import ticker
 import pickle
 import os
 import sys
@@ -82,7 +81,7 @@ def plot_meshgrid(x, y, values, val_label, edgec = 'none', figname = None, met_f
     if met_flux:
         vmin = 0.9 * np.min([vmin, min_flux_met])
     fig, ax = plt.subplots(tight_layout = True)
-    cmap = plt.get_cmap('magma')
+    cmap = plt.get_cmap()
     cmap.set_under('none')
     cm = ax.pcolormesh(x, y, values, cmap = cmap, norm = mc.LogNorm(vmin=vmin))
     ax.pcolormesh(x, y, values, facecolors='none', edgecolors=edgec, lw = 2)
@@ -104,7 +103,7 @@ def plot_contour(x, y, values, val_label, figname = None, met_flux = True):
     if met_flux:
         vmin = 0.9 * np.min([vmin, min_flux_met])
     fig, ax = plt.subplots(tight_layout = True)
-    cmap = plt.get_cmap('magma')
+    cmap = plt.get_cmap()
     cmap.set_under('none')
     cm = ax.contourf(x, y, values, cmap = cmap, norm = mc.LogNorm(vmin=vmin))
     cbar = fig.colorbar(cm)
@@ -124,7 +123,7 @@ def plot_tricontour(x, y, z, x_label, y_label, z_label, figname = None, met_flux
     if met_flux:
         vmin = 0.9 * np.min([vmin, min_flux_met])
     fig, ax = plt.subplots(tight_layout = True)
-    cmap = plt.get_cmap('magma')
+    cmap = plt.get_cmap()
     cmap.set_under('none')
     cm = ax.tricontourf(x, y, z, cmap = cmap, norm = mc.LogNorm(vmin = vmin))
     cbar = fig.colorbar(cm)
@@ -144,7 +143,7 @@ def plot_hist2d(x, y, weights, bins, weights_label, figname = None, met_flux = T
     if met_flux:
         vmin = 0.9 * np.min([vmin, min_flux_met])
     fig, ax = plt.subplots(tight_layout = True)
-    cm = ax.hist2d(x=x, y=y, bins = bins, weights=weights, norm = mc.LogNorm(vmin = vmin), cmap = 'magma')
+    cm = ax.hist2d(x=x, y=y, bins = bins, weights=weights, norm = mc.LogNorm(vmin = vmin))
     cbar = fig.colorbar(cm[3])
     cbar.set_label(weights_label)
     if met_flux:
