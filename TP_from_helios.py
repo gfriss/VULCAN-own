@@ -35,12 +35,12 @@ def create_param_file(sim_name, dist = None, sname = None, manual = False, r_sta
                 new_str += change_line(line, 6, str(dist))
             elif sname != None and 'path to stellar spectrum file' in line: # by default it asks for dile in param.dat
                 new_str += change_line(line, 8, './star_tool/output/{}.h5'.format(sname.lower()))
-            elif sname != None and 'dataset in stellar spectrum file' in line: # by default it asks for dile in param.dat
-                new_str += change_line(line, 8, '/r50_kdistr/phoenix/{}'.format(sname.lower()))
-            #elif sname != None and sname not in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
-            #    new_str += change_line(line, 8, '/r50_kdistr/muscles/{}'.format(sname.lower()))
-            #elif sname != None and sname in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
-            #    new_str += change_line(line, 8, '/r50_kdistr/ascii/{}'.format(sname.lower()))
+            #elif sname != None and 'dataset in stellar spectrum file' in line: # by default it asks for dile in param.dat
+            #    new_str += change_line(line, 8, '/r50_kdistr/phoenix/{}'.format(sname.lower()))
+            elif sname != None and sname not in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
+                new_str += change_line(line, 8, '/r50_kdistr/muscles/{}'.format(sname.lower()))
+            elif sname != None and sname in ['EARLY_SUN', 'SUN'] and 'dataset in stellar spectrum file' in line:
+                new_str += change_line(line, 8, '/r50_kdistr/ascii/{}'.format(sname.lower()))
             elif sname != None and 'planet =' in line:
                 if manual:
                     new_str += change_line(line, 2, 'manual')
@@ -81,7 +81,7 @@ def create_new_vulcan_pt(sim_name, subfolder = ''):
 #%%
 #create_new_vulcan_pt('archean')
 #%%
-a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
+a_list = np.linspace(0.839, 1.333, nsim, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
 
 def run_many_dist(dist_list):
     for i,a in enumerate(dist_list):
@@ -115,7 +115,7 @@ def run_many_planets(star_table):
         subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
         os.chdir(wd)
         create_new_vulcan_pt(sim)
-#run_many_planets(star_df)
+run_many_planets(star_df)
 #%%
 import astropy.io.fits as fits
 
@@ -157,7 +157,7 @@ def run_many_star(T_list, rad_list, a_list):
         subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
         os.chdir(wd)
         create_new_vulcan_pt(sim)
-run_many_star(Teff_list, R_list, dist_list)
+#run_many_star(Teff_list, R_list, dist_list)
 #%%
 def run_star_dist(star_table, factor = 1.1):
     param_matrix = []

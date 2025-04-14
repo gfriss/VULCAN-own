@@ -47,11 +47,8 @@ T_eff = star_df.T_eff
 helios_output_folder = '/scratch/s2555875/HELIOS/output/'
 stellar_spectra_folder = '/scratch/s2555875/stellar_flux/'
 
-# setting up the local case
-h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
-
-# setting up the TOA pressure case
-p_t_list = np.linspace(1e-2, 1e-1, 15, endpoint = True)/1e6
+# setting up the distance case
+a_list = np.linspace(0.839, 1.333, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
 
 # base simulation of Archean
 base_sim = out_folder+'archean'+network+'.vul'
@@ -114,7 +111,6 @@ def read_in(sim_type, number_of_sim, start_str = ''):
     H2_flux = []
     T_surface = []
     ctoo = []
-    mixing_H2 = []
     for i in range(number_of_sim):
         sim = start_str + sim_names[i] # setting up the names of files
         sim += end_str[sim_type]
@@ -848,8 +844,6 @@ plot_prod_dest_rates(data_star, T_eff, 'HCN', figsave = True, sim_type = 'star')
 plot_stellar_spectra(figsave = True)
 # %%
 # distance case
-a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
-
 data_dist, T_surf = read_in('dist', nsim)
 hcn_rain_dist, rain_dist = [], []
 

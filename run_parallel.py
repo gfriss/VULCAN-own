@@ -29,9 +29,9 @@ m_mass = 1e22 # stick to this for now by Zahnle et al. (2020)
 co2_for_CtoO_range = np.linspace(0.1, 0.001, nsim, endpoint = True)
 # star type
 star_df = pf.read_stellar_data(os.path.join(main_folder,'stellar_flux/stellar_params.csv')) # NOT necessarily nsim long...
-a_star_list  = [0.0296, 0.0770, 0.0780, 0.1550, 0.1780, 0.3840, 0.4945, 0.6295, 0.6976, 1., 1.1623, 1.9047, 2.3155]
+a_star_list  = [0.0269, 0.0697, 0.0719, 0.1451, 0.1679, 0.3653, 0.4808, 0.6228, 0.6960, 1., 1.1643, 1.8887, 2.3367]
 # distance case
-a_list = np.linspace(0.85, 1.35, nsim, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
+a_list = np.linspace(0.839, 1.333, nsim, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
 # local meteorite case
 h2_bar_list = np.linspace(0, 2, 15, endpoint = True)
 # TOA pressure case
