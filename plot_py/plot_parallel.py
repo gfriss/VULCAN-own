@@ -645,29 +645,25 @@ def plot_prod_dest_rates(dat_list, param_list, diag_sp, figsave, sim_type):
         if figsave:
             fig.savefig(plot_folder + 'prod_dest/detailed'+end_str[sim_type]+'_'+sim_names[i]+network+'.pdf', bbox_inches = 'tight')
 
-def plot_prod_dest_rates_archean(dat, diag_sp, reactions, figsave):
-    prod_dest, _ = get_prod_dest_rates(dat, diag_sp)
-    for k in prod_dest['Production'].keys():
-        if k not in reactions['Production']:
-            prod_dest['Production'].pop(k)
-    for k in prod_dest['Destruction'].keys():
-        if k not in reactions['Destruction']:
-            prod_dest['Destruction'].pop(k)
+def plot_prod_dest_rates_archean(dat, diag_sp, figsave):
+    prod_dest, important_prod_dest = get_prod_dest_rates(dat, diag_sp)
+    prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in important_prod_dest['Production']+['xlim_min', 'xlim_max']}
+    prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in important_prod_dest['Destruction']+['xlim_min', 'xlim_max']}
     labels = [r'k$_{prod}$ [cm$^{-3}$s$^{-1}$]', r'k$_{dest}$ [cm$^{-3}$s$^{-1}$]']
-    fig, ax = plt.subplots(ncols=1, nrows=2, figsize = (8,10), sharex = True, tight_layout = True)
+    fig, ax = plt.subplots(ncols=1, nrows=2, figsize = (11,10), sharex = True, tight_layout = True)
     ax = ax.flatten()
     for j,rate_type in enumerate(['Production', 'Destruction']):
         for k,v in prod_dest[rate_type].items():
-            if k == 'xlim':
+            if k in ['xlim_min', 'xlim_max']:
                 continue
             ax[j].plot(v, dat['atm']['pco']/1e6, label = k)
         ax[j].set_yscale('log')
         ax[j].set_xscale('log')
         ax[j].set_ylabel('Pressure [bar]')
         ax[j].set_xlabel(labels[j])
-        ax[j].set_xlim(prod_dest[rate_type]['xlim'],None)
+        ax[j].set_xlim(prod_dest[rate_type]['xlim_min'],prod_dest[rate_type]['xlim_max'])
         ax[j].invert_yaxis()
-        ax[j].legend(loc = 'upper left')
+        ax[j].legend(bbox_to_anchor = (1,0.85))
     if figsave:
         fig.savefig(plot_folder + 'prod_dest/archean'+network+'.pdf', bbox_inches = 'tight')
 
@@ -773,8 +769,7 @@ def plot_stellar_spectra(figsave):
         fig.savefig(plot_folder + 'spectra_comp/stellar_spectra_comp.pdf', bbox_inches = 'tight')
 #%%
 # archean case
-#prod_dest_archean = get_prod_dest_rates(data_archean, 'HCN')
-#plot_prod_dest_rates(data_archean, prod_dest_archean, figsave = True, sim_type = 'archean')
+plot_prod_dest_rates_archean(data_archean, 'HCN', figsave = True)
 #%%
 # boundary condition case
 data_bc, bc_flux = read_in('BC', nsim)
