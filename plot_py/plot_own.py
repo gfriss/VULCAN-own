@@ -1,7 +1,6 @@
 #%%
 import numpy as np
 import matplotlib.pyplot as plt
-import os, sys
 import pickle
 import plot_reset as pr
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
@@ -530,15 +529,15 @@ with open(scratch + 'output/archean_ncho.vul', 'rb') as handle:
 colour = plt.rcParams['axes.prop_cycle'].by_key()['color']
 fig, ax = plt.subplots(tight_layout = True)
 ax.plot(data_archean['atm']['Tco'], data_archean['atm']['pco']/1e6, label = 'T profile', color = colour[0], linestyle = '-')
-ax.set_xlabel('Temperature [K]')
+ax.set_xlabel('Temperature [K]', color = colour[0])
 ax.tick_params(axis = 'x', labelcolor = colour[0])
 ax.set_ylabel('Pressure [bar]')
 ax.set_yscale('log')
 ax.invert_yaxis()
 ax1 = ax.twiny()
-ax1.plot(data_archean['atm']['Kzz'], data_archean['atm']['pco'][:-1]/1e6, label = 'Eddy diffusion', color = colour[-4], linestyle = '--')
-ax1.set_xlabel('Eddy diffusion [cm2/s]', color = colour[-4])
+ax1.plot(data_archean['atm']['Kzz'], data_archean['atm']['pco'][:-1]/1e6, label = 'Eddy diffusion', color = colour[6], linestyle = '--')
+ax1.set_xlabel('Eddy diffusion [cm2/s]', color = colour[6])
 ax1.set_xscale('log')
-ax1.tick_params(axis = 'x', labelcolor = colour[-4])
+ax1.tick_params(axis = 'x', labelcolor = colour[6])
 fig.savefig(scratch + 'plot/TPs/archean_T_Kzz.pdf')
 #%%

@@ -1,11 +1,6 @@
 #%%
-#import sys
-#sys.path.insert(0, '../') # including the upper level of directory for the path of modules
-
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-import matplotlib.colors as mc
 from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection
 import pickle
@@ -61,7 +56,7 @@ xlab = {'BC': r'$\dot{M}_{del}$ [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]
 xscale = {'BC': 'log', 'CtoO': 'linear', 'star': 'linear', 'dist': 'linear'}
 legend_lab = {'BC': r'$\dot{{M}}_{{del}}$ = {:.2e} g/Gyr', 'CtoO': 'C/O = {:.3f}', 'star': r'T$_{{eff}}$ = {} K', 'dist': 'a = {:.3f} AU'}
 archean_marker = '$\u2295$'
-archean_colour = 'green'
+archean_colour = 'orange'
 # pressure levels for reaction rate plots
 pressure_levels = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
 #%%
@@ -603,36 +598,39 @@ def get_prod_dest_rates(dat, diag_sp):
             important_rates['Destruction'].append(k)
     return rates, important_rates
     
-def get_prod_dest_reactions_to_plot(dat_list, diag_sp):
+def get_prod_dest_reactions_to_plot(list_of_dat_list, diag_sp):
     reactions_to_plot = {'Production': ['total', 'xlim_min', 'xlim_max'], 'Destruction': ['total', 'xlim_min', 'xlim_max']}
     xlim_min = {'Production': 1e-1, 'Destruction': 1e-1}
     xlim_max = {'Production': 1e3, 'Destruction': 1e3}
-    for d in dat_list:
-        r, imp = get_prod_dest_rates(d, diag_sp)
-        reactions_to_plot['Production'] += imp['Production']
-        reactions_to_plot['Destruction'] += imp['Destruction']
-        xlim_min['Production'] = min(xlim_min['Production'], r['Production']['xlim_min'])
-        xlim_min['Destruction'] = min(xlim_min['Destruction'], r['Destruction']['xlim_min'])
-        xlim_max['Production'] = max(xlim_max['Production'], r['Production']['xlim_max'])
-        xlim_max['Destruction'] = max(xlim_max['Destruction'], r['Destruction']['xlim_max'])
+    for dat_list in list_of_dat_list:
+        for d in dat_list:
+            r, imp = get_prod_dest_rates(d, diag_sp)
+            reactions_to_plot['Production'] += imp['Production']
+            reactions_to_plot['Destruction'] += imp['Destruction']
+            xlim_min['Production'] = min(xlim_min['Production'], r['Production']['xlim_min'])
+            xlim_min['Destruction'] = min(xlim_min['Destruction'], r['Destruction']['xlim_min'])
+            xlim_max['Production'] = max(xlim_max['Production'], r['Production']['xlim_max'])
+            xlim_max['Destruction'] = max(xlim_max['Destruction'], r['Destruction']['xlim_max'])
     reactions_to_plot['Production'] = list(set(reactions_to_plot['Production']))
     reactions_to_plot['Destruction'] = list(set(reactions_to_plot['Destruction']))
     return reactions_to_plot, xlim_min, xlim_max
 
-def plot_prod_dest_rates(dat_list, param_list, diag_sp, figsave, sim_type):
-    rplot, xlim_lower, xlim_upper = get_prod_dest_reactions_to_plot(dat_list, diag_sp)
+def plot_prod_dest_rates(dat_list, param_list, diag_sp, rplot, xlim_lower, xlim_upper, figsave, sim_type):
     for i,d in enumerate(dat_list):
         prod_dest, _ = get_prod_dest_rates(d, diag_sp)
         prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']}
         prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in rplot['Destruction']}
         labels = [r'k$_{prod}$ [cm$^{-3}$s$^{-1}$]', r'k$_{dest}$ [cm$^{-3}$s$^{-1}$]']
-        fig, ax = plt.subplots(ncols=1, nrows=2, figsize = (11,10), sharex = True, tight_layout = True)
+        fig, ax = plt.subplots(ncols=1, nrows=2, sharex = True, tight_layout = True)
         ax = ax.flatten()
         for j,rate_type in enumerate(['Production', 'Destruction']):
             for k,v in prod_dest[rate_type].items():
                 if k in ['xlim_min', 'xlim_max']:
                     continue
-                ax[j].plot(v, d['atm']['pco']/1e6, label = k)
+                if k == 'total':
+                    ax[j].plot(v, d['atm']['pco']/1e6, label = 'Total', c = 'k')
+                else:
+                    ax[j].plot(v, d['atm']['pco']/1e6, label = k)
             ax[j].set_yscale('log')
             ax[j].set_xscale('log')
             ax[j].set_ylabel('Pressure [bar]')
@@ -645,23 +643,26 @@ def plot_prod_dest_rates(dat_list, param_list, diag_sp, figsave, sim_type):
         if figsave:
             fig.savefig(plot_folder + 'prod_dest/detailed'+end_str[sim_type]+'_'+sim_names[i]+network+'.pdf', bbox_inches = 'tight')
 
-def plot_prod_dest_rates_archean(dat, diag_sp, figsave):
-    prod_dest, important_prod_dest = get_prod_dest_rates(dat, diag_sp)
-    prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in important_prod_dest['Production']+['xlim_min', 'xlim_max']}
-    prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in important_prod_dest['Destruction']+['xlim_min', 'xlim_max']}
+def plot_prod_dest_rates_archean(dat, diag_sp, rplot, xlim_lower, xlim_upper, figsave):
+    prod_dest, _ = get_prod_dest_rates(dat, diag_sp)
+    prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']+['xlim_min', 'xlim_max']}
+    prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in rplot['Destruction']+['xlim_min', 'xlim_max']}
     labels = [r'k$_{prod}$ [cm$^{-3}$s$^{-1}$]', r'k$_{dest}$ [cm$^{-3}$s$^{-1}$]']
-    fig, ax = plt.subplots(ncols=1, nrows=2, figsize = (11,10), sharex = True, tight_layout = True)
+    fig, ax = plt.subplots(ncols=1, nrows=2, sharex = True, tight_layout = True)
     ax = ax.flatten()
     for j,rate_type in enumerate(['Production', 'Destruction']):
         for k,v in prod_dest[rate_type].items():
             if k in ['xlim_min', 'xlim_max']:
                 continue
-            ax[j].plot(v, dat['atm']['pco']/1e6, label = k)
+            if k == 'total':
+                ax[j].plot(v, dat['atm']['pco']/1e6, label = 'Total', c = 'k')
+            else:
+                ax[j].plot(v, dat['atm']['pco']/1e6, label = k)
         ax[j].set_yscale('log')
         ax[j].set_xscale('log')
         ax[j].set_ylabel('Pressure [bar]')
         ax[j].set_xlabel(labels[j])
-        ax[j].set_xlim(prod_dest[rate_type]['xlim_min'],prod_dest[rate_type]['xlim_max'])
+        ax[j].set_xlim(xlim_lower[rate_type],xlim_upper[rate_type])
         ax[j].invert_yaxis()
         ax[j].legend(bbox_to_anchor = (1,0.85))
     if figsave:
@@ -768,9 +769,6 @@ def plot_stellar_spectra(figsave):
     if figsave:
         fig.savefig(plot_folder + 'spectra_comp/stellar_spectra_comp.pdf', bbox_inches = 'tight')
 #%%
-# archean case
-plot_prod_dest_rates_archean(data_archean, 'HCN', figsave = True)
-#%%
 # boundary condition case
 data_bc, bc_flux = read_in('BC', nsim)
 
@@ -790,7 +788,6 @@ plot_tot_rate(data_bc, bomb_rate, 'BC', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_bc, bomb_rate, 'BC', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_bc, bomb_rate, 'BC', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_bc, bomb_rate, 'BC', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
-plot_prod_dest_rates(data_bc, bomb_rate, 'HCN', figsave = True, sim_type = 'BC')
 #%%
 # C/O case
 data_CtoO, C_to_O = read_in('CtoO', nsim)
@@ -812,7 +809,6 @@ plot_tot_rate(data_CtoO, C_to_O, 'CtoO', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_CtoO, C_to_O, 'CtoO', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_CtoO, C_to_O, 'CtoO', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_CtoO, C_to_O, 'CtoO', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
-plot_prod_dest_rates(data_CtoO, C_to_O, 'HCN', figsave = True, sim_type = 'CtoO')
 # %%
 # star case
 data_star = read_in('star', number_of_sim = 13)
@@ -835,7 +831,6 @@ plot_tot_rate(data_star, T_eff, 'star', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_star, T_eff, 'star', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_star, T_eff, 'star', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_star, T_eff, 'star', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
-plot_prod_dest_rates(data_star, T_eff, 'HCN', figsave = True, sim_type = 'star')
 plot_stellar_spectra(figsave = True)
 # %%
 # distance case
@@ -859,7 +854,20 @@ plot_tot_rate(data_dist, a_list, 'dist', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_dist, a_list, 'dist', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_dist, a_list, 'dist', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_dist, a_list, 'dist', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
-plot_prod_dest_rates(data_dist, a_list, 'HCN', figsave = True, sim_type = 'dist')
+#%%
+# reaction rate plots
+pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 10)
+r_to_lot, xmin, xmax = get_prod_dest_reactions_to_plot([data_bc, data_CtoO, data_dist, data_star], 'HCN')
+# boundary condition case
+plot_prod_dest_rates(data_bc, bomb_rate, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'BC')
+# C/O case
+plot_prod_dest_rates(data_CtoO, C_to_O, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'CtoO')
+# distance case
+plot_prod_dest_rates(data_dist, a_list, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'dist')
+# star case
+plot_prod_dest_rates(data_star, T_eff, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'star')
+# archean case
+plot_prod_dest_rates_archean(data_archean, 'HCN', r_to_lot, xmin, xmax, figsave = True)
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figsave = True)
