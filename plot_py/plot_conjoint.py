@@ -21,13 +21,13 @@ plot_folder = os.path.join(scratch, 'plot')
 cfg_folder = os.path.join(output_folder, 'cfg')
 TP_folder = os.path.join(scratch, 'TP_files/star_dist')
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
+#network = ''
+network = '_ncho'
 archean_colour = 'orange'
+archean_file = os.path.join(scratch, 'output', 'archean'+network+'.vul')
 
 min_flux_met = 1.058e-9
 max_flux_met = 2.646e-8
-
-#network = ''
-network = '_ncho'
 #%%    
 def get_surf_temp(file):
     surface_temperature = np.genfromtxt(file, dtype = None, skip_header=1, comments = '#', max_rows = 4, names = True)['Temp'][0]
@@ -91,6 +91,21 @@ def plot_meshgrid(x, y, values, val_label, edgec = 'none', figname = None, met_f
     if met_flux:
         cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
         cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
+    ax.set_ylabel(r'T$_{eff}$ [K]')
+    ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
+    ax.invert_xaxis()
+    if figname != None:
+        fig.savefig(os.path.join(plot_folder, figname))
+        
+def plot_meshgrid_with_normed(x, y, values, norm_val, val_label, figname = None, vmin = None, vmax = None, norm = 'linear'):
+    ''' Plots values that are normalised by the value of Archean Earth, let it be rainout rate, end-of-simulation time, convergence, etc., in a pcolormesh plot.
+        Distance is X, Teff is Y. Figure can be saved if needed. Meteoritic flux can be added as well.'''
+    fig, ax = plt.subplots(tight_layout = True)
+    cmap = plt.get_cmap()
+    cmap.set_under('none')
+    cm = ax.pcolormesh(x, y, values/norm_val, cmap = cmap, vmin = vmin, vmax = vmax, norm = norm)
+    cbar = fig.colorbar(cm)
+    cbar.set_label(val_label)
     ax.set_ylabel(r'T$_{eff}$ [K]')
     ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
     ax.invert_xaxis()
@@ -195,6 +210,15 @@ for star, a_min, a_max, Llog, T_eff in zip(star_df.Name, star_df.a_min, star_df.
 #%%
 plot_meshgrid(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', edgec = sum(edge_matrix,[]), figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'.pdf')
 plot_meshgrid(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', edgec = sum(edge_matrix,[]), figname = 'end_time/endtime_conjoint_S_eff'+network+'.pdf', met_flux = False)
+#%%
+with open(archean_file, 'rb') as handle:
+    data_archean = pickle.load(handle)
+archean_rain = rainout(data_archean)
+#%%
+plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed.pdf')
+plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_lognorm.pdf', norm = mc.LogNorm())
+plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_better.pdf', vmin = 1)
+plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_worse.pdf', vmax = 1)
 #%%
 # contour version
 # uses the same data as the meshgrid version

@@ -643,6 +643,33 @@ def plot_prod_dest_rates(dat_list, param_list, diag_sp, rplot, xlim_lower, xlim_
         if figsave:
             fig.savefig(plot_folder + 'prod_dest/detailed'+end_str[sim_type]+'_'+sim_names[i]+network+'.pdf', bbox_inches = 'tight')
 
+def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, figsave, sim_type):
+    for i,d in enumerate(dat_list):
+        prod_dest, _ = get_prod_dest_rates(d, diag_sp)
+        prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']}
+        prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in rplot['Destruction']}
+        labels = [r'$X_{prod}$', r'$X_{dest}$', r'$k_{net}$ [cm$^{-3}$s$^{-1}$]']
+        fig, ax = plt.subplots(ncols=1, nrows=3, sharey = True, tight_layout = True)
+        ax = ax.flatten()
+        for j,rate_type in enumerate(['Production', 'Destruction', 'total']):
+            if rate_type != 'total':
+                for k,v in prod_dest[rate_type].items():
+                    if k in ['total', 'xlim_min', 'xlim_max']:
+                        continue
+                    else:
+                        ax[j].plot(v/prod_dest[rate_type]['total'], d['atm']['pco']/1e6, label = k)
+                ax[j].legend(bbox_to_anchor = (1,0.85))
+                ax[j].set_xlim(-0.02,1.02)
+            else:
+                ax[j].plot(prod_dest['Production']['total']-prod_dest['Destruction']['total'], d['atm']['pco']/1e6, label = 'Total', c = 'k')
+            ax[j].set_yscale('log')
+            ax[j].set_ylabel('Pressure [bar]')
+            ax[j].set_xlabel(labels[j])
+            ax[j].invert_yaxis()
+        ax[0].set_title(legend_lab[sim_type].format(param_list[i]))
+        if figsave:
+            fig.savefig(plot_folder + 'prod_dest/normed_detailed'+end_str[sim_type]+'_'+sim_names[i]+network+'.pdf', bbox_inches = 'tight')
+
 def plot_prod_dest_rates_archean(dat, diag_sp, rplot, xlim_lower, xlim_upper, figsave):
     prod_dest, _ = get_prod_dest_rates(dat, diag_sp)
     prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']+['xlim_min', 'xlim_max']}
@@ -667,6 +694,31 @@ def plot_prod_dest_rates_archean(dat, diag_sp, rplot, xlim_lower, xlim_upper, fi
         ax[j].legend(bbox_to_anchor = (1,0.85))
     if figsave:
         fig.savefig(plot_folder + 'prod_dest/archean'+network+'.pdf', bbox_inches = 'tight')
+
+def plot_prod_dest_rates_archean_normed(dat, diag_sp, rplot, figsave):
+    prod_dest, _ = get_prod_dest_rates(dat, diag_sp)
+    prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']+['xlim_min', 'xlim_max']}
+    prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in rplot['Destruction']+['xlim_min', 'xlim_max']}
+    labels = [r'$X_{prod}$', r'$X_{dest}$', r'$k_{net}$ [cm$^{-3}$s$^{-1}$]']
+    fig, ax = plt.subplots(ncols=1, nrows=3, sharey = True, tight_layout = True)
+    ax = ax.flatten()
+    for j,rate_type in enumerate(['Production', 'Destruction', 'total']):
+        if rate_type != 'total':
+            for k,v in prod_dest[rate_type].items():
+                if k in ['total', 'xlim_min', 'xlim_max']:
+                    continue
+                else:
+                    ax[j].plot(v/prod_dest[rate_type]['total'], dat['atm']['pco']/1e6, label = k)
+            ax[j].legend(bbox_to_anchor = (1,0.85))
+            ax[j].set_xlim(-0.02,1.02)
+        else:
+            ax[j].plot(prod_dest['Production']['total']-prod_dest['Destruction']['total'], dat['atm']['pco']/1e6, label = 'Total', c = 'k')
+        ax[j].set_yscale('log')
+        ax[j].set_ylabel('Pressure [bar]')
+        ax[j].set_xlabel(labels[j])
+        ax[j].invert_yaxis()
+    if figsave:
+        fig.savefig(plot_folder + 'prod_dest/normed_archean'+network+'.pdf', bbox_inches = 'tight')
 
 def plot_pt(dat_list, param_list, sim_type, figsave):
     fig, ax = plt.subplots(tight_layout = True)
@@ -868,6 +920,13 @@ plot_prod_dest_rates(data_dist, a_list, 'HCN', r_to_lot, xmin, xmax, figsave = T
 plot_prod_dest_rates(data_star, T_eff, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'star')
 # archean case
 plot_prod_dest_rates_archean(data_archean, 'HCN', r_to_lot, xmin, xmax, figsave = True)
+#%%
+pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 15)
+plot_prod_dest_rates_normed(data_bc, bomb_rate, 'HCN', r_to_lot, figsave = True, sim_type = 'BC')
+plot_prod_dest_rates_normed(data_CtoO, C_to_O, 'HCN', r_to_lot, figsave = True, sim_type = 'CtoO')
+plot_prod_dest_rates_normed(data_dist, a_list, 'HCN', r_to_lot, figsave = True, sim_type = 'dist')
+plot_prod_dest_rates_normed(data_star, T_eff, 'HCN', r_to_lot, figsave = True, sim_type = 'star')
+plot_prod_dest_rates_archean_normed(data_archean, 'HCN', r_to_lot, figsave = True)
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figsave = True)
