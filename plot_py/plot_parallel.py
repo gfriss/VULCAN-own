@@ -55,8 +55,8 @@ archean_params = {'BC': 1.2e24 * 2.3/3.42, 'CtoO': 0.5143, 'star': 5600., 'dist'
 xlab = {'BC': r'$\dot{M}_{del}$ [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]', 'dist': 'Distance [AU]'}
 xscale = {'BC': 'log', 'CtoO': 'linear', 'star': 'linear', 'dist': 'linear'}
 legend_lab = {'BC': r'$\dot{{M}}_{{del}}$ = {:.2e} g/Gyr', 'CtoO': 'C/O = {:.3f}', 'star': r'T$_{{eff}}$ = {} K', 'dist': 'a = {:.3f} AU'}
-archean_marker = '$\u2295$'
-archean_colour = 'orange'
+archean_marker = 's' #'$\u2295$'
+archean_colour = 'k'
 # pressure levels for reaction rate plots
 pressure_levels = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
 #%%
@@ -602,6 +602,7 @@ def get_prod_dest_reactions_to_plot(list_of_dat_list, diag_sp):
     reactions_to_plot = {'Production': ['total', 'xlim_min', 'xlim_max'], 'Destruction': ['total', 'xlim_min', 'xlim_max']}
     xlim_min = {'Production': 1e-1, 'Destruction': 1e-1}
     xlim_max = {'Production': 1e3, 'Destruction': 1e3}
+    net_min, net_max = np.inf, -np.inf # to be able to minimise/maximise
     for dat_list in list_of_dat_list:
         for d in dat_list:
             r, imp = get_prod_dest_rates(d, diag_sp)
@@ -611,9 +612,11 @@ def get_prod_dest_reactions_to_plot(list_of_dat_list, diag_sp):
             xlim_min['Destruction'] = min(xlim_min['Destruction'], r['Destruction']['xlim_min'])
             xlim_max['Production'] = max(xlim_max['Production'], r['Production']['xlim_max'])
             xlim_max['Destruction'] = max(xlim_max['Destruction'], r['Destruction']['xlim_max'])
+            net_min = min(net_min, np.min(r['Production']['total']-r['Destruction']['total']))
+            net_max = max(net_max, np.max(r['Production']['total']-r['Destruction']['total']))
     reactions_to_plot['Production'] = list(set(reactions_to_plot['Production']))
     reactions_to_plot['Destruction'] = list(set(reactions_to_plot['Destruction']))
-    return reactions_to_plot, xlim_min, xlim_max
+    return reactions_to_plot, xlim_min, xlim_max, net_min, net_max
 
 def plot_prod_dest_rates(dat_list, param_list, diag_sp, rplot, xlim_lower, xlim_upper, figsave, sim_type):
     for i,d in enumerate(dat_list):
@@ -643,7 +646,7 @@ def plot_prod_dest_rates(dat_list, param_list, diag_sp, rplot, xlim_lower, xlim_
         if figsave:
             fig.savefig(plot_folder + 'prod_dest/detailed'+end_str[sim_type]+'_'+sim_names[i]+network+'.pdf', bbox_inches = 'tight')
 
-def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, figsave, sim_type):
+def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, net_lower, net_upper, figsave, sim_type):
     for i,d in enumerate(dat_list):
         prod_dest, _ = get_prod_dest_rates(d, diag_sp)
         prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']}
@@ -662,6 +665,9 @@ def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, figsave, s
                 ax[j].set_xlim(-0.02,1.02)
             else:
                 ax[j].plot(prod_dest['Production']['total']-prod_dest['Destruction']['total'], d['atm']['pco']/1e6, label = 'Total', c = 'k')
+                ax[j].set_xlim(net_lower, net_upper)
+                ax[j].set_xscale('symlog')
+                ax[j].axvline(0, color = 'r', linestyle = '--')
             ax[j].set_yscale('log')
             ax[j].set_ylabel('Pressure [bar]')
             ax[j].set_xlabel(labels[j])
@@ -695,7 +701,7 @@ def plot_prod_dest_rates_archean(dat, diag_sp, rplot, xlim_lower, xlim_upper, fi
     if figsave:
         fig.savefig(plot_folder + 'prod_dest/archean'+network+'.pdf', bbox_inches = 'tight')
 
-def plot_prod_dest_rates_archean_normed(dat, diag_sp, rplot, figsave):
+def plot_prod_dest_rates_archean_normed(dat, diag_sp, rplot, net_lower, net_upper, figsave):
     prod_dest, _ = get_prod_dest_rates(dat, diag_sp)
     prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']+['xlim_min', 'xlim_max']}
     prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in rplot['Destruction']+['xlim_min', 'xlim_max']}
@@ -713,6 +719,9 @@ def plot_prod_dest_rates_archean_normed(dat, diag_sp, rplot, figsave):
             ax[j].set_xlim(-0.02,1.02)
         else:
             ax[j].plot(prod_dest['Production']['total']-prod_dest['Destruction']['total'], dat['atm']['pco']/1e6, label = 'Total', c = 'k')
+            ax[j].set_xlim(net_lower, net_upper)
+            ax[j].set_xscale('symlog')
+            ax[j].axvline(0, color = 'r', linestyle = '--')
         ax[j].set_yscale('log')
         ax[j].set_ylabel('Pressure [bar]')
         ax[j].set_xlabel(labels[j])
@@ -760,14 +769,14 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
             if sim_types[i//4] == 'star' or sim_types[i//4] == 'dist':
                 ax[i+3].plot(d['atm']['Tco'], d['atm']['pco']/1e6)
         ax[i+1].set_xscale('log')
-        ax[i+1].set_xlabel(r'X$_{HCN}$')
+        ax[i+1].set_xlabel('X(HCN)')
         ax[i+1].set_yscale('log')
         ax[i+1].set_ylabel('Pressure [bar]')
         ax[i+1].invert_yaxis()
         ax[i+1].set_xlim((1e-15,1e-2))
         #ax[i+1].legend()
         ax[i+2].set_xscale('log')
-        ax[i+2].set_xlabel(r'X$_{cloud}$')
+        ax[i+2].set_xlabel('X(cloud)')
         ax[i+2].set_xlim((1e-15,1e-2)) # show relevant vertical mixing ratio interval
         ax[i+2].set_yscale('log')
         ax[i+2].set_ylabel('Pressure [bar]')
@@ -831,6 +840,13 @@ for d in data_bc:
 
 plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figsave = True)
 plot_vertical_n(data_bc, 'H2O_l_s', bomb_rate, 'BC', figsave = True)
+plot_vertical_n(data_bc, 'HNCO', bomb_rate, 'BC', figsave = True)
+plot_vertical_n(data_bc, 'H2CN', bomb_rate, 'BC', figsave = True)
+plot_vertical_n(data_bc, 'C2H3CN', bomb_rate, 'BC', figsave = True)
+plot_vertical_n(data_bc, 'C2H3', bomb_rate, 'BC', figsave = True)
+plot_vertical_n(data_bc, 'C2H6', bomb_rate, 'BC', figsave = True)
+plot_vertical_n(data_bc, 'CH4', bomb_rate, 'BC', figsave = True)
+plot_vertical_n(data_bc, 'CH3', bomb_rate, 'BC', figsave = True)
 plot_end_time(data_bc, figsave = True, sim_type = 'BC')
 plot_evo_layer(data_bc, bomb_rate, 'HCN', 0, figsave = True, sim_type = 'BC')
 plot_convergence(data_bc, figsave = True, sim_type = 'BC')
@@ -852,6 +868,13 @@ for d in data_CtoO:
 # do all the ploting
 plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'CtoO', figsave = True)
 plot_vertical_n(data_CtoO, 'H2O_l_s', C_to_O, 'CtoO', figsave = True)
+plot_vertical_n(data_CtoO, 'HNCO', C_to_O, 'CtoO', figsave = True)
+plot_vertical_n(data_CtoO, 'H2CN', C_to_O, 'CtoO', figsave = True)
+plot_vertical_n(data_CtoO, 'C2H3CN', C_to_O, 'CtoO', figsave = True)
+plot_vertical_n(data_CtoO, 'C2H3', C_to_O, 'CtoO', figsave = True)
+plot_vertical_n(data_CtoO, 'C2H6', C_to_O, 'CtoO', figsave = True)
+plot_vertical_n(data_CtoO, 'CH4', C_to_O, 'CtoO', figsave = True)
+plot_vertical_n(data_CtoO, 'CH3', C_to_O, 'CtoO', figsave = True)
 plot_end_time(data_CtoO, figsave = True, sim_type = 'CtoO')
 #plot_evo_layer(data_CtoO, C_to_O, 'HCN', 0, figsave = True)
 plot_convergence(data_CtoO, figsave = True, sim_type = 'CtoO')
@@ -873,6 +896,13 @@ for d in data_star:
 # do all the ploting
 plot_vertical_n(data_star, 'HCN', T_eff, 'star', figsave = True)
 plot_vertical_n(data_star, 'H2O_l_s', T_eff, 'star', figsave = True)
+plot_vertical_n(data_star, 'HNCO', T_eff, 'star', figsave = True)
+plot_vertical_n(data_star, 'H2CN', T_eff, 'star', figsave = True)
+plot_vertical_n(data_star, 'C2H3CN', T_eff, 'star', figsave = True)
+plot_vertical_n(data_star, 'C2H3', T_eff, 'star', figsave = True)
+plot_vertical_n(data_star, 'C2H6', T_eff, 'star', figsave = True)
+plot_vertical_n(data_star, 'CH4', T_eff, 'star', figsave = True)
+plot_vertical_n(data_star, 'CH3', T_eff, 'star', figsave = True)
 plot_end_time(data_star, figsave = True, sim_type = 'star')
 plot_evo_layer(data_star, T_eff, 'HCN', 0, figsave = True, sim_type = 'star')
 plot_convergence(data_star, figsave = True, sim_type = 'star')
@@ -896,6 +926,13 @@ for d in data_dist:
 # do all the ploting
 plot_vertical_n(data_dist, 'HCN', a_list, 'dist', figsave = True)
 plot_vertical_n(data_dist, 'H2O_l_s', a_list, 'dist', figsave = True)
+plot_vertical_n(data_dist, 'HNCO', a_list, 'dist', figsave = True)
+plot_vertical_n(data_dist, 'H2CN', a_list, 'dist', figsave = True)
+plot_vertical_n(data_dist, 'C2H3CN', a_list, 'dist', figsave = True)
+plot_vertical_n(data_dist, 'C2H3', a_list, 'dist', figsave = True)
+plot_vertical_n(data_dist, 'C2H6', a_list, 'dist', figsave = True)
+plot_vertical_n(data_dist, 'CH4', a_list, 'dist', figsave = True)
+plot_vertical_n(data_dist, 'CH3', a_list, 'dist', figsave = True)
 plot_end_time(data_dist, figsave = True, sim_type = 'dist')
 plot_evo_layer(data_dist, a_list, 'HCN', 0, figsave = True, sim_type = 'dist')
 plot_convergence(data_dist, figsave = True, sim_type = 'dist')
@@ -909,7 +946,7 @@ plot_prod_dest_many_layer(data_dist, a_list, 'dist', pressure_levels, 4, diag_sp
 #%%
 # reaction rate plots
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 10)
-r_to_lot, xmin, xmax = get_prod_dest_reactions_to_plot([data_bc, data_CtoO, data_dist, data_star], 'HCN')
+r_to_lot, xmin, xmax, netmin, netmax = get_prod_dest_reactions_to_plot([data_bc, data_CtoO, data_dist, data_star], 'HCN')
 # boundary condition case
 plot_prod_dest_rates(data_bc, bomb_rate, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'BC')
 # C/O case
@@ -922,11 +959,11 @@ plot_prod_dest_rates(data_star, T_eff, 'HCN', r_to_lot, xmin, xmax, figsave = Tr
 plot_prod_dest_rates_archean(data_archean, 'HCN', r_to_lot, xmin, xmax, figsave = True)
 #%%
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 15)
-plot_prod_dest_rates_normed(data_bc, bomb_rate, 'HCN', r_to_lot, figsave = True, sim_type = 'BC')
-plot_prod_dest_rates_normed(data_CtoO, C_to_O, 'HCN', r_to_lot, figsave = True, sim_type = 'CtoO')
-plot_prod_dest_rates_normed(data_dist, a_list, 'HCN', r_to_lot, figsave = True, sim_type = 'dist')
-plot_prod_dest_rates_normed(data_star, T_eff, 'HCN', r_to_lot, figsave = True, sim_type = 'star')
-plot_prod_dest_rates_archean_normed(data_archean, 'HCN', r_to_lot, figsave = True)
+plot_prod_dest_rates_normed(data_bc, bomb_rate, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'BC')
+plot_prod_dest_rates_normed(data_CtoO, C_to_O, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'CtoO')
+plot_prod_dest_rates_normed(data_dist, a_list, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'dist')
+plot_prod_dest_rates_normed(data_star, T_eff, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'star')
+plot_prod_dest_rates_archean_normed(data_archean, 'HCN', r_to_lot, netmin, netmax, figsave = True)
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figsave = True)

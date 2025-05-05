@@ -28,8 +28,8 @@ def reset_plt(ticksize, fontsize, fxsize, fysize, grid = True):
         plt.rcParams['grid.alpha'] = 0.6
     plt.rcParams['figure.figsize'] = (fxsize,fysize)
     plt.rcParams['figure.autolayout'] = True
-    cm = plt.get_cmap('PuBuGn_r')
-    plt.rcParams['image.cmap'] = 'PuBuGn_r'
-    n_colours = 15
-    lst = ['-', '--', '-.']#, ':']
+    cm = plt.get_cmap('tab20')
+    plt.rcParams['image.cmap'] = 'magma'
+    n_colours = 20
+    lst = ['-', '--', '-.', ':']
     plt.rcParams['axes.prop_cycle'] = cycler(linestyle = n_colours//len(lst) * lst) + cycler(color = [cm(1.*i/n_colours) for i in range(n_colours)])

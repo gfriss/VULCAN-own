@@ -4,13 +4,16 @@ import sys
 import numpy as np
 import parallel_functions as pf
 from mpi4py.MPI import COMM_WORLD as CW # for paralellisation
+import pickle
 
 rank = CW.Get_rank()
 size = CW.Get_size()
 
-nsim_dist = 15 # distances, for now
-nsim_star = 13 # stars, for now
-sim_per_rank = int(nsim_dist*nsim_star / size) + 1 # this is needed to distribure the tasks between the CPUs, +1 makes sure there will be enough CPUs to run all sims
+nsim = {'star': 13, 'dist': 15, 'CtoO': 15} # total number of simulations per type
+nsim_total  = 1
+for ns in nsim.values():
+    nsim_total *= ns
+sim_per_rank = int(nsim_total / size) + 1 # this is needed to distribure the tasks between the CPUs, +1 makes sure there will be enough CPUs to run all sims
 
 scratch = '/scratch/s2555875' # place to store outputs
 output_folder = os.path.join(scratch, 'output')
@@ -20,9 +23,24 @@ conv_file = os.path.join(scratch, 'converged.txt')
 # star type
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
 star_names = list(star_df.Name)
+T_eff = list(star_df.T_eff)
+
+C_to_O = []
+for j in range(nsim['CtoO']):
+    sim_CtoO = 'sim_'
+    if j < 10:
+        sim_CtoO += '0{}_CtoO'.format(j)
+    else:
+        sim_CtoO += '{}_CtoO'.format(j)
+    mixing_file = os.path.join(scratch, 'mixing_files', sim_CtoO + 'mixing.txt')
+    with open(os.path.join(scratch, 'output', sim_CtoO + '.vul'), 'rb') as handle:
+        data_CtoO = pickle.load(handle)
+    C_to_O.append(pf.calc_C_to_O(data_CtoO, mixing_file))        
+        
+# parameter dictionary of stars and distances, C/O is not inlcuded because it's same all over
 param_dict = {}
 for star,a_min,a_max in zip(star_df.Name, star_df.a_min, star_df.a_max):
-    distances = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
+    distances = np.linspace(a_min, a_max, nsim['dist'], endpoint = True)
     param_dict[star] = list(distances)
 # defining network (crahcno is defualt), only used to identify sim folders and outputs
 #network = ''
@@ -30,19 +48,36 @@ network = '_ncho'
 # Boolian to check convergence and rerun if needed
 check_conv = True
 # ------end of parameter set up-----
+# ------start of simulation loop------
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
                                                             # this is the magic, after this just think of it as a normal, sequential loop
-    if i > nsim_dist*nsim_star - 1: # in case using total sim number is not divisible by number of CPUs
+    if i > nsim_total - 1: # in case using total sim number is not divisible by number of CPUs
         continue
-    i_star = i//nsim_dist
-    i_dist = i%nsim_dist
-    sim = 'star_{}_'.format(star_names[i_star]) # param matrix first goes through the distances
-    if i_dist < 10:
-        sim += 'dist_0{}'.format(i_dist)                  # due to using this variable to allocate input files that are same for all the networks
-        sim_folder = os.path.join(scratch, sim + network) # the network variable only comes into play when creating the sim folder and name
-    else:
-        sim += 'dist_{}'.format(i_dist)
-        sim_folder = os.path.join(scratch, sim + network)
+    i_star = i//(nsim['dist']*nsim['CtoO']) # which star (changes after looped through all distance and C/O possibilities)
+    i_dist = (i//nsim['CtoO'])%nsim['dist'] # which distance (changes after looped through all C/O possibilities and then restarts when all distances are done)
+    i_CtoO = i%nsim['CtoO'] # which C/O (simply loops through the C/O possibilities)
+    # build simulation and folder names
+    sim = 'star_{}'.format(star_names[i_star]) # param matrix first goes through the stars
+    dist_sim = 'dist_' + pf.get_str_number(i_dist) # then the distance
+    CtoO_sim = 'CtoO_' + pf.get_str_number(i_CtoO) # then the C/O ratio
+    TP_sim = '_'.join([sim, dist_sim]) # TP profile is the same for all C/O ratios
+    sim = '_'.join([sim, dist_sim, CtoO_sim]) # this is the final simulation name
+    sim_folder = os.path.join(scratch, sim + network)
+    # skip parts that are already done, i.e. all distance with base C/O (0th) (same name as used for TP profile)
+    # but add their output to the file
+    # to be deleted later
+    with open(conv_file, 'r') as f:
+        conv_text = f.read()
+    if sim + network + '.vul' in conv_text:
+        continue
+    if i_CtoO == 0:
+        with open(os.path.join(output_folder, TP_sim+network+'.vul'), 'rb') as handle:
+            data = pickle.load(handle)
+        hcn_rain = pf.rainout(data, rain_spec = 'HCN_rain', g_per_mol = 27)
+        h20_rain = pf.rainout(data, rain_spec = 'H2O_rain', g_per_mol = 18)
+        with open(os.path.join(scratch, 'star_dist_CtoO_rain.txt'), 'a') as f:
+            f.write('{}\t{}\t{}\t{}\t{}\n'.format(T_eff[i_star], param_dict[star_names[i_star]][i_dist], C_to_O[i_CtoO], hcn_rain, h20_rain))
+        continue
     # build files for simulation
     out_file = sim + network + '.vul'
     out_change = ','.join(['out_name', out_file, 'str'])
@@ -54,16 +89,14 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     r_star_change = ','.join(['r_star', new_r_star, 'val'])
     new_orbit_radius = str(param_dict[star_names[i_star]][i_dist])
     orbit_radius_change = ','.join(['orbit_radius', str(new_orbit_radius), 'val'])
-    new_tp_file = os.path.join(TP_folder, sim) + '.txt'
+    new_tp_file = os.path.join(TP_folder, TP_sim+'.txt')
     tp_file_change = ','.join(['atm_file', new_tp_file, 'str'])
-    # do a test on surface tmeperature so that only 0-100 surface tmeperature options will be simulated
-    surface_temperatue = np.genfromtxt(new_tp_file, dtype = None, names = True, skip_header = 1, max_rows = 5)['Temp'][0]
-    if surface_temperatue < 273 or surface_temperatue > 373:
-        continue
+    new_mixing_file = os.path.join(scratch, 'mixing_files', 'sim_{}_CtoOmixing.txt'.format(pf.get_str_number(i_CtoO)))
+    mixing_change = ','.join(['vul_ini', new_mixing_file, 'str'])
     # first create simulation folder
     subprocess.check_call(['mkdir', sim_folder])
     # then make new cfg file
-    subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_file_change, out_change])
+    subprocess.check_call(['python', 'gen_cfg.py', new_cfg, rad_file_change, r_star_change, orbit_radius_change, tp_file_change, mixing_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     wd = os.getcwd()
     os.chdir(sim_folder)
@@ -90,6 +123,19 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
             out_change = ','.join(['out_name', out_file, 'str'])
             subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, yconv_min_change, 'rerun', sim])
             subprocess.check_call(['python', 'vulcan.py', '-n'])
-    # then exit simulation folder and delete it
+    # save results
+    hcn_rain, h20_rain = np.nan, np.nan # will keep NaN if not converged
+    with open(conv_file, 'r') as f:
+        conv_text = f.read()
+    if out_file in conv_text:
+        with open(os.path.join(output_folder, out_file), 'rb') as handle:
+            data = pickle.load(handle)
+        hcn_rain = pf.rainout(data, rain_spec = 'HCN_rain', g_per_mol = 27)
+        h20_rain = pf.rainout(data, rain_spec = 'H2O_rain', g_per_mol = 18)
+    with open(os.path.join(scratch, 'star_dist_CtoO_rain.txt'), 'a') as f:
+        f.write('{}\t{}\t{}\t{}\t{}\n'.format(T_eff[i_star], param_dict[star_names[i_star]][i_dist], C_to_O[i_CtoO], hcn_rain, h20_rain))
+    # then exit simulation folder and delete it along with output and cfg file
     os.chdir(wd)
     subprocess.check_call(['rm', '-rf', sim_folder])
+    subprocess.check_call(['rm', os.path.join(output_folder, out_file)])
+    subprocess.check_call(['rm', os.path.join(output_folder, 'cfg_'+out_file[:-4]+'.txt')])

@@ -7,6 +7,7 @@ import os
 import sys
 sys.path.insert(0, '../') # including the upper level of directory for the path of modules
 import parallel_functions as pf
+from scipy.integrate import trapezoid
 # setting up plot style
 import plot_reset as pr
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
@@ -23,7 +24,7 @@ TP_folder = os.path.join(scratch, 'TP_files/star_dist')
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
 #network = ''
 network = '_ncho'
-archean_colour = 'orange'
+archean_colour = 'k'
 archean_file = os.path.join(scratch, 'output', 'archean'+network+'.vul')
 
 min_flux_met = 1.058e-9
@@ -99,7 +100,7 @@ def plot_meshgrid(x, y, values, val_label, edgec = 'none', figname = None, met_f
         
 def plot_meshgrid_with_normed(x, y, values, norm_val, val_label, figname = None, vmin = None, vmax = None, norm = 'linear'):
     ''' Plots values that are normalised by the value of Archean Earth, let it be rainout rate, end-of-simulation time, convergence, etc., in a pcolormesh plot.
-        Distance is X, Teff is Y. Figure can be saved if needed. Meteoritic flux can be added as well.'''
+        Distance is X, Teff is Y. Figure can be saved if needed.'''
     fig, ax = plt.subplots(tight_layout = True)
     cmap = plt.get_cmap()
     cmap.set_under('none')
@@ -111,7 +112,53 @@ def plot_meshgrid_with_normed(x, y, values, norm_val, val_label, figname = None,
     ax.invert_xaxis()
     if figname != None:
         fig.savefig(os.path.join(plot_folder, figname))
+
+def gauss2d(x, y, mux, muy, sigmax, sigmay):
+    ''' 2D Gaussian function without correlation. x and y here are meshgrids like in the plot_meshgrid function.'''
+    return (1/(2*np.pi*sigmax*sigmay)) * np.exp(-0.5 * ( ((x-mux)/sigmax)**2 + ((y-muy)/sigmay)**2 )) # this is the meshgrid version
+
+def cauchy2d(x, y, x0, y0, gamma):
+    ''' 2D Cauchy function. x and y here are meshgrids like in the plot_meshgrid function.'''
+    return (gamma/(2*np.pi)) / ( (x-x0)**2 + (y-y0)**2 + gamma**2 )**1.5 # this is the meshgrid version
+
+def normalise(x, y, values):
+    ''' Normalises the values in the meshgrid using the trapz function from Scipy.
+        First integration is in x, second is in y.'''
+    Nx = [trapezoid(v[::-1], X[::-1]) for v,X in zip(values, x)] # Seff is flipped compared to orbital distance...
+    N = trapezoid(Nx, y[:,0])
+    return values/N
         
+def plot_prior(x, y, values, val_label, edgec = 'none', figname = None):
+    ''' Plots the prior used for the posterior.'''
+    fig, ax = plt.subplots(tight_layout = True)
+    cmap = plt.get_cmap()
+    cmap.set_under('none')
+    cm = ax.pcolormesh(x, y, normalise(x,y,values), cmap = cmap)
+    ax.pcolormesh(x, y, values, facecolors='none', edgecolors=edgec, lw = 2)
+    cbar = fig.colorbar(cm)
+    cbar.set_label(val_label)
+    ax.set_ylabel(r'T$_{eff}$ [K]')
+    ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
+    ax.invert_xaxis()
+    if figname != None:
+        fig.savefig(os.path.join(plot_folder, figname))
+        
+def plot_meshgrid_prob(x, y, values, prior, val_label, edgec = 'none', figname = None):
+    ''' Plots values, let it be rainout rate, end-of-simulation time, convergence, etc., in a pcolormesh plot.
+        Distance is X, Teff is Y. Figure can be saved if needed. Meteoritic flux can be added as well.'''
+    fig, ax = plt.subplots(tight_layout = True)
+    cmap = plt.get_cmap()
+    cmap.set_under('none')
+    cm = ax.pcolormesh(x, y, normalise(x,y,values*prior), cmap = cmap)
+    ax.pcolormesh(x, y, values, facecolors='none', edgecolors=edgec, lw = 2)
+    cbar = fig.colorbar(cm)
+    cbar.set_label(val_label)
+    ax.set_ylabel(r'T$_{eff}$ [K]')
+    ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
+    ax.invert_xaxis()
+    if figname != None:
+        fig.savefig(os.path.join(plot_folder, figname))
+
 def plot_contour(x, y, values, val_label, figname = None, met_flux = True):
     ''' Plots values, let it be rainout rate, end-of-simulation time, convergence, etc., in a contour plot.
         Distance is X, Teff is Y. Figure can be saved if needed. Meteoritic flux can be added as well.'''
@@ -178,8 +225,8 @@ edge_matrix = []
 for star, a_min, a_max, Llog, T_eff in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log, star_df.T_eff):
     distances = np.linspace(a_min, a_max, nsim_dist, endpoint=True)
     new_Seff_list = np.power(10, Llog) / np.power(distances, 2)
-    Seff_list.append(list(new_Seff_list))
-    Teff_list.append(list(np.ones(nsim_dist)*T_eff))
+    Seff_list.append(new_Seff_list)
+    Teff_list.append(np.ones(nsim_dist)*T_eff)
     rain_star, end_time_star = [], []
     edge_matrix.append(['none']*nsim_dist)
     if star == 'EARLY_SUN': # closest to the Archean Earth simulation
@@ -205,8 +252,12 @@ for star, a_min, a_max, Llog, T_eff in zip(star_df.Name, star_df.a_min, star_df.
             end_time += data['variable']['t']
         rain_star.append(rain_rate)
         end_time_star.append(end_time)
-    rain_matrix.append(rain_star)
-    end_time_matrix.append(end_time_star)
+    rain_matrix.append(np.array(rain_star))
+    end_time_matrix.append(np.array(end_time_star))
+Seff_list = np.array(Seff_list)
+Teff_list = np.array(Teff_list)
+rain_matrix = np.array(rain_matrix)
+end_time_matrix = np.array(end_time_matrix)
 #%%
 plot_meshgrid(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', edgec = sum(edge_matrix,[]), figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'.pdf')
 plot_meshgrid(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', edgec = sum(edge_matrix,[]), figname = 'end_time/endtime_conjoint_S_eff'+network+'.pdf', met_flux = False)
@@ -219,6 +270,16 @@ plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Rela
 plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_lognorm.pdf', norm = mc.LogNorm())
 plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_better.pdf', vmin = 1)
 plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_worse.pdf', vmax = 1)
+#%%
+# probability plots (need normalisation!!! and flat prior...)
+p = gauss2d(Seff_list, Teff_list, 0.72, 5680, 0.072, 56.8) # figure out sigmas
+plot_prior(Seff_list, Teff_list, p, 'Probability', edgec = sum(edge_matrix,[]), figname = 'probability/gaussian_prior.pdf')
+plot_meshgrid_prob(Seff_list, Teff_list, rain_matrix, p, 'Probability', edgec = sum(edge_matrix,[]), figname = 'probability/gaussian_posterior.pdf')
+
+p = cauchy2d(Seff_list, Teff_list, 0.72, 5680, 1) # figure out sigmas
+plot_prior(Seff_list, Teff_list, p, 'Probability', edgec = sum(edge_matrix,[]), figname = 'probability/cauchy_prior.pdf')
+plot_meshgrid_prob(Seff_list, Teff_list, rain_matrix, p, 'Probability', edgec = sum(edge_matrix,[]), figname = 'probability/cauchy_posterior.pdf')
+
 #%%
 # contour version
 # uses the same data as the meshgrid version

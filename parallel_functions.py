@@ -6,6 +6,44 @@ import pandas as pd
 from collections import defaultdict
 import matplotlib.pyplot as plt
 #%%
+def get_str_number(n):
+    ''' This function is used to get the number of digits in a number.'''
+    if n < 10:
+        return '0' + str(n)
+    else:
+        return str(n)
+    
+# C/O ratio using the 1 parameter study results
+def get_element_number(species, element):
+    ''' Gets the number of an element in a given species. Used to calculate C/O ratio later.'''
+    char_list = list(species)
+    ele_number = 0
+    for i,char in enumerate(char_list):
+        if i < len(char_list)-1 and char == element:
+            if char_list[i+1].isnumeric():
+                ele_number += 1*int(char_list[i+1])
+            else:
+                ele_number += 1
+        if i == len(char_list)-1 and char == element:
+            ele_number += 1
+    return ele_number
+
+def calc_C_to_O(dat, mixing_file):
+    ''' For simplicity and fewer calculations this funtion uses initial abundances, knowing the initial species that are none zero.
+        It is generalised to get the species from the mixing ratio file used for the simulation.'''
+    dat_species = dat['variable']['species']
+    mix_data = np.genfromtxt(mixing_file, dtype = None, skip_header = 1, names = True, max_rows = 5) # max_rows so it wouldn't use too much unneccessary memory
+    C_profile = np.zeros_like(dat['variable']['y_ini'][:,0])
+    O_profile = np.zeros_like(dat['variable']['y_ini'][:,0])
+    for name in mix_data.dtype.names:
+        if name != 'Pressure' and 'C' in name:
+            mul = get_element_number(name, 'C')
+            C_profile += mul * dat['variable']['y_ini'][:, dat_species.index(name)]
+        if name != 'Pressure' and 'O' in name:
+            mul = get_element_number(name, 'O')
+            O_profile += mul * dat['variable']['y_ini'][:, dat_species.index(name)]
+    return np.sum(C_profile) / np.sum(O_profile)
+
 # BC from meteorite bombardment rate:
 def bar_to_number(x): 
     ''' Converts partial pressure of a species to number density.'''
@@ -52,6 +90,12 @@ def gen_mixing(co2_mix, output):
         f.write('# (dyne/cm2)\nPressure  N2  CO2  CH4  O2  H2O  CO\n')
         for i in range(len(N2)):
             f.write('{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\n'.format(og_mixing['Pressure'][i],N2[i],CO2[i],CH4[i],O2[i],H2O[i],CO[i]))
+# rainout rate calculation
+def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
+    ''' Calculates the rainout rate of the given species and returns it with units of kg/m2/yr.'''
+    rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
+    rain_rate = rain_rate * 5.237e-13 # mol/m2yr
+    return rain_rate * (g_per_mol/1000.) # kg/m2yr
 
 # functions for different stellar type tests
 def read_stellar_data(file):
