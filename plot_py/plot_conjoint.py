@@ -8,6 +8,9 @@ import sys
 sys.path.insert(0, '../') # including the upper level of directory for the path of modules
 import parallel_functions as pf
 from scipy.integrate import trapezoid
+import ternary
+import mpltern
+import pandas as pd
 # setting up plot style
 import plot_reset as pr
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
@@ -15,6 +18,7 @@ pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 
 nsim_dist = 15 # distances, for now
 nsim_star = 13 # stars, for now
+nsim_CtoO = 15 # C/O ratios, for now
 
 scratch = '/scratch/s2555875' # place to store outputs
 output_folder = os.path.join(scratch, 'output')
@@ -104,6 +108,7 @@ def plot_meshgrid_with_normed(x, y, values, norm_val, val_label, figname = None,
     fig, ax = plt.subplots(tight_layout = True)
     cmap = plt.get_cmap()
     cmap.set_under('none')
+    cmap.set_over('none')
     cm = ax.pcolormesh(x, y, values/norm_val, cmap = cmap, vmin = vmin, vmax = vmax, norm = norm)
     cbar = fig.colorbar(cm)
     cbar.set_label(val_label)
@@ -218,6 +223,50 @@ def plot_hist2d(x, y, weights, bins, weights_label, figname = None, met_flux = T
     ax.set_ylabel(r'T$_{eff}$ [K]')
     if figname != None:
         fig.savefig(os.path.join(plot_folder, figname))
+
+def read_ternary_data(file):
+    dat = np.genfromtxt(file, dtype = None, skip_header=1, comments = '#', names = True)
+    # first deleting nan and negative values (if any)
+    nan_idx = np.where(np.isnan(dat['HCN_rain']))[0]
+    neg_idx = np.where(dat['HCN_rain'] < 0)[0]
+    del_idx = np.concatenate((nan_idx, neg_idx))
+    dat = np.delete(dat, del_idx)
+    # then converting distance into effective stellar flux and replacing it
+    for i,(t,d) in enumerate(zip(dat['Teff'], dat['dist'])):
+        llog = star_df.at[star_df.index[star_df['T_eff'] == t][0], 'L_log']
+        seff = np.power(10, llog) / np.power(d, 2)
+        dat['dist'][i] = seff
+    return dat
+
+def get_seff(Temp, dist):
+    ''' Calculates the effective stellar flux from the distance and temperature.'''
+    llog = star_df.at[star_df.index[star_df['T_eff'] == Temp][0], 'L_log']
+    seff = np.power(10, llog) / np.power(dist, 2)
+    return seff
+
+def get_indexes(idx):
+    star_idx = idx // (nsim_dist*nsim_CtoO)
+    dist_idx = (idx // nsim_CtoO) % nsim_dist
+    CtoO_idx = idx % nsim_CtoO
+    return [star_idx, dist_idx, CtoO_idx]
+
+def read_ternary_pandas(file):
+    dat = pd.read_csv('/home/s2555875/scratch/star_dist_CtoO_rain.txt', sep = '\t', skiprows=2, names = ['Teff', 'dist', 'CtoO', 'HCN_rain', 'H2O_rain'])
+    # first sorting by Teff, dist and CtoO and dropping potential duplicates
+    dat = dat.sort_values(by = ['Teff', 'dist', 'CtoO']).drop_duplicates().reset_index(drop = True)
+    # then converting distance into effective stellar flux and replacing it
+    dat['Seff'] = dat.apply(lambda row: get_seff(row['Teff'], row['dist']), axis = 1)
+    # then adding "indexing" for ternary plot (0-12 for Teff and 0-14 for dist and CtoO == sim number)
+    dat = dat.reset_index() # creating the index column to use
+    dat['idx'] = dat.apply(lambda row: get_indexes(row['index']), axis = 1)
+    # and last deleting nan and negative values (if any)
+    dat = dat.dropna()
+    dat = dat[dat['HCN_rain'] > 0]
+    return dat
+    
+def plot_ternary(x, y, z, x_label, y_label, z_label, figname = None):
+    fig, tax = ternary.figure(scale = 15) # mot sure about the scale, but I think its the number of triangles per side which is the number of sims per param...
+    tax.boundary(linewidth = 2)
 #%%
 # meshgrid version
 Teff_list, Seff_list, rain_matrix, end_time_matrix = [], [], [], []

@@ -59,6 +59,9 @@ archean_marker = 's' #'$\u2295$'
 archean_colour = 'k'
 # pressure levels for reaction rate plots
 pressure_levels = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
+# sim numbers to plot for vertical mixing ratio profiles, BC not needed
+plot_idx = {'CtoO': [0, 6, 12, 14], 'star': [0, 8, 11, 12], 'dist': [0, 6, 13, 14]}
+plot_ls = ['-', '--', '-.', ':']
 #%%
 def lin(x, a, b):
     return a*x + b
@@ -265,6 +268,25 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figsave):
     if figsave:
         fig.savefig(plot_folder + 'vertical_profiles/'+spec+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
 
+def plot_vertical_many(dat_list, param_list, sim_type, figsave, species_list = ['CH4', 'O', 'OH', 'CN', 'HNCO', 'H2CN', 'C2H3', 'C2H3CN', 'C2H6']):
+    fig, ax = plt.subplots(tight_layout = True)
+    plot_leg = [Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(param_list[plot_idx[sim_type][i]])) for i in range(len(plot_idx[sim_type]))] # linestyle legends
+    for i,idx in enumerate(plot_idx[sim_type]):
+        for sp in species_list:
+            p = ax.plot(dat_list[idx]['variable']['ymix'][:, dat_list[idx]['variable']['species'].index(sp)], dat_list[idx]['atm']['pco']/1e6, linestyle = plot_ls[i])
+            if i == 0: # only first loop needs to be added to the legend
+                plot_leg.append(Line2D([], [], linestyle = '-', color = p[0].get_color(), label = sp)) # species legends
+        ax.set_prop_cycle(None) # resetting the colour cycle
+    ax.set_xscale('log')
+    ax.set_xlabel('Mixing ratio of species')
+    ax.set_xlim(1e-20, 1e-1)
+    ax.set_ylabel('Pressure [bar]')
+    ax.set_yscale('log')
+    ax.invert_yaxis()
+    fig.legend(handles = plot_leg, bbox_to_anchor = (1.23, 0.87))
+    if figsave:
+        fig.savefig(plot_folder + 'vertical_profiles/many'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        
 def plot_end_time(dat_list, figsave, sim_type = None):
     ''' Plots the end-of-simulation times for a list of simulations. It is used as a way of 
         seeing what difference there are between both converged and not converged simulations.'''
@@ -496,6 +518,24 @@ def plot_prod_dest(dat_list, param_list, sim_type, diag_sp, figsave):
     fig.legend(bbox_to_anchor = (1.45,0.85))
     if figsave:
         fig.savefig(plot_folder + 'prod_dest/net'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+
+def plot_prod_dest_selected(dat_list, param_list, sim_type, diag_sp, figsave):
+    fig, ax = plt.subplots(tight_layout = True)
+    plot_leg = [Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(param_list[plot_idx[sim_type][i]])) for i in range(len(plot_idx[sim_type]))] # linestyle legends
+    plot_leg += [Line2D([], [], linestyle = '-', color = 'red', label = 'Production'), Line2D([], [], linestyle = '-', color = 'black', label = 'Destruction')] # species legends
+    for i,idx in enumerate(plot_idx[sim_type]):
+        pressure = dat_list[idx]['atm']['pco']/1e6
+        p_rate, d_rate, _ = get_total_reaction_rate(dat_list[idx], diag_sp)
+        ax.plot(p_rate, pressure, color = 'r', linestyle = plot_ls[i])
+        ax.plot(d_rate, pressure, color = 'k', linestyle = plot_ls[i])    
+    ax.invert_yaxis()
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    ax.set_ylabel('Pressure [bar]')
+    ax.set_xlabel(r'k [cm$^3$s$^{-1}$]')
+    fig.legend(handles=plot_leg, bbox_to_anchor = (0.37,0.97))
+    if figsave:
+        fig.savefig(plot_folder + 'prod_dest/selected'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
         
 def plot_prod_dest_layer(dat_list, param_list, sim_type, layer, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True)
@@ -875,6 +915,7 @@ plot_vertical_n(data_CtoO, 'C2H3', C_to_O, 'CtoO', figsave = True)
 plot_vertical_n(data_CtoO, 'C2H6', C_to_O, 'CtoO', figsave = True)
 plot_vertical_n(data_CtoO, 'CH4', C_to_O, 'CtoO', figsave = True)
 plot_vertical_n(data_CtoO, 'CH3', C_to_O, 'CtoO', figsave = True)
+plot_vertical_many(data_CtoO, C_to_O, 'CtoO', True)
 plot_end_time(data_CtoO, figsave = True, sim_type = 'CtoO')
 #plot_evo_layer(data_CtoO, C_to_O, 'HCN', 0, figsave = True)
 plot_convergence(data_CtoO, figsave = True, sim_type = 'CtoO')
@@ -884,6 +925,7 @@ plot_tot_rate(data_CtoO, C_to_O, 'CtoO', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_CtoO, C_to_O, 'CtoO', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_CtoO, C_to_O, 'CtoO', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_CtoO, C_to_O, 'CtoO', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
+plot_prod_dest_selected(data_CtoO, C_to_O, 'CtoO', 'HCN', True)
 # %%
 # star case
 data_star = read_in('star', number_of_sim = 13)
@@ -903,6 +945,7 @@ plot_vertical_n(data_star, 'C2H3', T_eff, 'star', figsave = True)
 plot_vertical_n(data_star, 'C2H6', T_eff, 'star', figsave = True)
 plot_vertical_n(data_star, 'CH4', T_eff, 'star', figsave = True)
 plot_vertical_n(data_star, 'CH3', T_eff, 'star', figsave = True)
+plot_vertical_many(data_star, T_eff, 'star', True)
 plot_end_time(data_star, figsave = True, sim_type = 'star')
 plot_evo_layer(data_star, T_eff, 'HCN', 0, figsave = True, sim_type = 'star')
 plot_convergence(data_star, figsave = True, sim_type = 'star')
@@ -913,6 +956,7 @@ plot_tot_rate(data_star, T_eff, 'star', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_star, T_eff, 'star', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_star, T_eff, 'star', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_star, T_eff, 'star', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
+plot_prod_dest_selected(data_star, T_eff, 'star', 'HCN', True)
 plot_stellar_spectra(figsave = True)
 # %%
 # distance case
@@ -933,6 +977,7 @@ plot_vertical_n(data_dist, 'C2H3', a_list, 'dist', figsave = True)
 plot_vertical_n(data_dist, 'C2H6', a_list, 'dist', figsave = True)
 plot_vertical_n(data_dist, 'CH4', a_list, 'dist', figsave = True)
 plot_vertical_n(data_dist, 'CH3', a_list, 'dist', figsave = True)
+plot_vertical_many(data_dist, a_list, 'dist', True)
 plot_end_time(data_dist, figsave = True, sim_type = 'dist')
 plot_evo_layer(data_dist, a_list, 'HCN', 0, figsave = True, sim_type = 'dist')
 plot_convergence(data_dist, figsave = True, sim_type = 'dist')
@@ -943,6 +988,7 @@ plot_tot_rate(data_dist, a_list, 'dist', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_dist, a_list, 'dist', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_dist, a_list, 'dist', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_dist, a_list, 'dist', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
+plot_prod_dest_selected(data_dist, a_list, 'dist', 'HCN', True)
 #%%
 # reaction rate plots
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 10)
