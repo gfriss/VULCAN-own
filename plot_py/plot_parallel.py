@@ -535,7 +535,7 @@ def plot_prod_dest_selected(dat_list, param_list, sim_type, diag_sp, figsave):
     ax.set_xlabel(r'k [cm$^3$s$^{-1}$]')
     fig.legend(handles=plot_leg, bbox_to_anchor = (0.37,0.97))
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/selected'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/selected_net'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
         
 def plot_prod_dest_layer(dat_list, param_list, sim_type, layer, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True)
@@ -715,6 +715,40 @@ def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, net_lower,
         ax[0].set_title(legend_lab[sim_type].format(param_list[i]))
         if figsave:
             fig.savefig(plot_folder + 'prod_dest/normed_detailed'+end_str[sim_type]+'_'+sim_names[i]+network+'.pdf', bbox_inches = 'tight')
+            
+def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, net_lower, net_upper, figsave, sim_type):
+    legend_xanchors = [0.5, 0.5] # otherwise legends are all over the place, not sure why...
+    legend_yanchors = [0.666, 0.323]
+    fig, ax = plt.subplots(ncols=len(plot_idx[sim_type]), nrows=3, sharey = True, tight_layout = True)
+    for i,idx in enumerate(plot_idx[sim_type]):
+        prod_dest, _ = get_prod_dest_rates(dat_list[idx], diag_sp)
+        prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']}
+        prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in rplot['Destruction']}
+        labels = [r'$X_{prod}$', r'$X_{dest}$', r'$k_{tot}$ [cm$^{-3}$s$^{-1}$]']
+        for j,rate_type in enumerate(['Production', 'Destruction', 'total']):
+            if rate_type != 'total':
+                for k,v in prod_dest[rate_type].items():
+                    if k in ['total', 'xlim_min', 'xlim_max']:
+                        continue
+                    else:
+                        ax[j,i].plot(v/prod_dest[rate_type]['total'], dat_list[idx]['atm']['pco']/1e6, label = k)
+                if j in [0,1] and i == 0:
+                    handles, leg_labels = ax[j,i].get_legend_handles_labels()
+                    fig.tight_layout(h_pad = 4.2) # use if legends are below subplots
+                    fig.legend(handles, leg_labels, loc = 'center', bbox_to_anchor = (legend_xanchors[j], legend_yanchors[j]), ncol = 3)
+                ax[j,i].set_xlim(-0.02,1.02)
+            else:
+                ax[j,i].plot(prod_dest['Production']['total']-prod_dest['Destruction']['total'], dat_list[idx]['atm']['pco']/1e6, label = 'Total', c = 'k')
+                ax[j,i].set_xlim(net_lower, net_upper)
+                ax[j,i].set_xscale('symlog')
+                ax[j,i].axvline(0, color = 'r', linestyle = '--')
+            ax[j,i].set_yscale('log')
+            ax[j,0].set_ylabel('Pressure [bar]')
+            ax[j,i].set_xlabel(labels[j])
+        ax[0,i].set_title(legend_lab[sim_type].format(param_list[idx]))
+    ax[0,0].invert_yaxis() # due to sharey, only need to reverse one
+    if figsave:
+        fig.savefig(plot_folder + 'prod_dest/selected_normed_detailed'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
 
 def plot_prod_dest_rates_archean(dat, diag_sp, rplot, xlim_lower, xlim_upper, figsave):
     prod_dest, _ = get_prod_dest_rates(dat, diag_sp)
@@ -1010,6 +1044,11 @@ plot_prod_dest_rates_normed(data_CtoO, C_to_O, 'HCN', r_to_lot, netmin, netmax, 
 plot_prod_dest_rates_normed(data_dist, a_list, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'dist')
 plot_prod_dest_rates_normed(data_star, T_eff, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'star')
 plot_prod_dest_rates_archean_normed(data_archean, 'HCN', r_to_lot, netmin, netmax, figsave = True)
+#%%
+pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 24, fysize = 18)
+plot_prod_dest_rates_normed_selected(data_CtoO, C_to_O, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'CtoO')
+plot_prod_dest_rates_normed_selected(data_dist, a_list, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'dist')
+plot_prod_dest_rates_normed_selected(data_star, T_eff, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'star')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figsave = True)
