@@ -224,49 +224,70 @@ def plot_hist2d(x, y, weights, bins, weights_label, figname = None, met_flux = T
     if figname != None:
         fig.savefig(os.path.join(plot_folder, figname))
 
-def read_ternary_data(file):
-    dat = np.genfromtxt(file, dtype = None, skip_header=1, comments = '#', names = True)
-    # first deleting nan and negative values (if any)
-    nan_idx = np.where(np.isnan(dat['HCN_rain']))[0]
-    neg_idx = np.where(dat['HCN_rain'] < 0)[0]
-    del_idx = np.concatenate((nan_idx, neg_idx))
-    dat = np.delete(dat, del_idx)
-    # then converting distance into effective stellar flux and replacing it
-    for i,(t,d) in enumerate(zip(dat['Teff'], dat['dist'])):
-        llog = star_df.at[star_df.index[star_df['T_eff'] == t][0], 'L_log']
-        seff = np.power(10, llog) / np.power(d, 2)
-        dat['dist'][i] = seff
-    return dat
-
 def get_seff(Temp, dist):
     ''' Calculates the effective stellar flux from the distance and temperature.'''
     llog = star_df.at[star_df.index[star_df['T_eff'] == Temp][0], 'L_log']
     seff = np.power(10, llog) / np.power(dist, 2)
     return seff
 
-def get_indexes(idx):
-    star_idx = idx // (nsim_dist*nsim_CtoO)
-    dist_idx = (idx // nsim_CtoO) % nsim_dist
-    CtoO_idx = idx % nsim_CtoO
-    return [star_idx, dist_idx, CtoO_idx]
-
-def read_ternary_pandas(file):
+def read_pandas(file):
     dat = pd.read_csv('/home/s2555875/scratch/star_dist_CtoO_rain.txt', sep = '\t', skiprows=2, names = ['Teff', 'dist', 'CtoO', 'HCN_rain', 'H2O_rain'])
     # first sorting by Teff, dist and CtoO and dropping potential duplicates
     dat = dat.sort_values(by = ['Teff', 'dist', 'CtoO']).drop_duplicates().reset_index(drop = True)
     # then converting distance into effective stellar flux and replacing it
     dat['Seff'] = dat.apply(lambda row: get_seff(row['Teff'], row['dist']), axis = 1)
-    # then adding "indexing" for ternary plot (0-12 for Teff and 0-14 for dist and CtoO == sim number)
-    dat = dat.reset_index() # creating the index column to use
-    dat['idx'] = dat.apply(lambda row: get_indexes(row['index']), axis = 1)
-    # and last deleting nan and negative values (if any)
-    dat = dat.dropna()
-    dat = dat[dat['HCN_rain'] > 0]
     return dat
     
-def plot_ternary(x, y, z, x_label, y_label, z_label, figname = None):
-    fig, tax = ternary.figure(scale = 15) # mot sure about the scale, but I think its the number of triangles per side which is the number of sims per param...
-    tax.boundary(linewidth = 2)
+def plot_3d(x, y, z, v, x_label, y_label, z_label, figsave = False):
+    vmin = np.min(v[v>0])
+    fig, ax = plt.subplots(tight_layout = True, subplot_kw={'projection': '3d'})
+    cm = ax.scatter(x, y, z, c = np.array(v), norm = mc.LogNorm(vmin=vmin))
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_zlabel(z_label)
+    ax.invert_yaxis()
+    cbar = fig.colorbar(cm)
+    cbar.set_label(r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]')
+    ax.view_init(elev=20, azim=-60, roll=0)
+    
+    if figsave:
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/rain_3d'+network+'.pdf'), bbox_inches='tight')
+
+def get_meshgrid_many(dat, idx):
+    ''' Takes the data from the pandas dataframe and returns the meshgrid for the given index (i.e. C/O value, as pandas dataframe loops through that first).'''
+    x = np.array(dat.Seff[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
+    y = np.array(dat.Teff[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
+    z = np.array(dat.HCN_rain[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
+    return x, y, z
+    
+def plot_meshgrid_many(dat, val_label, figsave, rain_type = 'HCN_rain', met_flux = True):
+    ''' Takes the data from the pandas dataframe, creates meshgrids for each C/O value and plots them in a pcolormesh plot.'''
+    fig, axs = plt.subplots(ncols = 4, nrows = 4, tight_layout = True) # 4x4 grid for 15 plots
+    #fig.subplots_adjust(hspace = 0.3, wspace = 0.3)
+    ax = axs.flatten()
+    cmap = plt.get_cmap()
+    cmap.set_under('none')
+    vmin = np.min(np.array(dat['HCN_rain'][dat['HCN_rain']>0])) # min value for the colour bar
+    if met_flux:
+        vmin = 0.9 * np.min([vmin, min_flux_met])
+    for i in range(nsim_CtoO):
+        x, y, z = get_meshgrid_many(dat, i)
+        cm = ax[i].pcolormesh(x, y, z, cmap = cmap, norm = mc.LogNorm(vmin=vmin))
+        if i == 0: # the Archean simulation is for the first C/O value
+            edgec = np.array(['none']*len(x.flatten())).reshape(x.shape)
+            edgec[9,4] = archean_colour
+            ax[i].pcolormesh(x, y, z, facecolors = 'none', edgecolors = edgec, lw = 2)
+        ax[i].set_ylabel(r'T$_{eff}$ [K]')
+        ax[i].set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
+        ax[i].invert_xaxis()
+    cbar = fig.colorbar(cm, ax = axs, shrink = 0.8, pad = 0.05, location = 'bottom', orientation = 'horizontal')
+    cbar.set_label(val_label)
+    if met_flux:
+        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
+        cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
+    if figsave != None:
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'out_many'+network+'.pdf'), bbox_inches='tight')
+    
 #%%
 # meshgrid version
 Teff_list, Seff_list, rain_matrix, end_time_matrix = [], [], [], []
@@ -372,3 +393,9 @@ plot_tricontour(Seff_list, Teff_list, end_time_list, u'S$_{eff}$ [S$_\u2295$]', 
 plot_hist2d(Seff_list, Teff_list, rain_list, 10, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_hist2D.pdf')
 plot_hist2d(Seff_list, Teff_list, end_time_list, 10, 'End-of-simulation time [s]', figname = 'end_time/endtime_conjoint_S_eff'+network+'_hist2D.pdf', met_flux = False)
 # %%
+# 3D plot
+data_3d = read_pandas(os.path.join(scratch, 'star_dist_CtoO_rain.txt'))
+pr.reset_plt(ticksize = 11, fontsize = 13, fxsize = 9, fysize = 6, grid = False)
+plot_3d(x = np.array(data_3d['Teff']), y = np.array(data_3d['Seff']), z = np.array(data_3d['CtoO']), v = np.array(data_3d['HCN_rain']), x_label = r'T$_{eff}$ [K]', y_label = u'S$_{eff}$ [S$_\u2295$]', z_label = 'C/O', figsave = True)
+#%%
+# meshdrid plots along C/O ratios
