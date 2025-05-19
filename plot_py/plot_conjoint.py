@@ -8,8 +8,6 @@ import sys
 sys.path.insert(0, '../') # including the upper level of directory for the path of modules
 import parallel_functions as pf
 from scipy.integrate import trapezoid
-import ternary
-import mpltern
 import pandas as pd
 # setting up plot style
 import plot_reset as pr
@@ -33,6 +31,10 @@ archean_file = os.path.join(scratch, 'output', 'archean'+network+'.vul')
 
 min_flux_met = 1.058e-9
 max_flux_met = 2.646e-8
+
+#star_marker = {'M': 4, 'K': 5, 'G': 6, 'F': 7}
+star_marker = {'M': 'o', 'K': '^', 'G': 'v', 'F': 's'}
+star_markersize = [i*8+8 for i in range(6)] + [24, 32, 40] + [24, 32, 40] + [32] # separate for the M, K, G and F stars
 #%%    
 def get_surf_temp(file):
     surface_temperature = np.genfromtxt(file, dtype = None, skip_header=1, comments = '#', max_rows = 4, names = True)['Temp'][0]
@@ -230,12 +232,38 @@ def get_seff(Temp, dist):
     seff = np.power(10, llog) / np.power(dist, 2)
     return seff
 
+def get_stellar_type(Temp):
+    ''' Gives back the stellar type.'''
+    if Temp <= 4014: # values from table
+        return 'M'
+    elif Temp <= 5212:
+        return 'K'
+    elif Temp <= 6084:
+        return 'G'
+    else:
+        return 'F'
+
+def get_marker_size(Temp):
+    ''' Calculates the marker size for the given effective stellar temperature.'''
+    star_idx = np.where(star_df['T_eff'] == Temp)[0][0]
+    return star_markersize[star_idx]
+
+def get_marker_colour(idx, colours):
+    ''' Calculates the marker colour for the given distances, but because the distances are different, it tracks the indexes.'''
+    return colours[int((idx//nsim_CtoO)%nsim_dist)]
+    
 def read_pandas(file):
-    dat = pd.read_csv('/home/s2555875/scratch/star_dist_CtoO_rain.txt', sep = '\t', skiprows=2, names = ['Teff', 'dist', 'CtoO', 'HCN_rain', 'H2O_rain'])
+    dat = pd.read_csv(file, sep = '\t', skiprows=2, names = ['Teff', 'dist', 'CtoO', 'HCN_rain', 'H2O_rain'])
     # first sorting by Teff, dist and CtoO and dropping potential duplicates
     dat = dat.sort_values(by = ['Teff', 'dist', 'CtoO']).drop_duplicates().reset_index(drop = True)
     # then converting distance into effective stellar flux and replacing it
     dat['Seff'] = dat.apply(lambda row: get_seff(row['Teff'], row['dist']), axis = 1)
+    # then calculating the marker tpye, size and colour
+    dat['stellar_type'] = dat.apply(lambda row: get_stellar_type(row['Teff']), axis = 1)
+    dat['marker_size'] = dat.apply(lambda row: get_marker_size(row['Teff']), axis = 1)
+    colours = np.linspace(1, 0, nsim_dist, endpoint = True) # starts from the closest distance so brighetest colour
+    dat.reset_index(inplace = True)
+    dat['marker_colour'] = dat.apply(lambda row: get_marker_colour(row['index'], colours), axis = 1)
     return dat
     
 def plot_3d(x, y, z, v, x_label, y_label, z_label, figsave = False):
@@ -287,6 +315,27 @@ def plot_meshgrid_many(dat, val_label, figsave, rain_type = 'HCN_rain', met_flux
         cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
     if figsave != None:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'out_many'+network+'.pdf'), bbox_inches='tight')
+    
+def plot_rainout_condensed(dat, figsave, rain_type = 'HCN_rain', met_flux = True):
+    ''' Takes the date from the pandas dataframe, then creates one plot that has the rainout rate information condensed.
+        The y axis is the rainout rate (optionally with horizontal lines for the meteoritic delivery flux).
+        The x axis is one of the three parameters (C/O), while marker size and colur are controlled by the other two parameters:
+        The smaller the stellar effective temperature, the smaller the markersize + different marker for different stellar type; 
+        the closer in the planet is, the brighter the colour.'''
+    fig, ax = plt.subplots(tight_layout = True)
+    for st,marker in star_marker.items(): # loop through the stellar types and corresponding markers
+        dat_st = dat[dat['stellar_type'] == st]
+        x = np.array(dat_st.CtoO)
+        y = np.array(dat_st[rain_type])
+        ax.scatter(x, y, s = dat_st.marker_size, c = dat_st.marker_colour, marker = marker)
+    ax.set_ylabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
+    ax.set_xlabel('C/O')
+    ax.set_yscale('log')
+    if met_flux:
+        ax.axhline(min_flux_met, c = 'k', lw = 2, ls = '--')
+        ax.axhline(max_flux_met, c = 'k', lw = 2, ls = '--')
+    if figsave != None:
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_condensed'+network+'.pdf'), bbox_inches='tight')
     
 #%%
 # meshgrid version
@@ -399,3 +448,7 @@ pr.reset_plt(ticksize = 11, fontsize = 13, fxsize = 9, fysize = 6, grid = False)
 plot_3d(x = np.array(data_3d['Teff']), y = np.array(data_3d['Seff']), z = np.array(data_3d['CtoO']), v = np.array(data_3d['HCN_rain']), x_label = r'T$_{eff}$ [K]', y_label = u'S$_{eff}$ [S$_\u2295$]', z_label = 'C/O', figsave = True)
 #%%
 # meshdrid plots along C/O ratios
+plot_meshgrid_many(data_3d, val_label = r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figsave = True, rain_type = 'HCN_rain')
+#%%
+# condensed version
+plot_rainout_condensed(data_3d, figsave = True, rain_type = 'HCN_rain')
