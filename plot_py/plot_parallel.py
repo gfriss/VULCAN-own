@@ -270,6 +270,7 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figsave):
 
 def plot_vertical_many(dat_list, param_list, sim_type, figsave, species_list = ['CH4', 'O', 'OH', 'CN', 'HNCO', 'H2CN', 'C2H3', 'C2H3CN', 'C2H6']):
     fig, ax = plt.subplots(tight_layout = True)
+    ax.set_prop_cycle(color = plt.get_cmap('tab10').colors, linestyle = ['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--']) 
     plot_leg = [Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(param_list[plot_idx[sim_type][i]])) for i in range(len(plot_idx[sim_type]))] # linestyle legends
     for i,idx in enumerate(plot_idx[sim_type]):
         for sp in species_list:
@@ -500,6 +501,23 @@ def plot_tot_rate(dat_list, param_list, sim_type, diag_sp, figsave):
     if figsave:
         fig.savefig(plot_folder + 'prod_dest/total'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
         
+def plot_tot_rate_selected(dat_list, param_list, sim_type, diag_sp, figsave):
+    fig, ax = plt.subplots(tight_layout = True)
+    ax.set_prop_cycle(color = plt.get_cmap('tab10').colors, linestyle = ['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--']) 
+    for i,idx in enumerate(plot_idx[sim_type]):
+        pressure = dat_list[idx]['atm']['pco']/1e6
+        _, _, tot_rate = get_total_reaction_rate(dat_list[idx], diag_sp)
+        ax.plot(tot_rate, pressure, label = legend_lab[sim_type].format(param_list[idx]))
+        
+    ax.invert_yaxis()
+    ax.set_yscale('log')
+    ax.set_xscale('symlog')
+    ax.set_ylabel('Pressure [bar]')
+    ax.set_xlabel(r'k$_{tot}$ [cm$^3$s$^{-1}$]')  
+    ax.legend(loc = 'lower right')
+    if figsave:
+        fig.savefig(plot_folder + 'prod_dest/selected_total'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        
 def plot_prod_dest(dat_list, param_list, sim_type, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True, nrows = 2, ncols = 1, sharex = True, figsize = (6,8))
     ax = ax.flatten()
@@ -716,7 +734,7 @@ def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, net_lower,
         if figsave:
             fig.savefig(plot_folder + 'prod_dest/normed_detailed'+end_str[sim_type]+'_'+sim_names[i]+network+'.pdf', bbox_inches = 'tight')
             
-def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, net_lower, net_upper, figsave, sim_type):
+def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, figsave, sim_type):
     legend_xanchors = [0.5, 0.5] # otherwise legends are all over the place, not sure why...
     legend_yanchors = [0.666, 0.323]
     fig, ax = plt.subplots(ncols=len(plot_idx[sim_type]), nrows=3, sharey = True, tight_layout = True)
@@ -738,10 +756,13 @@ def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, n
                     fig.legend(handles, leg_labels, loc = 'center', bbox_to_anchor = (legend_xanchors[j], legend_yanchors[j]), ncol = 3)
                 ax[j,i].set_xlim(-0.02,1.02)
             else:
-                ax[j,i].plot(prod_dest['Production']['total']-prod_dest['Destruction']['total'], dat_list[idx]['atm']['pco']/1e6, label = 'Total', c = 'k')
-                ax[j,i].set_xlim(net_lower, net_upper)
-                ax[j,i].set_xscale('symlog')
+                ax[j,i].plot(prod_dest['Production']['total'], dat_list[idx]['atm']['pco']/1e6, label = 'Production', c = 'r', ls = '-')
+                ax[j,i].plot(prod_dest['Destruction']['total'], dat_list[idx]['atm']['pco']/1e6, label = 'Destruction', c = 'k', ls = '-')
+                ax[j,i].set_xlim(3e-5, 1e4)
+                ax[j,i].set_xscale('log')
                 ax[j,i].axvline(0, color = 'r', linestyle = '--')
+                if i == 0:
+                    ax[j,i].legend(loc = 'upper left')
             ax[j,i].set_yscale('log')
             ax[j,0].set_ylabel('Pressure [bar]')
             ax[j,i].set_xlabel(labels[j])
@@ -956,6 +977,7 @@ plot_convergence(data_CtoO, figsave = True, sim_type = 'CtoO')
 plot_rain(hcn_rain_CtoO, C_to_O, 'CtoO', figsave = True, rain_spec = 'HCN_rain')
 plot_rain(rain_CtoO, C_to_O, 'CtoO', figsave = True, rain_spec = 'H2O_rain')
 plot_tot_rate(data_CtoO, C_to_O, 'CtoO', diag_sp = 'HCN', figsave = True)
+plot_tot_rate_selected(data_CtoO, C_to_O, 'CtoO', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_CtoO, C_to_O, 'CtoO', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_CtoO, C_to_O, 'CtoO', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_CtoO, C_to_O, 'CtoO', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
@@ -987,6 +1009,7 @@ plot_rain(hcn_rain_star, T_eff, 'star', figsave = True, rain_spec = 'HCN_rain')
 plot_rain(rain_star, T_eff, 'star', figsave = True, rain_spec = 'H2O_rain')
 plot_pt(data_star, T_eff, 'star', figsave = True)
 plot_tot_rate(data_star, T_eff, 'star', diag_sp = 'HCN', figsave = True)
+plot_tot_rate_selected(data_star, T_eff, 'star', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_star, T_eff, 'star', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_star, T_eff, 'star', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_star, T_eff, 'star', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
@@ -1019,6 +1042,7 @@ plot_rain(hcn_rain_dist, a_list, 'dist', extra_list = T_surf, figsave = True, ra
 plot_rain(rain_dist, a_list, 'dist', extra_list = T_surf, figsave = True, rain_spec = 'H2O_rain')
 plot_pt(data_dist, a_list, 'dist', figsave = True)
 plot_tot_rate(data_dist, a_list, 'dist', diag_sp = 'HCN', figsave = True)
+plot_tot_rate_selected(data_dist, a_list, 'dist', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_dist, a_list, 'dist', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_dist, a_list, 'dist', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_dist, a_list, 'dist', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
@@ -1046,9 +1070,9 @@ plot_prod_dest_rates_normed(data_star, T_eff, 'HCN', r_to_lot, netmin, netmax, f
 plot_prod_dest_rates_archean_normed(data_archean, 'HCN', r_to_lot, netmin, netmax, figsave = True)
 #%%
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 24, fysize = 18)
-plot_prod_dest_rates_normed_selected(data_CtoO, C_to_O, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'CtoO')
-plot_prod_dest_rates_normed_selected(data_dist, a_list, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'dist')
-plot_prod_dest_rates_normed_selected(data_star, T_eff, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'star')
+plot_prod_dest_rates_normed_selected(data_CtoO, C_to_O, 'HCN', r_to_lot, figsave = True, sim_type = 'CtoO')
+plot_prod_dest_rates_normed_selected(data_dist, a_list, 'HCN', r_to_lot, figsave = True, sim_type = 'dist')
+plot_prod_dest_rates_normed_selected(data_star, T_eff, 'HCN', r_to_lot, figsave = True, sim_type = 'star')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figsave = True)
