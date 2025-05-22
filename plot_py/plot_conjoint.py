@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mc
+from matplotlib.lines import Line2D
 import pickle
 import os
 import sys
@@ -323,14 +324,21 @@ def plot_rainout_condensed(dat, figsave, rain_type = 'HCN_rain', met_flux = True
         The smaller the stellar effective temperature, the smaller the markersize + different marker for different stellar type; 
         the closer in the planet is, the brighter the colour.'''
     fig, ax = plt.subplots(tight_layout = True)
+    seff_min, seff_max = np.min(dat.Seff), np.max(dat.Seff)
+    plot_leg = [] 
     for st,marker in star_marker.items(): # loop through the stellar types and corresponding markers
+        plot_leg.append(Line2D([0], [0], marker = marker, color = 'k', label = '{} star'.format(st), markersize = 6, linestyle = 'None'))
         dat_st = dat[dat['stellar_type'] == st]
         x = np.array(dat_st.CtoO)
         y = np.array(dat_st[rain_type])
-        ax.scatter(x, y, s = dat_st.marker_size, c = dat_st.marker_colour, marker = marker)
+        #ax.scatter(x, y, s = dat_st.marker_size, c = dat_st.marker_colour, marker = marker)
+        cm = ax.scatter(x, y, s = dat_st.marker_size, c = dat_st.Seff, marker = marker, vmin = seff_min, vmax = seff_max)
     ax.set_ylabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
     ax.set_xlabel('C/O')
     ax.set_yscale('log')
+    ax.legend(handles = plot_leg, loc = 'upper right')
+    cbar = fig.colorbar(cm)
+    cbar.set_label(u'S$_{eff}$ [S$_\u2295$]')
     if met_flux:
         ax.axhline(min_flux_met, c = 'k', lw = 2, ls = '--')
         ax.axhline(max_flux_met, c = 'k', lw = 2, ls = '--')
@@ -447,6 +455,7 @@ data_3d = read_pandas(os.path.join(scratch, 'star_dist_CtoO_rain.txt'))
 pr.reset_plt(ticksize = 11, fontsize = 13, fxsize = 9, fysize = 6, grid = False)
 plot_3d(x = np.array(data_3d['Teff']), y = np.array(data_3d['Seff']), z = np.array(data_3d['CtoO']), v = np.array(data_3d['HCN_rain']), x_label = r'T$_{eff}$ [K]', y_label = u'S$_{eff}$ [S$_\u2295$]', z_label = 'C/O', figsave = True)
 #%%
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 # meshdrid plots along C/O ratios
 plot_meshgrid_many(data_3d, val_label = r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figsave = True, rain_type = 'HCN_rain')
 #%%

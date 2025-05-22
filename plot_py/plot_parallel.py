@@ -270,14 +270,14 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figsave):
 
 def plot_vertical_many(dat_list, param_list, sim_type, figsave, species_list = ['CH4', 'O', 'OH', 'CN', 'HNCO', 'H2CN', 'C2H3', 'C2H3CN', 'C2H6']):
     fig, ax = plt.subplots(tight_layout = True)
-    ax.set_prop_cycle(color = plt.get_cmap('tab10').colors, linestyle = ['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--']) 
+    ax.set_prop_cycle(color = plt.get_cmap('tab10').colors) 
     plot_leg = [Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(param_list[plot_idx[sim_type][i]])) for i in range(len(plot_idx[sim_type]))] # linestyle legends
     for i,idx in enumerate(plot_idx[sim_type]):
         for sp in species_list:
             p = ax.plot(dat_list[idx]['variable']['ymix'][:, dat_list[idx]['variable']['species'].index(sp)], dat_list[idx]['atm']['pco']/1e6, linestyle = plot_ls[i])
             if i == 0: # only first loop needs to be added to the legend
                 plot_leg.append(Line2D([], [], linestyle = '-', color = p[0].get_color(), label = sp)) # species legends
-        ax.set_prop_cycle(None) # resetting the colour cycle
+        ax.set_prop_cycle(color = plt.get_cmap('tab10').colors) # resetting the colour cycle
     ax.set_xscale('log')
     ax.set_xlabel('Mixing ratio of species')
     ax.set_xlim(1e-20, 1e-1)
