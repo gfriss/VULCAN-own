@@ -19,6 +19,7 @@ scratch = '/scratch/s2555875' # place to store outputs
 output_folder = os.path.join(scratch, 'output')
 TP_folder = os.path.join(scratch, 'TP_files/star_dist')
 conv_file = os.path.join(scratch, 'converged.txt')
+non_conv_file = os.path.join(scratch, 'non_converged.txt')
 # ------setting up parameterspace for all runs------
 # star type
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
@@ -70,6 +71,10 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         conv_text = f.read()
     if sim + network + '.vul' in conv_text:
         continue
+    with open(non_conv_file, 'r') as f:
+        non_conv_text = f.read()
+    if sim+network+'_rerun.vul' in non_conv_text:
+        continue # don't do it again if it didn't converge the first time
     if i_CtoO == 0:
         with open(os.path.join(output_folder, TP_sim+network+'.vul'), 'rb') as handle:
             data = pickle.load(handle)
