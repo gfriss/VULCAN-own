@@ -30,8 +30,14 @@ network = '_ncho'
 archean_colour = 'k'
 archean_file = os.path.join(scratch, 'output', 'archean'+network+'.vul')
 
-min_flux_met = 1.058e-9
-max_flux_met = 2.646e-8
+min_mass_del = 4e20 * 1e-6 # g/yr, minimum mass delivery rate from kg/Gyr to g/yr
+max_mass_del = 1e22 * 1e-6 # g/yr, maximum mass delivery rate from kg/Gyr to g/yr
+met_hcn = 2472 # HCN meteoritic content in nmol/g by Smith et al. 2019
+M_hcn = 27e-12 # kg/nmol, molar mass of HCN converted from 27 g/mol
+A_earth = 5.1e14 # m2, surface area of the Earth
+# meteoritic flux in kg/m2/yr
+min_flux_met = met_hcn * min_mass_del * M_hcn / A_earth 
+max_flux_met = met_hcn * max_mass_del * M_hcn / A_earth
 
 #star_marker = {'M': 4, 'K': 5, 'G': 6, 'F': 7}
 star_marker = {'M': 'o', 'K': '^', 'G': 'v', 'F': 's'}
@@ -97,7 +103,7 @@ def plot_meshgrid(x, y, values, val_label, edgec = 'none', figname = None, met_f
     cbar = fig.colorbar(cm)
     cbar.set_label(val_label)
     if met_flux:
-        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
+        #cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
         cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
     ax.set_ylabel(r'T$_{eff}$ [K]')
     ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
@@ -256,7 +262,7 @@ def get_marker_colour(idx, colours):
 def read_pandas(file):
     dat = pd.read_csv(file, sep = '\t', skiprows=2, names = ['Teff', 'dist', 'CtoO', 'HCN_rain', 'H2O_rain'])
     # first sorting by Teff, dist and CtoO and dropping potential duplicates
-    dat = dat.sort_values(by = ['Teff', 'dist', 'CtoO']).drop_duplicates().reset_index(drop = True)
+    dat = dat.sort_values(by = ['Teff', 'dist', 'CtoO']).drop_duplicates(subset = ['Teff', 'dist', 'CtoO']).reset_index(drop = True)
     # then converting distance into effective stellar flux and replacing it
     dat['Seff'] = dat.apply(lambda row: get_seff(row['Teff'], row['dist']), axis = 1)
     # then calculating the marker tpye, size and colour
@@ -340,7 +346,7 @@ def plot_rainout_condensed(dat, figsave, rain_type = 'HCN_rain', met_flux = True
     cbar = fig.colorbar(cm)
     cbar.set_label(u'S$_{eff}$ [S$_\u2295$]')
     if met_flux:
-        ax.axhline(min_flux_met, c = 'k', lw = 2, ls = '--')
+        #ax.axhline(min_flux_met, c = 'k', lw = 2, ls = '--')
         ax.axhline(max_flux_met, c = 'k', lw = 2, ls = '--')
     if figsave != None:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_condensed'+network+'.pdf'), bbox_inches='tight')
@@ -460,4 +466,6 @@ pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 plot_meshgrid_many(data_3d, val_label = r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figsave = True, rain_type = 'HCN_rain')
 #%%
 # condensed version
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 plot_rainout_condensed(data_3d, figsave = True, rain_type = 'HCN_rain')
+# %%

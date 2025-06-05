@@ -60,7 +60,7 @@ archean_colour = 'k'
 # pressure levels for reaction rate plots
 pressure_levels = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
 # sim numbers to plot for vertical mixing ratio profiles, BC not needed
-plot_idx = {'CtoO': [0, 6, 12, 14], 'star': [0, 8, 11, 12], 'dist': [0, 6, 13, 14]}
+plot_idx = {'CtoO': [0, 6, 12, 14], 'star': [0, 7, 11, 12], 'dist': [0, 6, 13, 14]}
 plot_ls = ['-', '--', '-.', ':']
 #%%
 def lin(x, a, b):
