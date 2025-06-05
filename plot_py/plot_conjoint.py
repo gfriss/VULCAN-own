@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mc
 from matplotlib.lines import Line2D
+import seaborn as sns
 import pickle
 import os
 import sys
@@ -352,6 +353,29 @@ def plot_rainout_condensed(dat, figsave, rain_type = 'HCN_rain', met_flux = True
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_condensed'+network+'.pdf'), bbox_inches='tight')
     
 #%%
+def plot_hist(df, bins = 50, figsave = False, rain_type = 'HCN_rain', met_flux = True):
+    ''' Takes the data from the pandas dataframe and plots a histogram of the rainout rates.'''
+    #r = df[rain_type][df[rain_type] > 0] # only positive values
+    #h, b = np.histogram(r, bins = bins)
+    #log_b = np.logspace(np.log10(b[0]),np.log10(b[-1]),len(b))
+    fig, ax = plt.subplots(tight_layout = True)
+    #ax.hist(df[rain_type], bins = log_b)
+    r = df[rain_type][df[rain_type] > 0] # only positive values
+    r = r.dropna() # remove nan
+    sns.histplot(r, bins = bins, stat = 'count', log_scale = True)
+    #ax.set_xscale('log')
+    ax.set_xlabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
+    ax.set_ylabel('Number of simulations')
+    if met_flux:
+        ax.axvline(max_flux_met, c = 'k', lw = 2, ls = '--', label = 'Maximum meteoritic flux')
+    ax.axvline(1.835e-5, c = 'r', ls = '--', lw = 2, label = 'Archean Earth')
+    ax.axvline(np.median(r), c = 'pink', ls = '--', lw = 2, label = 'Median')
+    ax.legend()
+    if figsave != None:
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_hist.pdf'), bbox_inches='tight')
+        
+    
+#%%
 # meshgrid version
 Teff_list, Seff_list, rain_matrix, end_time_matrix = [], [], [], []
 edge_matrix = []
@@ -465,7 +489,8 @@ pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 # meshdrid plots along C/O ratios
 plot_meshgrid_many(data_3d, val_label = r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figsave = True, rain_type = 'HCN_rain')
 #%%
-# condensed version
+# condensed and histogram version
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 plot_rainout_condensed(data_3d, figsave = True, rain_type = 'HCN_rain')
+plot_hist(data_3d, figsave = True)
 # %%
