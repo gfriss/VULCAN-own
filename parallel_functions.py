@@ -5,6 +5,7 @@ from astropy import units as u
 import pandas as pd
 from collections import defaultdict
 import matplotlib.pyplot as plt
+from scipy.integrate import trapezoid
 #%%
 def get_str_number(n):
     ''' This function is used to get the number of digits in a number.'''
@@ -93,7 +94,8 @@ def gen_mixing(co2_mix, output):
 # rainout rate calculation
 def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
     ''' Calculates the rainout rate of the given species and returns it with units of kg/m2/yr.'''
-    rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
+    #rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
+    rain_rate = trapezoid(dat['variable']['y_rain'][rain_spec], dat['atm']['zmco']) / dat['variable']['dt'] # 1/cm2s
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
 

@@ -67,24 +67,24 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     # skip parts that are already done, i.e. all distance with base C/O (0th) (same name as used for TP profile)
     # but add their output to the file
     # to be deleted later
-    with open(conv_file, 'r') as f:
-        conv_text = f.read()
-    if sim + network + '.vul' in conv_text:
-        continue
-    with open(non_conv_file, 'r') as f:
-        non_conv_text = f.read()
-    if sim+network+'_rerun.vul' in non_conv_text:
-        continue # don't do it again if it didn't converge the first time
-    if i_CtoO == 0:
-        with open(os.path.join(output_folder, TP_sim+network+'.vul'), 'rb') as handle:
-            data = pickle.load(handle)
-        hcn_rain = pf.rainout(data, rain_spec = 'HCN_rain', g_per_mol = 27)
-        h20_rain = pf.rainout(data, rain_spec = 'H2O_rain', g_per_mol = 18)
-        with open(os.path.join(scratch, 'star_dist_CtoO_rain.txt'), 'a') as f:
-            f.write('{}\t{}\t{}\t{}\t{}\n'.format(T_eff[i_star], param_dict[star_names[i_star]][i_dist], C_to_O[i_CtoO], hcn_rain, h20_rain))
-        continue
+    #with open(conv_file, 'r') as f:
+    #    conv_text = f.read()
+    #if sim + network + '.vul' in conv_text:
+    #    continue
+    #with open(non_conv_file, 'r') as f:
+    #    non_conv_text = f.read()
+    #if sim+network+'_rerun.vul' in non_conv_text:
+    #    continue # don't do it again if it didn't converge the first time
+    #if i_CtoO == 0:
+    #    with open(os.path.join(output_folder, TP_sim+network+'.vul'), 'rb') as handle:
+    #        data = pickle.load(handle)
+    #    hcn_rain = pf.rainout(data, rain_spec = 'HCN_rain', g_per_mol = 27)
+    #    h20_rain = pf.rainout(data, rain_spec = 'H2O_rain', g_per_mol = 18)
+    #    with open(os.path.join(scratch, 'star_dist_CtoO_rain.txt'), 'a') as f:
+    #        f.write('{}\t{}\t{}\t{}\t{}\n'.format(T_eff[i_star], param_dict[star_names[i_star]][i_dist], C_to_O[i_CtoO], hcn_rain, h20_rain))
+    #    continue
     # build files for simulation
-    out_file = sim + network + '.vul'
+    out_file = sim + network + '_nowash.vul'
     out_change = ','.join(['out_name', out_file, 'str'])
     output_dir_change = ','.join(['output_dir', output_folder, 'str'])
     new_cfg = os.path.join(sim_folder, 'vulcan_cfg.py')
@@ -124,7 +124,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
             vul_ini_change = ','.join(['vul_ini', os.path.join(output_folder,out_file), 'str'])
             ini_mix_change = ','.join(['ini_mix', 'vulcan_ini', 'str'])
             yconv_min_change = ','.join(['yconv_min', str(0.2), 'val']) # 0.1 is the default, allow double
-            out_file = sim + network + '_rerun.vul' # change this last so the initial composition will use the previous run
+            out_file = sim + network + '_nowash_rerun.vul' # change this last so the initial composition will use the previous run
             out_change = ','.join(['out_name', out_file, 'str'])
             subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, yconv_min_change, 'rerun', sim])
             subprocess.check_call(['python', 'vulcan.py', '-n'])

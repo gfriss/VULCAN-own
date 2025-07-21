@@ -5,6 +5,7 @@ from matplotlib.lines import Line2D
 from matplotlib.collections import LineCollection
 import pickle
 from scipy.optimize import curve_fit
+from scipy.integrate import trapezoid
 import os
 import pandas as pd
 wd = os.getcwd()
@@ -21,6 +22,7 @@ plot_folder = '/scratch/s2555875/plot/'
 sim_names = ['sim_0{}'.format(i) for i in range(nsim) if i < 10] + ['sim_{}'.format(i) for i in range(nsim) if i >= 10]
 # end string of the VULCAN output files
 end_str = {'BC': '_meteor', 'CtoO': '_CtoO', 'star': '_star', 'dist': '_dist'}
+nowash = '_nowash' # no washout case
 # setting chemical network for naming (empty if crahcno/no ignore as these are the defaults)
 network = '_ncho'
 # setting up the boundary condition case
@@ -46,7 +48,7 @@ stellar_spectra_folder = '/scratch/s2555875/stellar_flux/'
 a_list = np.linspace(0.839, 1.333, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
 
 # base simulation of Archean
-base_sim = out_folder+'archean'+network+'.vul'
+base_sim = out_folder+'archean'+network+nowash+'.vul'
 with open(base_sim, 'rb') as handle:
     data_archean = pickle.load(handle)
 
@@ -112,7 +114,7 @@ def read_in(sim_type, number_of_sim, start_str = ''):
     for i in range(number_of_sim):
         sim = start_str + sim_names[i] # setting up the names of files
         sim += end_str[sim_type]
-        sim_file = sim+'{}.vul'.format(network)
+        sim_file = sim+'{}{}.vul'.format(network, nowash) # adding network and no washout if needed
         with open(out_folder+sim_file, 'rb') as handle:
             data_i = pickle.load(handle)
             dat_list.append(data_i)
@@ -152,7 +154,8 @@ def read_in(sim_type, number_of_sim, start_str = ''):
 
 def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
     ''' Calculates the rainout rate of the given species and returns it with units of kg/m2/yr.'''
-    rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
+    #rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
+    rain_rate = trapezoid(y=dat['variable']['y_rain'][rain_spec], x=dat['atm']['zmco']) / dat['variable']['dt'] # 1/cm2s
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
 

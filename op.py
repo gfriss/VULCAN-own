@@ -1547,22 +1547,6 @@ class Integration(object):
         y_h2o = y[:, species.index('H2O')]
         y_h2o_l_s = y[:, species.index('H2O_l_s')]
         L = y_h2o_l_s / ysum
-        Lambda = 1.
-        b = 1.
-
-        j_no_cloud = np.where(y_h2o_l_s < 1.e1)[0]
-        j_cloud_bot = 0
-        j_cloud_top = 0
-        for i in range(len(j_no_cloud)-1):
-            if j_no_cloud[i+1] - j_no_cloud[i] != 1: #finding cloud decks
-                j_cloud_bot = j_no_cloud[i]
-                j_cloud_top = j_no_cloud[i+1]
-                break
-            else:
-                continue
-    
-        k_h2o_top = 0. # initiating and then they will be changed in the for loop
-        k_h2o_bot = 0.
         for j in range(nz-2, -1, -1): # before it went until nz-1 that was exluded, plus i want 0 to be included
             if y_h2o[j] >= 1.e-30 and j != 0:
                 dz_ave = 0.5*(dzi[j-1] + dzi[j])
@@ -1574,21 +1558,9 @@ class Integration(object):
                 phi_plus = Kzz[j] * y_tot_plus * (X_plus - X_j) / dzi[j]
                 phi_minus = Kzz[j-1] * y_tot_minus * (X_j - X_minus) / dzi[j-1]
                 k_h2o = 1/dz_ave * (phi_plus - phi_minus) / y_h2o[j]
-                k_wash = 0.
-                if j == j_cloud_top:
-                    k_h2o_top = k_h2o
-                if j == j_cloud_bot:
-                    k_h2o_bot = k_h2o
-                if j < j_cloud_top and j >= j_cloud_bot:
-                    k_wash = Lambda * ( np.min([k_h2o*L[j],k_h2o_top*L[j+1]]) ) ** b
-                    k_h2o_top = k_h2o
-                elif j < j_cloud_bot:
-                    k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
             elif y_h2o[j] < 1.e-30 and j != 0: #above cloud without water vapour
                 k_h2o = 0.
-                k_wash = 0.
             if j == 0:
-                k_wash = Lambda * (k_h2o_bot*L[j_cloud_bot]) ** b
                 k_h2o = 0.
                 
 
@@ -1602,11 +1574,9 @@ class Integration(object):
                         Retention = 1.
                     else:
                         Retention = 0.02 # temporal value, still needs to validate but is around this value for other species
-                    
-                    #Pr = k_h2o * y_h2o_l_s[j] / ysum[j]
+                    # own implementation
                     f_hcn_L = KH*L[j]*R*Tco[j] / (1 + KH*L[j]*R*Tco[j])
                     k_hcn = Retention*f_hcn_L*k_h2o
-                    #f = Pr / (k_h2o*L) # don't know how to get Pr from VULCAN...
                     f = 1.
                     F = f * (1 - np.exp(-k_hcn*var.dt))
                     # just checking
@@ -1614,10 +1584,16 @@ class Integration(object):
                         print('F = {:.2f} which is greater than 1 in layer {}'.format(F,j))
                         exit()
                     else:
-                        var.k[re][j] = k_hcn #F / var.dt # is this the correct way to turn fraction to rate?
-                        var.k[re][j] += k_wash
+                        var.k[re][j] = k_hcn
                         var.k[re][j] = np.maximum(var.k[re][j], 0)
                         var.k[re+1][j] = 0.
+                    # Giorgi et al 1986 implementation
+                    #Na = 6.022e23 # Avogadro's number
+                    #l = 1 # g/m-3
+                    #k_hcn = ( k_h2o*y_h2o[j]/55 ) / ( Na*l*1e-9 + (1/(KH*R*Tco[j])) ) # W=k/y
+                    #var.k[re][j] = k_hcn
+                    #var.k[re][j] = np.maximum(var.k[re][j], 0)
+                    #var.k[re+1][j] = 0.
 
         return var
     

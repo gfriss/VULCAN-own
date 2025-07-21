@@ -25,7 +25,7 @@ vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt' # the file to i
 output_dir = '/home/s2555875/scratch/output/'
 plot_dir = '/home/s2555875/scratch/plot/'
 movie_dir = '/home/s2555875/scratch/plot/movie/'
-out_name = 'archean_ncho.vul' # output file name
+out_name = 'archean_ncho_nowash_test.vul' # output file name
 
 
 # ====== Setting up the elemental abundance ======
