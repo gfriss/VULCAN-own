@@ -28,8 +28,9 @@ TP_folder = os.path.join(scratch, 'TP_files/star_dist')
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
 #network = ''
 network = '_ncho'
+nowash = '_nowash' # no washout case
 archean_colour = 'k'
-archean_file = os.path.join(scratch, 'output', 'archean'+network+'.vul')
+archean_file = os.path.join(scratch, 'output', 'archean'+network+nowash+'.vul')
 
 min_mass_del = 4e20 * 1e-6 # g/yr, minimum mass delivery rate from kg/Gyr to g/yr
 max_mass_del = 1e22 * 1e-6 # g/yr, maximum mass delivery rate from kg/Gyr to g/yr
@@ -63,30 +64,10 @@ def check_convergence(dat):
     else:
         return 'none' # False
     
-def get_star_temp(star_name, df = star_df):
-    return df.loc[df.Name == star_name].T_eff.iloc[0]
-
-def get_star_name(file, df = star_df):
-    star_name = ''
-    if 'EARLY' in file:
-        star_name = 'EARLY_SUN'
-    else:
-        star_name = file.split('_')[1]
-    return star_name
-
-def get_dist(file):
-    cfg_file = os.path.join(cfg_folder, file[:-3] + 'txt') # from .vul to .txt
-    orbit_r = 0.
-    with open(cfg_file, 'r') as f:
-        for line in f:
-            if 'orbit_radius' in line:
-                orbit_r = line.split()[2]
-                break
-    return orbit_r
-    
 def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
     ''' Calculates the rainout rate of the given species and returns it with units of kg/m2/yr.'''
-    rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
+    #rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
+    rain_rate = trapezoid(dat['variable']['y_rain'][rain_spec], dat['atm']['zmco']) / dat['variable']['dt'] # 1/cm2s
     rain_rate = rain_rate * 5.237e-13 # mol/m2yr
     return rain_rate * (g_per_mol/1000.) # kg/m2yr
 
@@ -174,66 +155,6 @@ def plot_meshgrid_prob(x, y, values, prior, val_label, edgec = 'none', figname =
     if figname != None:
         fig.savefig(os.path.join(plot_folder, figname))
 
-def plot_contour(x, y, values, val_label, figname = None, met_flux = True):
-    ''' Plots values, let it be rainout rate, end-of-simulation time, convergence, etc., in a contour plot.
-        Distance is X, Teff is Y. Figure can be saved if needed. Meteoritic flux can be added as well.'''
-    vmin = np.min(values)
-    if met_flux:
-        vmin = 0.9 * np.min([vmin, min_flux_met])
-    fig, ax = plt.subplots(tight_layout = True)
-    cmap = plt.get_cmap()
-    cmap.set_under('none')
-    cm = ax.contourf(x, y, values, cmap = cmap, norm = mc.LogNorm(vmin=vmin))
-    cbar = fig.colorbar(cm)
-    cbar.set_label(val_label)
-    if met_flux:
-        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
-        cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
-    ax.plot(0.72, 5680, color = archean_colour, marker = '*', markersize = 10)
-    ax.set_ylabel(r'T$_{eff}$ [K]')
-    ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
-    ax.invert_xaxis()
-    if figname != None:
-        fig.savefig(os.path.join(plot_folder, figname))
-
-def plot_tricontour(x, y, z, x_label, y_label, z_label, figname = None, met_flux = True):
-    vmin = np.min(z)
-    if met_flux:
-        vmin = 0.9 * np.min([vmin, min_flux_met])
-    fig, ax = plt.subplots(tight_layout = True)
-    cmap = plt.get_cmap()
-    cmap.set_under('none')
-    cm = ax.tricontourf(x, y, z, cmap = cmap, norm = mc.LogNorm(vmin = vmin))
-    cbar = fig.colorbar(cm)
-    cbar.set_label(z_label)
-    if met_flux:
-        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
-        cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
-    ax.plot(0.72, 5680, color = archean_colour, marker = '*', markersize = 10)
-    ax.invert_xaxis()
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
-    if figname != None:
-        fig.savefig(os.path.join(plot_folder, figname))
-        
-def plot_hist2d(x, y, weights, bins, weights_label, figname = None, met_flux = True):
-    vmin = np.min(weights)
-    if met_flux:
-        vmin = 0.9 * np.min([vmin, min_flux_met])
-    fig, ax = plt.subplots(tight_layout = True)
-    cm = ax.hist2d(x=x, y=y, bins = bins, weights=weights, norm = mc.LogNorm(vmin = vmin))
-    cbar = fig.colorbar(cm[3])
-    cbar.set_label(weights_label)
-    if met_flux:
-        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
-        cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
-    ax.plot(0.72, 5680, color = archean_colour, marker = '*') # try to highlight that square instead?
-    ax.invert_xaxis()
-    ax.set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
-    ax.set_ylabel(r'T$_{eff}$ [K]')
-    if figname != None:
-        fig.savefig(os.path.join(plot_folder, figname))
-
 def get_seff(Temp, dist):
     ''' Calculates the effective stellar flux from the distance and temperature.'''
     llog = star_df.at[star_df.index[star_df['T_eff'] == Temp][0], 'L_log']
@@ -289,12 +210,22 @@ def plot_3d(x, y, z, v, x_label, y_label, z_label, figsave = False):
     if figsave:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/rain_3d'+network+'.pdf'), bbox_inches='tight')
 
+def get_meshgrid_base(dat):
+    base_CtoO = np.min(dat.CtoO) # the first C/O value in the dataframe
+    x = np.array(dat.Seff[dat.CtoO == base_CtoO]).reshape(13,15)
+    y = np.array(dat.Teff[dat.CtoO == base_CtoO]).reshape(13,15)
+    z = np.array(dat.HCN_rain[dat.CtoO == base_CtoO]).reshape(13,15)
+    return x, y, z
+
 def get_meshgrid_many(dat, idx):
-    ''' Takes the data from the pandas dataframe and returns the meshgrid for the given index (i.e. C/O value, as pandas dataframe loops through that first).'''
+    ''' Takes the data from the pandas dataframe and returns the meshgrid for the base/minimum C/O value, as pandas dataframe loops through that first).
+        It returns the Seff, Teff, HCN rainout rate and edge colours for the meshgrid plot.'''
     x = np.array(dat.Seff[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
     y = np.array(dat.Teff[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
     z = np.array(dat.HCN_rain[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
-    return x, y, z
+    e = np.full(shape=(13,15), fill_value='none')
+    e[9,4] = archean_colour # the Archean Earth is always at the same position in the meshgrid
+    return x, y, z, e
     
 def plot_meshgrid_many(dat, val_label, figsave, rain_type = 'HCN_rain', met_flux = True):
     ''' Takes the data from the pandas dataframe, creates meshgrids for each C/O value and plots them in a pcolormesh plot.'''
@@ -351,8 +282,7 @@ def plot_rainout_condensed(dat, figsave, rain_type = 'HCN_rain', met_flux = True
         ax.axhline(max_flux_met, c = 'k', lw = 2, ls = '--')
     if figsave != None:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_condensed'+network+'.pdf'), bbox_inches='tight')
-    
-#%%
+
 def plot_hist(df, bins = 50, figsave = False, rain_type = 'HCN_rain', met_flux = True):
     ''' Takes the data from the pandas dataframe and plots a histogram of the rainout rates.'''
     #r = df[rain_type][df[rain_type] > 0] # only positive values
@@ -372,125 +302,42 @@ def plot_hist(df, bins = 50, figsave = False, rain_type = 'HCN_rain', met_flux =
     ax.axvline(np.median(r), c = 'pink', ls = '--', lw = 2, label = 'Median')
     ax.legend()
     if figsave != None:
-        fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_hist.pdf'), bbox_inches='tight')
-        
-    
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_hist.pdf'), bbox_inches='tight')     
 #%%
-# meshgrid version
-Teff_list, Seff_list, rain_matrix, end_time_matrix = [], [], [], []
-edge_matrix = []
-for star, a_min, a_max, Llog, T_eff in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log, star_df.T_eff):
-    distances = np.linspace(a_min, a_max, nsim_dist, endpoint=True)
-    new_Seff_list = np.power(10, Llog) / np.power(distances, 2)
-    Seff_list.append(new_Seff_list)
-    Teff_list.append(np.ones(nsim_dist)*T_eff)
-    rain_star, end_time_star = [], []
-    edge_matrix.append(['none']*nsim_dist)
-    if star == 'EARLY_SUN': # closest to the Archean Earth simulation
-        edge_matrix[-1][4] = archean_colour
-    # now find file and make up matrices
-    for i in range(nsim_dist):
-        if i < 10:
-            sim = 'star_' + star + '_dist_0' + str(i) + network + '.vul'
-        else:
-            sim = 'star_' + star + '_dist_' + str(i) + network + '.vul'
-        rain_rate = 0.
-        end_time = 0.
-        sim_file = os.path.join(output_folder, sim)
-        with open(sim_file, 'rb') as handle:
-            data = pickle.load(handle)
-        rain_rate = rainout(data)
-        end_time = data['variable']['t']
-        if os.path.isfile(sim[:-4]+'_rerun.vul'):
-            sim = sim[:-4]+'_rerun.vul'
-            with open(os.path.join(output_folder, sim), 'rb') as handle:
-                data = pickle.load(handle)
-            rain_rate = rainout(data)
-            end_time += data['variable']['t']
-        rain_star.append(rain_rate)
-        end_time_star.append(end_time)
-    rain_matrix.append(np.array(rain_star))
-    end_time_matrix.append(np.array(end_time_star))
-Seff_list = np.array(Seff_list)
-Teff_list = np.array(Teff_list)
-rain_matrix = np.array(rain_matrix)
-end_time_matrix = np.array(end_time_matrix)
-#%%
-plot_meshgrid(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', edgec = sum(edge_matrix,[]), figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'.pdf')
-plot_meshgrid(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', edgec = sum(edge_matrix,[]), figname = 'end_time/endtime_conjoint_S_eff'+network+'.pdf', met_flux = False)
-#%%
+# Archean Earth data
 with open(archean_file, 'rb') as handle:
     data_archean = pickle.load(handle)
 archean_rain = rainout(data_archean)
-#%%
-plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed.pdf')
-plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_lognorm.pdf', norm = mc.LogNorm())
-plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_better.pdf', vmin = 1)
-plot_meshgrid_with_normed(Seff_list, Teff_list, rain_matrix, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_worse.pdf', vmax = 1)
-#%%
-# probability plots (need normalisation!!! and flat prior...)
-p = gauss2d(Seff_list, Teff_list, 0.72, 5680, 0.072, 56.8) # figure out sigmas
-plot_prior(Seff_list, Teff_list, p, 'Probability', edgec = sum(edge_matrix,[]), figname = 'probability/gaussian_prior.pdf')
-plot_meshgrid_prob(Seff_list, Teff_list, rain_matrix, p, 'Probability', edgec = sum(edge_matrix,[]), figname = 'probability/gaussian_posterior.pdf')
-
-p = cauchy2d(Seff_list, Teff_list, 0.72, 5680, 1) # figure out sigmas
-plot_prior(Seff_list, Teff_list, p, 'Probability', edgec = sum(edge_matrix,[]), figname = 'probability/cauchy_prior.pdf')
-plot_meshgrid_prob(Seff_list, Teff_list, rain_matrix, p, 'Probability', edgec = sum(edge_matrix,[]), figname = 'probability/cauchy_posterior.pdf')
-
-#%%
-# contour version
-# uses the same data as the meshgrid version
-plot_contour(Seff_list, Teff_list, rain_matrix, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_contour.pdf')
-plot_contour(Seff_list, Teff_list, end_time_matrix, 'End-of-simulation time [s]', figname = 'end_time/endtime_conjoint_S_eff'+network+'_contour.pdf', met_flux = False)
-#%%
-# tricontour version
-Seff_list = []
-rain_list, end_time_list, Teff_list = [], [], []
-for star,a_min,a_max,Llog,T_eff in zip(star_df.Name, star_df.a_min, star_df.a_max, star_df.L_log, star_df.T_eff):
-    distances = np.linspace(a_min, a_max, nsim_dist, endpoint = True)
-    new_Seff_list = np.power(10, Llog) / np.power(distances, 2)
-    Seff_list += list(new_Seff_list)
-    Teff_list += [T_eff]*nsim_dist
-    for i in range(nsim_dist):
-        if i < 10:
-            sim = 'star_' + star + '_dist_0' + str(i) + network + '.vul'
-        else:
-            sim = 'star_' + star + '_dist_' + str(i) + network + '.vul'
-        rain_rate = 0.
-        end_time = 0.
-        sim_file = os.path.join(output_folder, sim)
-        with open(sim_file, 'rb') as handle:
-            data = pickle.load(handle)
-        rain_rate = rainout(data)
-        end_time = data['variable']['t']
-        if os.path.isfile(sim[:-4]+'_rerun.vul'):
-            sim = sim[:-4]+'_rerun.vul'
-            with open(os.path.join(output_folder, sim), 'rb') as handle:
-                data = pickle.load(handle)
-            rain_rate = rainout(data)
-            end_time += data['variable']['t']
-        rain_list.append(rain_rate)
-        end_time_list.append(end_time)
-#%%
-plot_tricontour(Seff_list, Teff_list, rain_list, u'S$_{eff}$ [S$_\u2295$]', r'T$_{eff}$ [K]', r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_tricontour.pdf')        
-plot_tricontour(Seff_list, Teff_list, end_time_list, u'S$_{eff}$ [S$_\u2295$]', r'T$_{eff}$ [K]', 'End-of-simulation time [s]', figname = 'end_time/endtime_conjoint_S_eff'+network+'_tricontour.pdf')        
-# %%
-# 2D histogram version
-# uses the same data as the tricontour version
-plot_hist2d(Seff_list, Teff_list, rain_list, 10, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_hist2D.pdf')
-plot_hist2d(Seff_list, Teff_list, end_time_list, 10, 'End-of-simulation time [s]', figname = 'end_time/endtime_conjoint_S_eff'+network+'_hist2D.pdf', met_flux = False)
-# %%
-# 3D plot
+# 3D data
 data_3d = read_pandas(os.path.join(scratch, 'star_dist_CtoO_rain.txt'))
+#%% 3D plot
 pr.reset_plt(ticksize = 11, fontsize = 13, fxsize = 9, fysize = 6, grid = False)
 plot_3d(x = np.array(data_3d['Teff']), y = np.array(data_3d['Seff']), z = np.array(data_3d['CtoO']), v = np.array(data_3d['HCN_rain']), x_label = r'T$_{eff}$ [K]', y_label = u'S$_{eff}$ [S$_\u2295$]', z_label = 'C/O', figsave = True)
 #%%
+# meshdrid plots for base C/O value
+Seff_mesh, Teff_mesh, HCN_rain_mesh, edge_mesh = get_meshgrid_base(data_3d)
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
-# meshdrid plots along C/O ratios
+plot_meshgrid(Seff_mesh, Teff_mesh, HCN_rain_mesh, r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', edgec = sum(edge_mesh,[]), figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'.pdf')
+plot_meshgrid_with_normed(Seff_mesh, Teff_mesh, HCN_rain_mesh, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed.pdf')
+plot_meshgrid_with_normed(Seff_mesh, Teff_mesh, HCN_rain_mesh, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_lognorm.pdf', norm = mc.LogNorm())
+plot_meshgrid_with_normed(Seff_mesh, Teff_mesh, HCN_rain_mesh, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_better.pdf', vmin = 1)
+plot_meshgrid_with_normed(Seff_mesh, Teff_mesh, HCN_rain_mesh, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_worse.pdf', vmax = 1)
+#%%
+# meshgrid plot for all C/O values
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 plot_meshgrid_many(data_3d, val_label = r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figsave = True, rain_type = 'HCN_rain')
 #%%
 # condensed and histogram version
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 plot_rainout_condensed(data_3d, figsave = True, rain_type = 'HCN_rain')
 plot_hist(data_3d, figsave = True)
-# %%
+#%%
+# probability plots (need normalisation!!! and flat prior...)
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
+p = gauss2d(Seff_mesh, Teff_mesh, 0.72, 5680, 0.072, 56.8) # figure out sigmas
+plot_prior(Seff_mesh, Teff_mesh, p, 'Probability', edgec = sum(edge_mesh,[]), figname = 'probability/gaussian_prior.pdf')
+plot_meshgrid_prob(Seff_mesh, Teff_mesh, HCN_rain_mesh, p, 'Probability', edgec = sum(edge_mesh,[]), figname = 'probability/gaussian_posterior.pdf')
+
+p = cauchy2d(Seff_mesh, Teff_mesh, 0.72, 5680, 1) # figure out sigmas
+plot_prior(Seff_mesh, Teff_mesh, p, 'Probability', edgec = sum(edge_mesh,[]), figname = 'probability/cauchy_prior.pdf')
+plot_meshgrid_prob(Seff_mesh, Teff_mesh, HCN_rain_mesh, p, 'Probability', edgec = sum(edge_mesh,[]), figname = 'probability/cauchy_posterior.pdf')
