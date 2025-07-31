@@ -53,7 +53,7 @@ with open(base_sim, 'rb') as handle:
     data_archean = pickle.load(handle)
 
 # setting up plotting labels
-archean_params = {'BC': 1.2e24 * 2.3/3.42, 'CtoO': 0.5143, 'star': 5600., 'dist': 1., 'local': 0, 'pressure': 5e-8}
+archean_params = {'BC': 1.2e24 * 2.3/3.42, 'CtoO': 0.5143, 'star': 5680, 'dist': 1.}
 xlab = {'BC': r'$\dot{M}_{del}$ [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]', 'dist': 'Distance [AU]'}
 xscale = {'BC': 'log', 'CtoO': 'linear', 'star': 'linear', 'dist': 'linear'}
 legend_lab = {'BC': r'$\dot{{M}}_{{del}}$ = {:.2e} g/Gyr', 'CtoO': 'C/O = {:.3f}', 'star': r'T$_{{eff}}$ = {} K', 'dist': 'a = {:.3f} AU'}
@@ -61,9 +61,9 @@ archean_marker = 's' #'$\u2295$'
 archean_colour = 'k'
 # pressure levels for reaction rate plots
 pressure_levels = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
-# sim numbers to plot for vertical mixing ratio profiles, BC not needed
-plot_idx = {'CtoO': [0, 6, 12, 14], 'star': [0, 7, 11, 12], 'dist': [0, 6, 13, 14]}
-plot_ls = ['-', '--', '-.', ':']
+# sim numbers to plot selected, detailed reaction rates, BC not needed
+plot_idx = {'CtoO': ['archean', 4, 8, 12, 14], 'star': [0, 7, 'archean', 11, 12], 'dist': [0, 'archean', 8, 13, 14]}
+plot_ls = ['-', '--', '-.', ':', (0, (1, 7))]
 #%%
 def lin(x, a, b):
     return a*x + b
@@ -273,11 +273,20 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figsave):
 
 def plot_vertical_many(dat_list, param_list, sim_type, figsave, species_list = ['CH4', 'O', 'OH', 'CN', 'HNCO', 'H2CN', 'C2H3', 'C2H3CN', 'C2H6']):
     fig, ax = plt.subplots(tight_layout = True)
-    ax.set_prop_cycle(color = plt.get_cmap('tab10').colors) 
-    plot_leg = [Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(param_list[plot_idx[sim_type][i]])) for i in range(len(plot_idx[sim_type]))] # linestyle legends
+    ax.set_prop_cycle(color = plt.get_cmap('tab10').colors)
+    plot_leg = [] # linestyle legends
     for i,idx in enumerate(plot_idx[sim_type]):
+        if idx == 'archean': # if it is the archean simulation, use the archean data
+            plot_leg.append(Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(archean_params[sim_type]) + ' (Archean)')) # Archean legend
+        else:
+            plot_leg.append(Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(param_list[idx]))) # other legends
+    for i,idx in enumerate(plot_idx[sim_type]):
+        if idx == 'archean': # if it is the archean simulation, use the archean data
+            d = data_archean
+        else:
+            d = dat_list[idx]
         for sp in species_list:
-            p = ax.plot(dat_list[idx]['variable']['ymix'][:, dat_list[idx]['variable']['species'].index(sp)], dat_list[idx]['atm']['pco']/1e6, linestyle = plot_ls[i])
+            p = ax.plot(d['variable']['ymix'][:, d['variable']['species'].index(sp)], d['atm']['pco']/1e6, linestyle = plot_ls[i])
             if i == 0: # only first loop needs to be added to the legend
                 plot_leg.append(Line2D([], [], linestyle = '-', color = p[0].get_color(), label = sp)) # species legends
         ax.set_prop_cycle(color = plt.get_cmap('tab10').colors) # resetting the colour cycle
@@ -287,7 +296,7 @@ def plot_vertical_many(dat_list, param_list, sim_type, figsave, species_list = [
     ax.set_ylabel('Pressure [bar]')
     ax.set_yscale('log')
     ax.invert_yaxis()
-    fig.legend(handles = plot_leg, bbox_to_anchor = (1.23, 0.87))
+    fig.legend(handles = plot_leg, bbox_to_anchor = (1.34, 0.87))
     if figsave:
         fig.savefig(plot_folder + 'vertical_profiles/many'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
         
@@ -508,9 +517,15 @@ def plot_tot_rate_selected(dat_list, param_list, sim_type, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True)
     ax.set_prop_cycle(color = plt.get_cmap('tab10').colors, linestyle = ['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--']) 
     for i,idx in enumerate(plot_idx[sim_type]):
-        pressure = dat_list[idx]['atm']['pco']/1e6
-        _, _, tot_rate = get_total_reaction_rate(dat_list[idx], diag_sp)
-        ax.plot(tot_rate, pressure, label = legend_lab[sim_type].format(param_list[idx]))
+        if idx == 'archean': # if it is the archean simulation, use the archean data
+            d = data_archean
+            leg = legend_lab[sim_type].format(archean_params[sim_type]) + ' (Archean)' # adding Archean to the legend
+        else:
+            d = dat_list[idx]
+            leg = legend_lab[sim_type].format(param_list[idx])
+        pressure = d['atm']['pco']/1e6
+        _, _, tot_rate = get_total_reaction_rate(d, diag_sp)
+        ax.plot(tot_rate, pressure, linestyle = plot_ls[i], label = leg)
         
     ax.invert_yaxis()
     ax.set_yscale('log')
@@ -542,11 +557,20 @@ def plot_prod_dest(dat_list, param_list, sim_type, diag_sp, figsave):
 
 def plot_prod_dest_selected(dat_list, param_list, sim_type, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True)
-    plot_leg = [Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(param_list[plot_idx[sim_type][i]])) for i in range(len(plot_idx[sim_type]))] # linestyle legends
+    plot_leg = []
+    for i,idx in enumerate(plot_idx[sim_type]):
+        if idx == 'archean':
+            plot_leg.append(Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(archean_params[sim_type]) + ' (Archean)')) # Archean legend
+        else:
+            plot_leg.append(Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(param_list[idx])))
     plot_leg += [Line2D([], [], linestyle = '-', color = 'red', label = 'Production'), Line2D([], [], linestyle = '-', color = 'black', label = 'Destruction')] # species legends
     for i,idx in enumerate(plot_idx[sim_type]):
-        pressure = dat_list[idx]['atm']['pco']/1e6
-        p_rate, d_rate, _ = get_total_reaction_rate(dat_list[idx], diag_sp)
+        if idx == 'archean': # if it is the archean simulation, use the archean data
+            d = data_archean
+        else:
+            d = dat_list[idx]
+        pressure = d['atm']['pco']/1e6
+        p_rate, d_rate, _ = get_total_reaction_rate(d, diag_sp)
         ax.plot(p_rate, pressure, color = 'r', linestyle = plot_ls[i])
         ax.plot(d_rate, pressure, color = 'k', linestyle = plot_ls[i])    
     ax.invert_yaxis()
@@ -554,7 +578,7 @@ def plot_prod_dest_selected(dat_list, param_list, sim_type, diag_sp, figsave):
     ax.set_xscale('log')
     ax.set_ylabel('Pressure [bar]')
     ax.set_xlabel(r'k [cm$^3$s$^{-1}$]')
-    fig.legend(handles=plot_leg, bbox_to_anchor = (0.37,0.97))
+    fig.legend(handles=plot_leg, bbox_to_anchor = (0.47,0.97))
     if figsave:
         fig.savefig(plot_folder + 'prod_dest/selected_net'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
         
@@ -740,11 +764,19 @@ def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, net_lower,
 def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, figsave, sim_type):
     legend_xanchors = [0.5, 0.5] # otherwise legends are all over the place, not sure why...
     legend_yanchors = [0.666, 0.323]
+    prod_dest_archean, _ = get_prod_dest_rates(data_archean, diag_sp)
     fig, ax = plt.subplots(ncols=len(plot_idx[sim_type]), nrows=3, sharey = True, tight_layout = True)
     for i,idx in enumerate(plot_idx[sim_type]):
-        prod_dest, _ = get_prod_dest_rates(dat_list[idx], diag_sp)
-        prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']}
-        prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in rplot['Destruction']}
+        if idx == 'archean': # if it is the archean simulation, use the archean data
+            prod_dest = {'Production': {}, 'Destruction': {}}
+            prod_dest['Production'] = {key: prod_dest_archean['Production'][key] for key in prod_dest_archean['Production'] if key in rplot['Production']}
+            prod_dest['Destruction'] = {key: prod_dest_archean['Destruction'][key] for key in prod_dest_archean['Destruction'] if key in rplot['Destruction']}
+            d = data_archean
+        else:
+            prod_dest, _ = get_prod_dest_rates(dat_list[idx], diag_sp)
+            prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']}
+            prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in rplot['Destruction']}
+            d = dat_list[idx]
         labels = [r'$X_{prod}$', r'$X_{dest}$', r'$k_{tot}$ [cm$^{-3}$s$^{-1}$]']
         for j,rate_type in enumerate(['Production', 'Destruction', 'total']):
             if rate_type != 'total':
@@ -752,24 +784,28 @@ def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, f
                     if k in ['total', 'xlim_min', 'xlim_max']:
                         continue
                     else:
-                        ax[j,i].plot(v/prod_dest[rate_type]['total'], dat_list[idx]['atm']['pco']/1e6, label = k)
+                        ax[j,i].plot(v/prod_dest[rate_type]['total'], d['atm']['pco']/1e6, label = k)
                 if j in [0,1] and i == 0:
                     handles, leg_labels = ax[j,i].get_legend_handles_labels()
                     fig.tight_layout(h_pad = 4.2) # use if legends are below subplots
                     fig.legend(handles, leg_labels, loc = 'center', bbox_to_anchor = (legend_xanchors[j], legend_yanchors[j]), ncol = 3)
                 ax[j,i].set_xlim(-0.02,1.02)
             else:
-                ax[j,i].plot(prod_dest['Production']['total'], dat_list[idx]['atm']['pco']/1e6, label = 'Production', c = 'r', ls = '-')
-                ax[j,i].plot(prod_dest['Destruction']['total'], dat_list[idx]['atm']['pco']/1e6, label = 'Destruction', c = 'k', ls = '-')
+                ax[j,i].plot(prod_dest['Production']['total'], d['atm']['pco']/1e6, label = 'Production', c = 'r', ls = '-')
+                ax[j,i].plot(prod_dest['Destruction']['total'], d['atm']['pco']/1e6, label = 'Destruction', c = 'k', ls = '-')
                 ax[j,i].set_xlim(3e-5, 1e4)
                 ax[j,i].set_xscale('log')
                 ax[j,i].axvline(0, color = 'r', linestyle = '--')
                 if i == 0:
-                    ax[j,i].legend(loc = 'upper left')
+                    ax[j,i].legend(loc = 'lower right')
             ax[j,i].set_yscale('log')
             ax[j,0].set_ylabel('Pressure [bar]')
             ax[j,i].set_xlabel(labels[j])
-        ax[0,i].set_title(legend_lab[sim_type].format(param_list[idx]))
+            ax[j,i].text(0.03, 0.93, '{})'.format(chr(97+j*4+i%4)), transform=ax[j,i].transAxes)
+        if idx == 'archean': # add (Archean) to the title if it is the Archean simulation
+            ax[0,i].set_title(legend_lab[sim_type].format(archean_params[sim_type]) + ' (Archean)')       
+        else:
+            ax[0,i].set_title(legend_lab[sim_type].format(param_list[idx]))
     ax[0,0].invert_yaxis() # due to sharey, only need to reverse one
     if figsave:
         fig.savefig(plot_folder + 'prod_dest/selected_normed_detailed'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
@@ -860,6 +896,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
             ax[i+0].set_yscale('log')
         ax[i+0].set_xscale(xscale[st])
         ax[i+0].set_xlabel(xlab[st])
+        ax[i+0].text(0.03, 0.93, '{})'.format(chr(97+i+0)), transform=ax[i+0].transAxes)
         # plotting HCN and condensed water vertical structure and P-T profile (only star and dist simulations) in first, second and third columns, respectively
         for d,p in zip(dat_list,param_list):
             ax[i+1].plot(d['variable']['ymix'][:, d['variable']['species'].index('HCN')], d['atm']['pco']/1e6, label = legend_lab[st].format(p))
@@ -872,6 +909,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+1].set_ylabel('Pressure [bar]')
         ax[i+1].invert_yaxis()
         ax[i+1].set_xlim((1e-15,1e-2))
+        ax[i+1].text(0.03, 0.93, '{})'.format(chr(97+i+1)), transform=ax[i+1].transAxes)
         #ax[i+1].legend()
         ax[i+2].set_xscale('log')
         ax[i+2].set_xlabel('X(cloud)')
@@ -880,6 +918,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+2].set_ylabel('Pressure [bar]')
         ax[i+2].set_ylim((1e-4,1e0)) # zoom on relevant pressure interval for clouds
         ax[i+2].invert_yaxis()
+        ax[i+2].text(0.03, 0.93, '{})'.format(chr(97+i+2)), transform=ax[i+2].transAxes)
         # plotting the fixed T-P profiles for BC and CtoO simulations and setting scales and labels for all
         if sim_types[i//4] == 'BC' or sim_types[i//4] == 'CtoO':
             ax[i+3].plot(data_archean['atm']['Tco'], data_archean['atm']['pco']/1e6)
@@ -888,6 +927,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+3].set_ylabel('Pressure [bar]')
         ax[i+3].invert_yaxis()
         ax[i+3].set_xlim((125,385))
+        ax[i+3].text(0.03, 0.93, '{})'.format(chr(97+i+3)), transform=ax[i+3].transAxes)
         handles, labels = ax[i+1].get_legend_handles_labels()
         fig.tight_layout(h_pad = 5.8) # use if legends are below subplots
         fig.legend(handles, labels, loc = 'center', bbox_to_anchor = (legend_xanchors[i//4], legend_yanchors[i//4]), ncol = 5)#, ncols = 2) took out for legends on side, also use upper right for loc
