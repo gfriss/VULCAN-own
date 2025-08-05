@@ -763,7 +763,7 @@ def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, net_lower,
             
 def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, figsave, sim_type):
     legend_xanchors = [0.5, 0.5] # otherwise legends are all over the place, not sure why...
-    legend_yanchors = [0.666, 0.323]
+    legend_yanchors = [0.666, 0.327]
     prod_dest_archean, _ = get_prod_dest_rates(data_archean, diag_sp)
     fig, ax = plt.subplots(ncols=len(plot_idx[sim_type]), nrows=3, sharey = True, tight_layout = True)
     for i,idx in enumerate(plot_idx[sim_type]):
@@ -777,9 +777,10 @@ def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, f
             prod_dest['Production'] = {key: prod_dest['Production'][key] for key in prod_dest['Production'] if key in rplot['Production']}
             prod_dest['Destruction'] = {key: prod_dest['Destruction'][key] for key in prod_dest['Destruction'] if key in rplot['Destruction']}
             d = dat_list[idx]
-        labels = [r'$X_{prod}$', r'$X_{dest}$', r'$k_{tot}$ [cm$^{-3}$s$^{-1}$]']
+        labels = [r'$X_{prod}$', r'$X_{dest}$', r'$k_{net}$ [cm$^{-3}$s$^{-1}$]']
         for j,rate_type in enumerate(['Production', 'Destruction', 'total']):
-            if rate_type != 'total':
+            if rate_type != 'total': # plotting the contribution of important reactions
+                ax[j,i].set_prop_cycle(color = plt.get_cmap('tab10').colors, linestyle = ['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--']) # setting the color cycle for the lines
                 for k,v in prod_dest[rate_type].items():
                     if k in ['total', 'xlim_min', 'xlim_max']:
                         continue
@@ -790,7 +791,7 @@ def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, f
                     fig.tight_layout(h_pad = 4.2) # use if legends are below subplots
                     fig.legend(handles, leg_labels, loc = 'center', bbox_to_anchor = (legend_xanchors[j], legend_yanchors[j]), ncol = 3)
                 ax[j,i].set_xlim(-0.02,1.02)
-            else:
+            else: # plotting the net rates
                 ax[j,i].plot(prod_dest['Production']['total'], d['atm']['pco']/1e6, label = 'Production', c = 'r', ls = '-')
                 ax[j,i].plot(prod_dest['Destruction']['total'], d['atm']['pco']/1e6, label = 'Destruction', c = 'k', ls = '-')
                 ax[j,i].set_xlim(3e-5, 1e4)
@@ -798,10 +799,19 @@ def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, f
                 ax[j,i].axvline(0, color = 'r', linestyle = '--')
                 if i == 0:
                     ax[j,i].legend(loc = 'lower right')
+                ax_t = ax[j,i].twiny() # to add the total rate
+                ax_t.plot(prod_dest['Production']['total']-prod_dest['Destruction']['total'], d['atm']['pco']/1e6, c = 'gray', ls = '--')
+                ax_t.set_xlim(-1e3, 1e3)
+                ax_t.set_xscale('symlog')
+                ax_t.set_xlabel(r'$k_{tot}$ [cm$^{-3}$s$^{-1}$]', labelpad = 0, color = 'gray')
+                ax_t.axvline(0, color = 'gray', linestyle = ':')
+                ax_t.tick_params(axis="x",direction="in", pad=-25, colors = 'gray')
+                ax_t.set_xticks([-1e2, -1e1, -1e0, 1e0, 1e1, 1e2])
+                ax_t.grid(False)
             ax[j,i].set_yscale('log')
             ax[j,0].set_ylabel('Pressure [bar]')
             ax[j,i].set_xlabel(labels[j])
-            ax[j,i].text(0.03, 0.93, '{})'.format(chr(97+j*4+i%4)), transform=ax[j,i].transAxes)
+            ax[j,i].text(0.03, 0.93, '{})'.format(chr(97+j*5+i%5)), transform=ax[j,i].transAxes)
         if idx == 'archean': # add (Archean) to the title if it is the Archean simulation
             ax[0,i].set_title(legend_lab[sim_type].format(archean_params[sim_type]) + ' (Archean)')       
         else:
