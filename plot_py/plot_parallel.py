@@ -271,32 +271,45 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figsave):
     if figsave:
         fig.savefig(plot_folder + 'vertical_profiles/'+spec+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
 
-def plot_vertical_many(dat_list, param_list, sim_type, figsave, species_list = ['CH4', 'O', 'OH', 'CN', 'HNCO', 'H2CN', 'C2H3', 'C2H3CN', 'C2H6']):
-    fig, ax = plt.subplots(tight_layout = True)
-    ax.set_prop_cycle(color = plt.get_cmap('tab10').colors)
-    plot_leg = [] # linestyle legends
+def plot_vertical_many(dat_list, param_list, sim_type, figsave, species_prod = ['CH4', 'HNCO', 'H2CN', 'C2H3CN', 'C2H6', 'CN', 'CH', 'N', 'NO'], species_dest = ['H', 'O', 'OH', 'C2H3', 'HCN']):
+    fig, ax = plt.subplots(ncols = 2, tight_layout = True, sharex = True, sharey = True)
+    ax = ax.flatten()
+    ax[0].set_prop_cycle(color = plt.get_cmap('tab10').colors)
+    ax[1].set_prop_cycle(color = plt.get_cmap('tab10').colors)
+    plot_leg, prod_leg, dest_leg = [], [], [] # linestyle and species legends
     for i,idx in enumerate(plot_idx[sim_type]):
         if idx == 'archean': # if it is the archean simulation, use the archean data
             plot_leg.append(Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(archean_params[sim_type]) + ' (Archean)')) # Archean legend
         else:
             plot_leg.append(Line2D([], [], linestyle = plot_ls[i], color = 'black', label = legend_lab[sim_type].format(param_list[idx]))) # other legends
+    plot_leg.append(Line2D([], [], color = 'white')) # dummy line to fill the legend so species are completely separated to the two sides of parameter values
     for i,idx in enumerate(plot_idx[sim_type]):
         if idx == 'archean': # if it is the archean simulation, use the archean data
             d = data_archean
         else:
             d = dat_list[idx]
-        for sp in species_list:
-            p = ax.plot(d['variable']['ymix'][:, d['variable']['species'].index(sp)], d['atm']['pco']/1e6, linestyle = plot_ls[i])
+        for sp in species_prod:
+            p = ax[0].plot(d['variable']['ymix'][:, d['variable']['species'].index(sp)], d['atm']['pco']/1e6, linestyle = plot_ls[i])
             if i == 0: # only first loop needs to be added to the legend
-                plot_leg.append(Line2D([], [], linestyle = '-', color = p[0].get_color(), label = sp)) # species legends
-        ax.set_prop_cycle(color = plt.get_cmap('tab10').colors) # resetting the colour cycle
-    ax.set_xscale('log')
-    ax.set_xlabel('Mixing ratio of species')
-    ax.set_xlim(1e-20, 1e-1)
-    ax.set_ylabel('Pressure [bar]')
-    ax.set_yscale('log')
-    ax.invert_yaxis()
-    fig.legend(handles = plot_leg, bbox_to_anchor = (1.34, 0.87))
+                prod_leg.append(Line2D([], [], linestyle = '-', color = p[0].get_color(), label = sp)) # species legends
+        for sp in species_dest:
+            p = ax[1].plot(d['variable']['ymix'][:, d['variable']['species'].index(sp)], d['atm']['pco']/1e6, linestyle = plot_ls[i])
+            if i == 0: # only first loop needs to be added to the legend
+                dest_leg.append(Line2D([], [], linestyle = '-', color = p[0].get_color(), label = sp)) # species legends
+        ax[0].set_prop_cycle(color = plt.get_cmap('tab10').colors) # resetting the colour cycle
+        ax[1].set_prop_cycle(color = plt.get_cmap('tab10').colors)
+    ax[0].set_xscale('log')
+    ax[0].set_xlabel('Mixing ratio of species')
+    ax[1].set_xlabel('Mixing ratio of species')
+    ax[0].set_xlim(1e-20, 1e-1)
+    ax[0].set_ylabel('Pressure [bar]')
+    ax[0].set_yscale('log')
+    ax[0].invert_yaxis()
+    ax[0].text(0.03, 0.93, 'a)', transform=ax[0].transAxes)
+    ax[1].text(0.03, 0.93, 'b)', transform=ax[1].transAxes)
+    fig.legend(handles = prod_leg+plot_leg+dest_leg, bbox_to_anchor = (0.9, 0.03), ncol = 7)
+    #fig.legend(handles = prod_leg, bbox_to_anchor = (0.385, 0.03), ncol = 3)
+    #fig.legend(handles = dest_leg, bbox_to_anchor = (0.855, 0.03), ncol = 2)
     if figsave:
         fig.savefig(plot_folder + 'vertical_profiles/many'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
         
@@ -1023,7 +1036,6 @@ plot_vertical_n(data_CtoO, 'C2H3', C_to_O, 'CtoO', figsave = True)
 plot_vertical_n(data_CtoO, 'C2H6', C_to_O, 'CtoO', figsave = True)
 plot_vertical_n(data_CtoO, 'CH4', C_to_O, 'CtoO', figsave = True)
 plot_vertical_n(data_CtoO, 'CH3', C_to_O, 'CtoO', figsave = True)
-plot_vertical_many(data_CtoO, C_to_O, 'CtoO', True)
 plot_end_time(data_CtoO, figsave = True, sim_type = 'CtoO')
 #plot_evo_layer(data_CtoO, C_to_O, 'HCN', 0, figsave = True)
 plot_convergence(data_CtoO, figsave = True, sim_type = 'CtoO')
@@ -1054,7 +1066,6 @@ plot_vertical_n(data_star, 'C2H3', T_eff, 'star', figsave = True)
 plot_vertical_n(data_star, 'C2H6', T_eff, 'star', figsave = True)
 plot_vertical_n(data_star, 'CH4', T_eff, 'star', figsave = True)
 plot_vertical_n(data_star, 'CH3', T_eff, 'star', figsave = True)
-plot_vertical_many(data_star, T_eff, 'star', True)
 plot_end_time(data_star, figsave = True, sim_type = 'star')
 plot_evo_layer(data_star, T_eff, 'HCN', 0, figsave = True, sim_type = 'star')
 plot_convergence(data_star, figsave = True, sim_type = 'star')
@@ -1087,7 +1098,6 @@ plot_vertical_n(data_dist, 'C2H3', a_list, 'dist', figsave = True)
 plot_vertical_n(data_dist, 'C2H6', a_list, 'dist', figsave = True)
 plot_vertical_n(data_dist, 'CH4', a_list, 'dist', figsave = True)
 plot_vertical_n(data_dist, 'CH3', a_list, 'dist', figsave = True)
-plot_vertical_many(data_dist, a_list, 'dist', True)
 plot_end_time(data_dist, figsave = True, sim_type = 'dist')
 plot_evo_layer(data_dist, a_list, 'HCN', 0, figsave = True, sim_type = 'dist')
 plot_convergence(data_dist, figsave = True, sim_type = 'dist')
@@ -1100,6 +1110,12 @@ plot_prod_dest(data_dist, a_list, 'dist', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_dist, a_list, 'dist', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_dist, a_list, 'dist', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_selected(data_dist, a_list, 'dist', 'HCN', True)
+#%%
+# vetical mixing ratio plots for chosen prod and dest species
+pr.reset_plt(ticksize = 14, fontsize = 16, fxsize = 16, fysize = 8)
+plot_vertical_many(data_CtoO, C_to_O, 'CtoO', True)
+plot_vertical_many(data_star, T_eff, 'star', True)
+plot_vertical_many(data_dist, a_list, 'dist', True)
 #%%
 # reaction rate plots
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 10)
