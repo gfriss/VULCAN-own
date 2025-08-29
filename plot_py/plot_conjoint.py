@@ -31,7 +31,9 @@ network = '_ncho'
 nowash = '_nowash' # no washout case
 archean_colour = 'k'
 archean_file = os.path.join(scratch, 'output', 'archean'+network+nowash+'.vul')
-
+with open(archean_file, 'rb') as handle:
+    data_archean = pickle.load(handle)
+    
 min_mass_del = 4e20 * 1e-6 # g/yr, minimum mass delivery rate from kg/Gyr to g/yr
 max_mass_del = 1e22 * 1e-6 # g/yr, maximum mass delivery rate from kg/Gyr to g/yr
 met_hcn = 2472 # HCN meteoritic content in nmol/g by Smith et al. 2019
@@ -215,14 +217,17 @@ def get_meshgrid_base(dat):
     x = np.array(dat.Seff[dat.CtoO == base_CtoO]).reshape(13,15)
     y = np.array(dat.Teff[dat.CtoO == base_CtoO]).reshape(13,15)
     z = np.array(dat.HCN_rain[dat.CtoO == base_CtoO]).reshape(13,15)
-    return x, y, z
+    e = np.full(shape=(13,15), fill_value='none')
+    e[9,4] = archean_colour # the Archean Earth is always at the same position in the meshgrid
+    e = e.flatten()
+    return x, y, z, e
 
 def get_meshgrid_many(dat, idx):
     ''' Takes the data from the pandas dataframe and returns the meshgrid for the base/minimum C/O value, as pandas dataframe loops through that first).
         It returns the Seff, Teff, HCN rainout rate and edge colours for the meshgrid plot.'''
-    x = np.array(dat.Seff[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
-    y = np.array(dat.Teff[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
-    z = np.array(dat.HCN_rain[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
+    x = np.array(dat.Seff[round(dat.CtoO) == round(dat.CtoO[idx])]).reshape(13,15)
+    y = np.array(dat.Teff[round(dat.CtoO) == round(dat.CtoO[idx])]).reshape(13,15)
+    z = np.array(dat.HCN_rain[round(dat.CtoO) == round(dat.CtoO[idx])]).reshape(13,15)
     e = np.full(shape=(13,15), fill_value='none')
     e[9,4] = archean_colour # the Archean Earth is always at the same position in the meshgrid
     return x, y, z, e
@@ -256,7 +261,7 @@ def plot_meshgrid_many(dat, val_label, figsave, rain_type = 'HCN_rain', met_flux
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'out_many'+network+'.pdf'), bbox_inches='tight')
     
 def plot_rainout_condensed(dat, figsave, rain_type = 'HCN_rain', met_flux = True):
-    ''' Takes the date from the pandas dataframe, then creates one plot that has the rainout rate information condensed.
+    ''' Takes data from a pandas dataframe, then creates one plot that has the rainout rate information condensed.
         The y axis is the rainout rate (optionally with horizontal lines for the meteoritic delivery flux).
         The x axis is one of the three parameters (C/O), while marker size and colur are controlled by the other two parameters:
         The smaller the stellar effective temperature, the smaller the markersize + different marker for different stellar type; 
@@ -279,7 +284,7 @@ def plot_rainout_condensed(dat, figsave, rain_type = 'HCN_rain', met_flux = True
     cbar.set_label(u'S$_{eff}$ [S$_\u2295$]')
     if met_flux:
         #ax.axhline(min_flux_met, c = 'k', lw = 2, ls = '--')
-        ax.axhline(max_flux_met, c = 'k', lw = 2, ls = '--')
+        ax.axhline(max_flux_met, c = 'gray', lw = 2, ls = '--')
     if figsave != None:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_condensed'+network+'.pdf'), bbox_inches='tight')
 
@@ -303,10 +308,50 @@ def plot_hist(df, bins = 50, figsave = False, rain_type = 'HCN_rain', met_flux =
     ax.legend()
     if figsave != None:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_hist.pdf'), bbox_inches='tight')     
+
+def plot_meshgrid_condensed(data, rain_type = 'HCN_rain', figsave = False):
+    fig, ax = plt.subplots(tight_layout = True, ncols = 2)
+    ax = ax.flatten()
+    cmap = plt.get_cmap()
+    cmap.set_under('none')
+    # first doing the meshgrid for the base C/O value
+    x, y, z, e = get_meshgrid_base(data)
+    vmin = np.nanmin(z)
+    vmin = 0.9 * np.min([vmin, min_flux_met])
+    cm = ax[0].pcolormesh(x, y, z, cmap = cmap, norm = mc.LogNorm(vmin=vmin))
+    ax[0].pcolormesh(x, y, z, edgecolors=e, facecolors='none', lw = 2)
+    #ax[0].add_patch(plt.Rectangle(((x[9,4]+x[9,3])/2, y[9,4]), x[9,5]-x[9,4], y[10,4]-y[9,4], fc='none', edgecolor=archean_colour, lw=2, clip_on = False)) # Archean Earth
+    cbar = plt.colorbar(cm, ax = ax[0], label = rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
+    #cbar.set_label('{} rainout rate [kg m$^{-2}$ yr$^{-1}]'.format(rain_type[:-5]))
+    ax[0].set_ylabel(r'T$_{eff}$ [K]')
+    ax[0].set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
+    ax[0].invert_xaxis()
+    # then the condensed plot for all C/O values
+    seff_min, seff_max = np.min(data.Seff), np.max(data.Seff)
+    plot_leg = [] 
+    for st,marker in star_marker.items(): # loop through the stellar types and corresponding markers
+        plot_leg.append(Line2D([0], [0], marker = marker, color = 'k', label = '{} star'.format(st), markersize = 6, linestyle = 'None'))
+        dat_st = data[data['stellar_type'] == st]
+        x = np.array(dat_st.CtoO)
+        y = np.array(dat_st[rain_type])
+        cm = ax[1].scatter(x, y, s = dat_st.marker_size, c = dat_st.Seff, marker = marker, vmin = seff_min, vmax = seff_max)
+    ax[1].set_ylabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
+    ax[1].set_xlabel('C/O')
+    ax[1].set_yscale('log')
+    ax[1].legend(handles = plot_leg, loc = 'upper right')
+    plt.colorbar(cm, ax = ax[1], label = u'S$_{eff}$ [S$_\u2295$]')
+    # add the meteoritic flux lines for both plots
+    cbar.ax.axhline(max_flux_met, c = 'gray', lw = 2)
+    ax[1].axhline(max_flux_met, c = 'gray', lw = 2, ls = '--', label = 'Maximum meteoritic flux')
+    # add median and archean values for the second plot
+    ax[1].axhline(np.nanmedian(z), c = 'pink', ls = '--', lw = 2, label = 'Median')
+    ax[1].axhline(rainout(data_archean), c = archean_colour, lw = 2, ls = '--', label = 'Archean Earth')
+    # and put letters on plots
+    ax[0].text(0.03, 0.93, 'a)', transform=ax[0].transAxes)
+    ax[1].text(0.03, 0.93, 'b)', transform=ax[1].transAxes)
+    if figsave:
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'meshgrid_condensed'+network+'.pdf'), bbox_inches='tight')
 #%%
-# Archean Earth data
-with open(archean_file, 'rb') as handle:
-    data_archean = pickle.load(handle)
 archean_rain = rainout(data_archean)
 # 3D data
 data_3d = read_pandas(os.path.join(scratch, 'star_dist_CtoO_rain.txt'))
@@ -326,6 +371,10 @@ plot_meshgrid_with_normed(Seff_mesh, Teff_mesh, HCN_rain_mesh, archean_rain, 'Re
 # meshgrid plot for all C/O values
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 plot_meshgrid_many(data_3d, val_label = r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figsave = True, rain_type = 'HCN_rain')
+#%%
+# meshgrid and condensed plot side by side
+pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 16, fysize = 6, grid = False)
+plot_meshgrid_condensed(data_3d, rain_type = 'HCN_rain', figsave = True)
 #%%
 # condensed and histogram version
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
