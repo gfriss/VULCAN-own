@@ -48,7 +48,7 @@ for star,a_min,a_max in zip(star_df.Name, star_df.a_min, star_df.a_max):
 check_conv = True
 # destributing resources, so finding sims that have not been run yet (needed if rerunning after crash or wanting to redistribute)
 sim_done = []
-if os.isfile(os.path.join(scratch, 'star_dist_CtoO_rain.txt')):
+if os.path.isfile(os.path.join(scratch, 'star_dist_CtoO_rain.txt')):
     with open(os.path.join(scratch, 'star_dist_CtoO_rain.txt'), 'r') as f:
         for line in f:
             if line[0].isnumeric():
@@ -65,8 +65,7 @@ for i in range(nsim_total):
     i_CtoO = i%nsim['CtoO'] # which C/O (simply loops through the C/O possibilities)
     if (star_name, i_dist, i_CtoO) not in sim_done:
         sim_not_done.append((star_name, i_dist, i_CtoO))
-#sim_not_done = sim_not_done[::-1]
-sim_per_rank = int(len(sim_not_done) / size) + 1 # this is needed to distribure the tasks between the CPUs, +1 makes sure there will be enough CPUs to run all sims
+sim_per_rank = int(len(sim_not_done) / size) #+ 1 # this is needed to distribure the tasks between the CPUs, +1 makes sure there will be enough CPUs to run all sims
 # ------end of parameter set up-----
 # ------start of simulation loop------
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
