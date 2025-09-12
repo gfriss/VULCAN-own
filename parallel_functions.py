@@ -6,6 +6,11 @@ import pandas as pd
 from collections import defaultdict
 import matplotlib.pyplot as plt
 from scipy.integrate import trapezoid
+import pickle
+import os
+
+scratch = '/scratch/s2555875' # place to store outputs
+
 #%%
 def get_str_number(n):
     ''' This function is used to get the number of digits in a number.'''
@@ -44,6 +49,21 @@ def calc_C_to_O(dat, mixing_file):
             mul = get_element_number(name, 'O')
             O_profile += mul * dat['variable']['y_ini'][:, dat_species.index(name)]
     return np.sum(C_profile) / np.sum(O_profile)
+
+def get_C_to_O_conjoint(nsim, network):
+    ''' Using the above function, calculate the C/O ratio for all runs in the conjoint study.'''
+    C_to_O = []
+    for j in range(nsim['CtoO']):
+        sim_CtoO = 'sim_'
+        if j < 10:
+            sim_CtoO += '0{}_CtoO'.format(j)
+        else:
+            sim_CtoO += '{}_CtoO'.format(j)
+        mixing_file = os.path.join(scratch, 'mixing_files', sim_CtoO + 'mixing.txt')
+        with open(os.path.join(scratch, 'output', sim_CtoO + network + '.vul'), 'rb') as handle:
+            data_CtoO = pickle.load(handle)
+        C_to_O.append(round(calc_C_to_O(data_CtoO, mixing_file), 4)) # round to 4 decimal places to avoid issues with different machines
+    return C_to_O
 
 # BC from meteorite bombardment rate:
 def bar_to_number(x): 
@@ -215,27 +235,23 @@ def get_rad_prof(star):
         rad_file = '/scratch/s2555875/stellar_flux/' + star.lower() + '.txt' # just to make sure it is lower case
     return rad_file
 #%%
-# function for local meteorite effect runs
-def gen_mixing_local(h2_bar, output):
-    ''' Generates new initial mixing ratios and write them into a file compatable with VULCAN.
-        It takes a base mixing ratio than changes the value for CO2, swapping it to CO
-        which will change the C/O ratio.
-        
-        .......'''
-    og_mixing = np.genfromtxt('atm/mixing_table_archean.txt', dtype = None, comments = '#', skip_header = 1, names = True)
-    N2 = og_mixing['N2'] # og was assumed that the partial pressure would be the same as mixing ratio
-    H2O = og_mixing['H2O']
-    CH4 = og_mixing['CH4']
-    O2 = og_mixing['O2']
-    CO2 = og_mixing['CO2']
-    new_total = 1 + h2_bar # total pressure with new H2 amount
-    N2 /= new_total
-    H2O /= new_total
-    CH4 /= new_total
-    O2 /= new_total
-    CO2 /= new_total
-    H2 = np.ones_like(N2) * h2_bar / new_total
-    with open(output, 'w') as f:
-        f.write('# (dyne/cm2)\nPressure  N2  CO2  CH4  O2  H2O  H2\n')
-        for i in range(len(N2)):
-            f.write('{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\n'.format(og_mixing['Pressure'][i],N2[i],CO2[i],CH4[i],O2[i],H2O[i],H2[i]))
+def get_sim_not_done(file, star_df, param_dict, C_to_O, nsim, nsim_total):
+    sim_done = []
+    if os.path.isfile(os.path.join(scratch, file)):
+        with open(os.path.join(scratch, file), 'r') as f:
+            for line in f:
+                if line[0].isnumeric():
+                    bits = line.split()[:3] # keeping Teff, dist and CtoO
+                    star_name = star_df.loc[star_df.T_eff == float(bits[0]), 'Name'].iloc[0]
+                    i_dist = param_dict[star_name].index(float(bits[1]))
+                    i_CtoO = C_to_O.index(float(bits[2]))
+                    sim_done.append((star_name, i_dist, i_CtoO))
+    sim_not_done = []
+    for i in range(nsim_total):
+        i_star = i//(nsim['dist']*nsim['CtoO']) # which star (changes after looped through all distance and C/O possibilities)
+        star_name = star_df.Name.loc[i_star]
+        i_dist = (i//nsim['CtoO'])%nsim['dist'] # which distance (changes after looped through all C/O possibilities and then restarts when all distances are done)
+        i_CtoO = i%nsim['CtoO'] # which C/O (simply loops through the C/O possibilities)
+        if (star_name, i_dist, i_CtoO) not in sim_done:
+            sim_not_done.append((star_name, i_dist, i_CtoO))
+    return sorted(sim_not_done)

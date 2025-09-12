@@ -1121,7 +1121,10 @@ class Integration(object):
         count = para.count
         
         #slope_min = min( np.amin(atm.Kzz)/np.amax(0.1*atm.Hp)**2 , 1.e-8)
-        slope_min = min( np.amin(atm.Kzz/(0.1*atm.Hp[:-1])**2) , 1.e-8)
+        try:
+            slope_min = min( np.amin(atm.Kzz/(0.1*atm.Hp[:-1])**2) , vulcan_cfg.slope_min)
+        except:
+            slope_min = min( np.amin(atm.Kzz/(0.1*atm.Hp[:-1])**2) , 1.e-8)
         slope_min = max(slope_min, 1.e-10)
 
         indx = np.abs(t_time-var.t*st_factor).argmin()    

@@ -153,6 +153,7 @@ nega_cut = -1.
 loss_eps = 1e12 # for using BC
 yconv_cri = 0.01 # for checking steady-state
 slope_cri = 1.e-4
+slope_min = 1.e-8
 yconv_min = 0.1
 flux_cri = 0.1
 flux_atol = 1. # the tol for actinc flux (# photons cm-2 s-1 nm-1)

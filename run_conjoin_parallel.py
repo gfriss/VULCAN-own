@@ -26,19 +26,8 @@ network = '_ncho'
 # ------setting up parameterspace for all runs------
 # star type
 star_df = pf.read_stellar_data(os.path.join(scratch, 'stellar_flux/stellar_params.csv'))
-
-C_to_O = []
-for j in range(nsim['CtoO']):
-    sim_CtoO = 'sim_'
-    if j < 10:
-        sim_CtoO += '0{}_CtoO'.format(j)
-    else:
-        sim_CtoO += '{}_CtoO'.format(j)
-    mixing_file = os.path.join(scratch, 'mixing_files', sim_CtoO + 'mixing.txt')
-    with open(os.path.join(scratch, 'output', sim_CtoO + network + '.vul'), 'rb') as handle:
-        data_CtoO = pickle.load(handle)
-    C_to_O.append(round(pf.calc_C_to_O(data_CtoO, mixing_file), 4)) # round to 4 decimal places to avoid issues with different machines
-        
+# get C/O ratios
+C_to_O = pf.get_C_to_O_conjoint(nsim, network)
 # parameter dictionary of stars and distances, C/O is not inlcuded because it's same all over
 param_dict = {}
 for star,a_min,a_max in zip(star_df.Name, star_df.a_min, star_df.a_max):
@@ -47,25 +36,8 @@ for star,a_min,a_max in zip(star_df.Name, star_df.a_min, star_df.a_max):
 # Boolian to check convergence and rerun if needed
 check_conv = True
 # destributing resources, so finding sims that have not been run yet (needed if rerunning after crash or wanting to redistribute)
-sim_done = []
-if os.path.isfile(os.path.join(scratch, 'star_dist_CtoO_rain.txt')):
-    with open(os.path.join(scratch, 'star_dist_CtoO_rain.txt'), 'r') as f:
-        for line in f:
-            if line[0].isnumeric():
-                bits = line.split()[:3] # keeping Teff, dist and CtoO
-                star_name = star_df.loc[star_df.T_eff == float(bits[0]), 'Name'].iloc[0]
-                i_dist = param_dict[star_name].index(float(bits[1]))
-                i_CtoO = C_to_O.index(float(bits[2]))
-                sim_done.append((star_name, i_dist, i_CtoO))
-sim_not_done = []
-for i in range(nsim_total):
-    i_star = i//(nsim['dist']*nsim['CtoO']) # which star (changes after looped through all distance and C/O possibilities)
-    star_name = star_df.Name.loc[i_star]
-    i_dist = (i//nsim['CtoO'])%nsim['dist'] # which distance (changes after looped through all C/O possibilities and then restarts when all distances are done)
-    i_CtoO = i%nsim['CtoO'] # which C/O (simply loops through the C/O possibilities)
-    if (star_name, i_dist, i_CtoO) not in sim_done:
-        sim_not_done.append((star_name, i_dist, i_CtoO))
-sim_per_rank = int(len(sim_not_done) / size) #+ 1 # this is needed to distribure the tasks between the CPUs, +1 makes sure there will be enough CPUs to run all sims
+sim_not_done = pf.get_sim_not_done('star_dist_CtoO_rain.txt', star_df, param_dict, C_to_O, nsim, nsim_total)
+sim_per_rank = int(len(sim_not_done) / size) + 1 # this is needed to distribure the tasks between the CPUs, +1 makes sure there will be enough CPUs to run all sims
 # ------end of parameter set up-----
 # ------start of simulation loop------
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
@@ -125,9 +97,10 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
             vul_ini_change = ','.join(['vul_ini', os.path.join(output_folder,out_file), 'str'])
             ini_mix_change = ','.join(['ini_mix', 'vulcan_ini', 'str'])
             yconv_min_change = ','.join(['yconv_min', str(0.2), 'val']) # 0.1 is the default, allow double
+            slope_min_change = ','.join(['slope_min', str(3.e-8), 'val']) # 1.e-8 is the default, allow more
             out_file = sim + network + '_nowash_rerun.vul' # change this last so the initial composition will use the previous run
             out_change = ','.join(['out_name', out_file, 'str'])
-            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, yconv_min_change, 'rerun', sim])
+            subprocess.check_call(['python', 'gen_cfg.py', new_cfg, out_change, vul_ini_change, ini_mix_change, yconv_min_change, slope_min_change, 'rerun', sim])
             subprocess.check_call(['python', 'vulcan.py', '-n'])
     # save results
     hcn_rain, h20_rain = np.nan, np.nan # will keep NaN if not converged
@@ -145,3 +118,4 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
     subprocess.check_call(['rm', '-rf', sim_folder])
     subprocess.check_call(['rm', os.path.join(output_folder, out_file)])
     subprocess.check_call(['rm', os.path.join(output_folder, 'cfg_'+out_file[:-4]+'.txt')])
+    sim_not_done = pf.get_sim_not_done('star_dist_CtoO_rain.txt', star_df, param_dict, C_to_O, nsim, nsim_total) # updating to avoid repetition when run on several machines
