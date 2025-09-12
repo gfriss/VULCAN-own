@@ -798,22 +798,22 @@ def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, f
                     if k in ['total', 'xlim_min', 'xlim_max']:
                         continue
                     else:
-                        ax[j,i].plot(v/prod_dest[rate_type]['total'], d['atm']['pco']/1e6, label = k)
+                        ax[j,i].plot(v/prod_dest[rate_type]['total'], d['atm']['pco']/1e6, label = k, linewidth = 2.5)
                 if j in [0,1] and i == 0:
                     handles, leg_labels = ax[j,i].get_legend_handles_labels()
                     fig.tight_layout(h_pad = 4.2) # use if legends are below subplots
                     fig.legend(handles, leg_labels, loc = 'center', bbox_to_anchor = (legend_xanchors[j], legend_yanchors[j]), ncol = 3)
                 ax[j,i].set_xlim(-0.02,1.02)
             else: # plotting the net rates
-                ax[j,i].plot(prod_dest['Production']['total'], d['atm']['pco']/1e6, label = 'Production', c = 'r', ls = '-')
-                ax[j,i].plot(prod_dest['Destruction']['total'], d['atm']['pco']/1e6, label = 'Destruction', c = 'k', ls = '-')
+                ax[j,i].plot(prod_dest['Production']['total'], d['atm']['pco']/1e6, label = 'Production', c = 'r', ls = '-', linewidth = 2.5)
+                ax[j,i].plot(prod_dest['Destruction']['total'], d['atm']['pco']/1e6, label = 'Destruction', c = 'k', ls = '-', linewidth = 2.5)
                 ax[j,i].set_xlim(3e-5, 1e4)
                 ax[j,i].set_xscale('log')
                 ax[j,i].axvline(0, color = 'r', linestyle = '--')
                 if i == 0:
                     ax[j,i].legend(loc = 'lower right')
                 ax_t = ax[j,i].twiny() # to add the total rate
-                ax_t.plot(prod_dest['Production']['total']-prod_dest['Destruction']['total'], d['atm']['pco']/1e6, c = 'gray', ls = '--')
+                ax_t.plot(prod_dest['Production']['total']-prod_dest['Destruction']['total'], d['atm']['pco']/1e6, c = 'gray', ls = '--', linewidth = 2.5)
                 ax_t.set_xlim(-1e3, 1e3)
                 ax_t.set_xscale('symlog')
                 ax_t.set_xlabel(r'$k_{tot}$ [cm$^{-3}$s$^{-1}$]', labelpad = 0, color = 'gray')
@@ -899,12 +899,12 @@ def plot_pt(dat_list, param_list, sim_type, figsave):
         fig.savefig(plot_folder + 'TPs/'+end_str[sim_type][1:]+'.pdf', bbox_inches = 'tight')
 
 def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists, figsave):
-    fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27), tight_layout = True)#, figsize = (22,18)) # take out tight layout here if legends are below subplots
+    fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27), tight_layout = True)
     ax = ax.flatten()
-    sim_types = ['BC', 'CtoO', 'dist', 'star']
+    sim_types = ['CtoO', 'dist', 'star', 'BC']
     # legends below subplots
     legend_xanchors = [0.5, 0.5, 0.5, 0.5] # otherwise legends are all over the place, not sure why...
-    legend_yanchors = [0.756, 0.503, 0.243, -0.015]
+    legend_yanchors = [0.756, 0.503, 0.248, -0.015]
     hcn_rain_archean = rainout(data_archean)
     colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
     i = 0
@@ -915,17 +915,17 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
             ax[i+0].plot(p, r, color = c, linestyle = '', marker = 'o', markersize = 10)
         ax[i+0].plot(archean_params[st], hcn_rain_archean, color = archean_colour, marker = archean_marker, markersize = 10)
         ax[i+0].set_ylabel(r'HCN rain-out rate [kg m$^{-2}$ yr$^{-1}$]')
-        if i != 0:
+        if i != sim_types.index('BC')*4: # only bottom row gets x label
             ax[i+0].set_yscale('log')
         ax[i+0].set_xscale(xscale[st])
         ax[i+0].set_xlabel(xlab[st])
         ax[i+0].text(0.03, 0.93, '{})'.format(chr(97+i+0)), transform=ax[i+0].transAxes)
         # plotting HCN and condensed water vertical structure and P-T profile (only star and dist simulations) in first, second and third columns, respectively
         for d,p in zip(dat_list,param_list):
-            ax[i+1].plot(d['variable']['ymix'][:, d['variable']['species'].index('HCN')], d['atm']['pco']/1e6, label = legend_lab[st].format(p))
-            ax[i+2].plot(d['variable']['ymix'][:, d['variable']['species'].index('H2O_l_s')], d['atm']['pco']/1e6)
+            ax[i+1].plot(d['variable']['ymix'][:, d['variable']['species'].index('HCN')], d['atm']['pco']/1e6, label = legend_lab[st].format(p), linewidth = 2.5)
+            ax[i+2].plot(d['variable']['ymix'][:, d['variable']['species'].index('H2O_l_s')], d['atm']['pco']/1e6, linewidth = 2.5)
             if sim_types[i//4] == 'star' or sim_types[i//4] == 'dist':
-                ax[i+3].plot(d['atm']['Tco'], d['atm']['pco']/1e6)
+                ax[i+3].plot(d['atm']['Tco'], d['atm']['pco']/1e6, linewidth = 2.5)
         ax[i+1].set_xscale('log')
         ax[i+1].set_xlabel('X(HCN)')
         ax[i+1].set_yscale('log')
@@ -933,7 +933,6 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+1].invert_yaxis()
         ax[i+1].set_xlim((1e-15,1e-2))
         ax[i+1].text(0.03, 0.93, '{})'.format(chr(97+i+1)), transform=ax[i+1].transAxes)
-        #ax[i+1].legend()
         ax[i+2].set_xscale('log')
         ax[i+2].set_xlabel('X(cloud)')
         ax[i+2].set_xlim((1e-15,1e-2)) # show relevant vertical mixing ratio interval
@@ -944,7 +943,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+2].text(0.03, 0.93, '{})'.format(chr(97+i+2)), transform=ax[i+2].transAxes)
         # plotting the fixed T-P profiles for BC and CtoO simulations and setting scales and labels for all
         if sim_types[i//4] == 'BC' or sim_types[i//4] == 'CtoO':
-            ax[i+3].plot(data_archean['atm']['Tco'], data_archean['atm']['pco']/1e6)
+            ax[i+3].plot(data_archean['atm']['Tco'], data_archean['atm']['pco']/1e6, linewidth = 2.5)
         ax[i+3].set_xlabel('T [K]')
         ax[i+3].set_yscale('log')
         ax[i+3].set_ylabel('Pressure [bar]')
@@ -952,8 +951,8 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+3].set_xlim((125,385))
         ax[i+3].text(0.03, 0.93, '{})'.format(chr(97+i+3)), transform=ax[i+3].transAxes)
         handles, labels = ax[i+1].get_legend_handles_labels()
-        fig.tight_layout(h_pad = 5.8) # use if legends are below subplots
-        fig.legend(handles, labels, loc = 'center', bbox_to_anchor = (legend_xanchors[i//4], legend_yanchors[i//4]), ncol = 5)#, ncols = 2) took out for legends on side, also use upper right for loc
+        fig.tight_layout(h_pad = 4.1) # use if legends are below subplots
+        fig.legend(handles, labels, loc = 'center', bbox_to_anchor = (legend_xanchors[i//4], legend_yanchors[i//4]), ncol = 5)
         i += 4
     
     if figsave:
@@ -994,10 +993,10 @@ def plot_stellar_spectra(figsave):
 # boundary condition case
 data_bc, bc_flux = read_in('BC', nsim)
 
-hcn_rain, rain = [], [] # storing the rainout rates of HCN and water
+hcn_rain_bc, rain_bc = [], [] # storing the rainout rates of HCN and water
 for d in data_bc:
-    hcn_rain.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
-    rain.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+    hcn_rain_bc.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_bc.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figsave = True)
 plot_vertical_n(data_bc, 'H2O_l_s', bomb_rate, 'BC', figsave = True)
@@ -1011,8 +1010,8 @@ plot_vertical_n(data_bc, 'CH3', bomb_rate, 'BC', figsave = True)
 plot_end_time(data_bc, figsave = True, sim_type = 'BC')
 plot_evo_layer(data_bc, bomb_rate, 'HCN', 0, figsave = True, sim_type = 'BC')
 plot_convergence(data_bc, figsave = True, sim_type = 'BC')
-plot_rain(hcn_rain, bomb_rate, 'BC', extra_list = bc_flux, rain_spec = 'HCN_rain', figsave = True)
-plot_rain(rain, bomb_rate, 'BC', extra_list = bc_flux, rain_spec = 'H2O_rain', figsave = True)
+plot_rain(hcn_rain_bc, bomb_rate, 'BC', extra_list = bc_flux, rain_spec = 'HCN_rain', figsave = True)
+plot_rain(rain_bc, bomb_rate, 'BC', extra_list = bc_flux, rain_spec = 'H2O_rain', figsave = True)
 plot_tot_rate(data_bc, bomb_rate, 'BC', diag_sp = 'HCN', figsave = True)
 plot_prod_dest(data_bc, bomb_rate, 'BC', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_bc, bomb_rate, 'BC', 0, diag_sp = 'HCN', figsave = True)
@@ -1144,5 +1143,5 @@ plot_prod_dest_rates_normed_selected(data_dist, a_list, 'HCN', r_to_lot, figsave
 plot_prod_dest_rates_normed_selected(data_star, T_eff, 'HCN', r_to_lot, figsave = True, sim_type = 'star')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
-plot_rainrates_hcn_watercon_air_PT([data_bc, data_CtoO, data_dist, data_star], [bomb_rate, C_to_O, a_list, T_eff], [hcn_rain, hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star], figsave = True)
+plot_rainrates_hcn_watercon_air_PT([data_CtoO, data_dist, data_star, data_bc], [C_to_O, a_list, T_eff, bomb_rate], [hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star, hcn_rain_bc], figsave = True)
 #%%

@@ -225,38 +225,41 @@ def get_meshgrid_base(dat):
 def get_meshgrid_many(dat, idx):
     ''' Takes the data from the pandas dataframe and returns the meshgrid for the base/minimum C/O value, as pandas dataframe loops through that first).
         It returns the Seff, Teff, HCN rainout rate and edge colours for the meshgrid plot.'''
-    x = np.array(dat.Seff[round(dat.CtoO) == round(dat.CtoO[idx])]).reshape(13,15)
-    y = np.array(dat.Teff[round(dat.CtoO) == round(dat.CtoO[idx])]).reshape(13,15)
-    z = np.array(dat.HCN_rain[round(dat.CtoO) == round(dat.CtoO[idx])]).reshape(13,15)
+    x = np.array(dat.Seff[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
+    y = np.array(dat.Teff[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
+    z = np.array(dat.HCN_rain[dat.CtoO == dat.CtoO[idx]]).reshape(13,15)
     e = np.full(shape=(13,15), fill_value='none')
     e[9,4] = archean_colour # the Archean Earth is always at the same position in the meshgrid
+    e = e.flatten()
     return x, y, z, e
     
 def plot_meshgrid_many(dat, val_label, figsave, rain_type = 'HCN_rain', met_flux = True):
     ''' Takes the data from the pandas dataframe, creates meshgrids for each C/O value and plots them in a pcolormesh plot.'''
-    fig, axs = plt.subplots(ncols = 4, nrows = 4, tight_layout = True) # 4x4 grid for 15 plots
+    fig, axs = plt.subplots(ncols = 3, nrows = 5, tight_layout = True, layout = 'constrained', sharex = True, sharey = True)
     #fig.subplots_adjust(hspace = 0.3, wspace = 0.3)
     ax = axs.flatten()
     cmap = plt.get_cmap()
     cmap.set_under('none')
-    vmin = np.min(np.array(dat['HCN_rain'][dat['HCN_rain']>0])) # min value for the colour bar
+    vmin = np.nanmin(np.array(dat['HCN_rain'][dat['HCN_rain']>0])) # min value for the colour bar
+    vmax = np.nanmax(np.array(dat['HCN_rain'])) # max value for the colour bar
     if met_flux:
         vmin = 0.9 * np.min([vmin, min_flux_met])
-    for i in range(nsim_CtoO):
-        x, y, z = get_meshgrid_many(dat, i)
-        cm = ax[i].pcolormesh(x, y, z, cmap = cmap, norm = mc.LogNorm(vmin=vmin))
+    ctoo = dat.CtoO.unique()
+    for i,co in enumerate(ctoo):
+        x, y, z, e = get_meshgrid_many(dat, i)
+        cm = ax[i].pcolormesh(x, y, z, cmap = cmap, norm = mc.LogNorm(vmin=vmin, vmax=vmax))
         if i == 0: # the Archean simulation is for the first C/O value
-            edgec = np.array(['none']*len(x.flatten())).reshape(x.shape)
-            edgec[9,4] = archean_colour
-            ax[i].pcolormesh(x, y, z, facecolors = 'none', edgecolors = edgec, lw = 2)
-        ax[i].set_ylabel(r'T$_{eff}$ [K]')
-        ax[i].set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
+            ax[i].pcolormesh(x, y, z, facecolors = 'none', edgecolors = e, lw = 2)
+        if i%3 == 0: # y axis only for the first column
+            ax[i].set_ylabel(r'T$_{eff}$ [K]')
+        if i >= 12: # x axis only for the last row
+            ax[i].set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
+        ax[i].set_title('C/O = {}'.format(co))
         ax[i].invert_xaxis()
-    cbar = fig.colorbar(cm, ax = axs, shrink = 0.8, pad = 0.05, location = 'bottom', orientation = 'horizontal')
+    cbar = fig.colorbar(cm, ax = axs, shrink = 0.8, location = 'right')
     cbar.set_label(val_label)
     if met_flux:
-        cbar.ax.axhline(min_flux_met, c = 'w', lw = 2)
-        cbar.ax.axhline(max_flux_met, c = 'w', lw = 2)
+        cbar.ax.axhline(max_flux_met, c = 'grey', lw = 10)
     if figsave != None:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'out_many'+network+'.pdf'), bbox_inches='tight')
     
@@ -338,6 +341,7 @@ def plot_meshgrid_condensed(data, rain_type = 'HCN_rain', figsave = False):
     ax[1].set_ylabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
     ax[1].set_xlabel('C/O')
     ax[1].set_yscale('log')
+    ax[1].set_ylim(1e-12, None)
     ax[1].legend(handles = plot_leg, loc = 'upper right')
     plt.colorbar(cm, ax = ax[1], label = u'S$_{eff}$ [S$_\u2295$]')
     # add the meteoritic flux lines for both plots
@@ -351,6 +355,44 @@ def plot_meshgrid_condensed(data, rain_type = 'HCN_rain', figsave = False):
     ax[1].text(0.03, 0.93, 'b)', transform=ax[1].transAxes)
     if figsave:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'meshgrid_condensed'+network+'.pdf'), bbox_inches='tight')
+
+def plot_box_star(dat, rain_type = 'HCN_rain', figsave = False):
+    type_stars = ['M', 'K', 'G', 'F']
+    rains = []
+    for t in type_stars:
+        dt = dat[dat.stellar_type == t].dropna()
+        rain_t = dt[rain_type][dt[rain_type] > 0]
+        rains.append(rain_t)
+        print('{} star planets:'.format(t))
+        print('Average: {:.2e}\nMedian: {:.2e}\nStandard deviation: {:.2e}'.format(np.nanmean(rain_t), np.nanmedian(rain_t), np.nanstd(rain_t)))
+    fig, ax = plt.subplots(tight_layout = True)
+    bp = ax.boxplot(rains, labels = type_stars, patch_artist = True, notch = True)
+    ax.set_yscale('log')
+    ax.set_ylabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
+    ax.set_xlabel('Stellar type')
+    for patch, c in zip(bp['boxes'], ['mistyrose', 'bisque', 'lightyellow', 'lightcyan']):
+        patch.set_facecolor(c)
+    if figsave:
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_stellar_types_boxplot'+network+'.pdf'), bbox_inches='tight')
+
+def plot_box_CtoO(dat, rain_type = 'HCN_rain', figsave = False):
+    type_CtoO = sorted(dat.CtoO.unique())
+    rains = []
+    for c in type_CtoO:
+        dt = dat[dat.CtoO == c].dropna()
+        rain_c = dt[rain_type][dt[rain_type] > 0]
+        rains.append(rain_c)
+        print('C/O = {}:'.format(c))
+        print('Average: {:.2e}\nMedian: {:.2e}\nStandard deviation: {:.2e}'.format(np.nanmean(rain_c), np.nanmedian(rain_c), np.nanstd(rain_c)))
+    fig, ax = plt.subplots(tight_layout = True)
+    bp = ax.boxplot(rains, labels = type_CtoO, patch_artist = True, notch = True)
+    ax.set_yscale('log')
+    ax.set_ylabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
+    ax.set_xlabel('C/O')
+    for patch, c in zip(bp['boxes'], sns.color_palette("magma_r", len(type_CtoO))):
+        patch.set_facecolor(c)
+    if figsave:
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'_CtoO_boxplot'+network+'.pdf'), bbox_inches='tight')
 #%%
 archean_rain = rainout(data_archean)
 # 3D data
@@ -369,7 +411,7 @@ plot_meshgrid_with_normed(Seff_mesh, Teff_mesh, HCN_rain_mesh, archean_rain, 'Re
 plot_meshgrid_with_normed(Seff_mesh, Teff_mesh, HCN_rain_mesh, archean_rain, 'Relative HCN rainout', figname = 'rainout_rates/HCN_rainout_conjoint_S_eff'+network+'_normed_worse.pdf', vmax = 1)
 #%%
 # meshgrid plot for all C/O values
-pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
+pr.reset_plt(ticksize = 24, fontsize = 27, fxsize = 26, fysize = 30, grid = False)
 plot_meshgrid_many(data_3d, val_label = r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', figsave = True, rain_type = 'HCN_rain')
 #%%
 # meshgrid and condensed plot side by side
@@ -390,3 +432,10 @@ plot_meshgrid_prob(Seff_mesh, Teff_mesh, HCN_rain_mesh, p, 'Probability', edgec 
 p = cauchy2d(Seff_mesh, Teff_mesh, 0.72, 5680, 1) # figure out sigmas
 plot_prior(Seff_mesh, Teff_mesh, p, 'Probability', edgec = sum(edge_mesh,[]), figname = 'probability/cauchy_prior.pdf')
 plot_meshgrid_prob(Seff_mesh, Teff_mesh, HCN_rain_mesh, p, 'Probability', edgec = sum(edge_mesh,[]), figname = 'probability/cauchy_posterior.pdf')
+#%%
+# boxplots and statistics
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
+plot_box_star(data_3d, rain_type = 'HCN_rain', figsave = True)
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 12, fysize = 6, grid = False)
+plot_box_CtoO(data_3d, rain_type = 'HCN_rain', figsave = True)
+#%%
