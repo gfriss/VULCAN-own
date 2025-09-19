@@ -256,7 +256,7 @@ def plot_meshgrid_many(dat, val_label, figsave, rain_type = 'HCN_rain', met_flux
             ax[i].set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
         ax[i].set_title('C/O = {}'.format(co))
         ax[i].invert_xaxis()
-    cbar = fig.colorbar(cm, ax = axs, shrink = 0.8, location = 'right')
+    cbar = fig.colorbar(cm, ax = axs, shrink = 0.75, location = 'right')
     cbar.set_label(val_label)
     if met_flux:
         cbar.ax.axhline(max_flux_met, c = 'grey', lw = 10)
@@ -385,7 +385,7 @@ def plot_box_CtoO(dat, rain_type = 'HCN_rain', figsave = False):
         print('C/O = {}:'.format(c))
         print('Average: {:.2e}\nMedian: {:.2e}\nStandard deviation: {:.2e}'.format(np.nanmean(rain_c), np.nanmedian(rain_c), np.nanstd(rain_c)))
     fig, ax = plt.subplots(tight_layout = True)
-    bp = ax.boxplot(rains, labels = type_CtoO, patch_artist = True, notch = True)
+    bp = ax.boxplot(rains, labels = type_CtoO, patch_artist = True, notch = True, bootstrap = 1000)
     ax.set_yscale('log')
     ax.set_ylabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
     ax.set_xlabel('C/O')
