@@ -389,6 +389,7 @@ def plot_box_CtoO(dat, rain_type = 'HCN_rain', figsave = False):
     ax.set_yscale('log')
     ax.set_ylabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
     ax.set_xlabel('C/O')
+    ax.tick_params(axis='x', rotation=45)
     for patch, c in zip(bp['boxes'], sns.color_palette("magma_r", len(type_CtoO))):
         patch.set_facecolor(c)
     if figsave:
@@ -436,6 +437,6 @@ plot_meshgrid_prob(Seff_mesh, Teff_mesh, HCN_rain_mesh, p, 'Probability', edgec 
 # boxplots and statistics
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 plot_box_star(data_3d, rain_type = 'HCN_rain', figsave = True)
-pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 12, fysize = 6, grid = False)
+pr.reset_plt(ticksize = 18, fontsize = 20, fxsize = 12, fysize = 7, grid = False)
 plot_box_CtoO(data_3d, rain_type = 'HCN_rain', figsave = True)
 #%%
