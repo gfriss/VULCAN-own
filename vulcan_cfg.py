@@ -15,17 +15,17 @@ gibbs_text = '/home/s2555875/VULCAN-2/thermo/gibbs_text.txt' # (all the nasa9 fi
 cross_folder = '/home/s2555875/VULCAN-2/thermo/photo_cross/'
 #com_file = 'thermo/all_compose_crahcno.txt'
 com_file = 'thermo/all_compose.txt'
-atm_file = '/scratch/s2555875/TP_files/archean.txt' # TP and Kzz (optional) file
+atm_file = '/scratch/s2555875/TP_files/archean_updated.txt' # TP and Kzz (optional) file
 sflux_file = '/scratch/s2555875/stellar_flux/early_sun.txt' # This is the flux density at the stellar surface
 top_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_top_Earth.txt' # the file for the top boundary conditions
 bot_BC_flux_file = '/home/s2555875/VULCAN-2/atm/BC_bot_Pearce_B.txt' # the file for the lower boundary conditions
-vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_table_archean.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
+vul_ini = '/home/s2555875/VULCAN-2/atm/mixing_table_archean_updated.txt' # the file to initialize the abundances for ini_mix = 'vulcan_ini'
 #vul_ini = '/scratch/s2555875/output/archean.vul'
 # output:
 output_dir = '/home/s2555875/scratch/output/'
 plot_dir = '/home/s2555875/scratch/plot/'
 movie_dir = '/home/s2555875/scratch/plot/movie/'
-out_name = 'archean_ncho_nowash_test.vul' # output file name
+out_name = 'archean_updated_ncho_nowash.vul' # output file name
 
 
 # ====== Setting up the elemental abundance ======
