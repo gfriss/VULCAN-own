@@ -35,32 +35,26 @@ def get_element_number(species, element):
     return ele_number
 
 def calc_C_to_O(dat, mixing_file):
-    ''' For simplicity and fewer calculations this funtion uses initial abundances, knowing the initial species that are none zero.
-        It is generalised to get the species from the mixing ratio file used for the simulation.'''
-    dat_species = dat['variable']['species']
-    mix_data = np.genfromtxt(mixing_file, dtype = None, skip_header = 1, names = True, max_rows = 5) # max_rows so it wouldn't use too much unneccessary memory
-    C_profile = np.zeros_like(dat['variable']['y_ini'][:,0])
-    O_profile = np.zeros_like(dat['variable']['y_ini'][:,0])
+    ''' It is generalised to get the species from the mixing ratio file used for the simulation.'''
+    mix_data = np.genfromtxt(mixing_file, dtype = None, skip_header = 1, names = True)
+    C_profile = np.zeros_like(dat['atm']['n_0'])
+    O_profile = np.zeros_like(dat['atm']['n_0'])
     for name in mix_data.dtype.names:
         if name != 'Pressure' and 'C' in name:
             mul = get_element_number(name, 'C')
-            C_profile += mul * dat['variable']['y_ini'][:, dat_species.index(name)]
+            C_profile += mul * dat['atm']['n_0'] * mix_data[name]
         if name != 'Pressure' and 'O' in name:
             mul = get_element_number(name, 'O')
-            O_profile += mul * dat['variable']['y_ini'][:, dat_species.index(name)]
+            O_profile += mul * dat['atm']['n_0'] * mix_data[name]
     return np.sum(C_profile) / np.sum(O_profile)
 
-def get_C_to_O_conjoint(nsim, network):
+def get_C_to_O_conjoint(nsim, network, nowash, version):
     ''' Using the above function, calculate the C/O ratio for all runs in the conjoint study.'''
     C_to_O = []
     for j in range(nsim['CtoO']):
-        sim_CtoO = 'sim_'
-        if j < 10:
-            sim_CtoO += '0{}_CtoO'.format(j)
-        else:
-            sim_CtoO += '{}_CtoO'.format(j)
-        mixing_file = os.path.join(scratch, 'mixing_files', sim_CtoO + 'mixing.txt')
-        with open(os.path.join(scratch, 'output', sim_CtoO + network + '.vul'), 'rb') as handle:
+        sim_CtoO = 'sim_{:02d}_CtoO'.format(j)
+        mixing_file = os.path.join(scratch, 'mixing_files', sim_CtoO + version + 'mixing.txt')
+        with open(os.path.join(scratch, 'output', sim_CtoO + network + nowash + version + '.vul'), 'rb') as handle:
             data_CtoO = pickle.load(handle)
         C_to_O.append(round(calc_C_to_O(data_CtoO, mixing_file), 4)) # round to 4 decimal places to avoid issues with different machines
     return C_to_O
@@ -96,21 +90,48 @@ def dict_to_input(d):
     return k, val_str
 
 # initial mixing ratio for C/O tests
-def gen_mixing(co2_mix, output):
+def gen_mixing(new_mix, output, species = 'CO2', version = ''):
     ''' Generates new initial mixing ratios and write them into a file compatable with VULCAN.
         It takes a base mixing ratio than changes the value for CO2, swapping it to CO
-        which will change the C/O ratio.'''
-    og_mixing = np.genfromtxt('atm/mixing_table_archean.txt', dtype = None, comments = '#', skip_header = 1, names = True)
+        which will change the C/O ratio, or changing CH4 (potentially adding something else to balance?).'''
+    og_mixing = np.genfromtxt('atm/mixing_table_archean{}.txt'.format(version), dtype = None, comments = '#', skip_header = 1, names = True)
     N2 = og_mixing['N2']
     H2O = og_mixing['H2O']
-    CH4 = og_mixing['CH4']
     O2 = og_mixing['O2']
-    CO2 = np.ones_like(N2) * co2_mix
-    CO = np.ones_like(N2) * (0.1 - co2_mix)
+    H2 = np.zeros_like(N2)
+    CO = np.zeros_like(N2)
+    if 'CO' in og_mixing.dtype.names:
+        CO = og_mixing['CO']
+    if species == 'CO2': # change Co2 and add CO, keep CH4 the same
+        CO2 = np.ones_like(N2) * new_mix
+        CO += np.ones_like(N2) * (0.1 - new_mix)
+        CH4 = og_mixing['CH4']
+    elif species == 'CH4': # change CH4 and keep CO2 the same, set CO to 0 for universal use of writing part later
+        CH4 = np.ones_like(N2) * new_mix
+        CO2 = og_mixing['CO2']
+    elif species == 'CH4-H2': # change both CH4 and H2 to somewhat keep H2 and redox balance, set CO to 0
+        CH4 = np.ones_like(N2) * new_mix
+        CO2 = og_mixing['CO2']
+        H2 = np.ones_like(N2) * (5.e-3 - new_mix) # keeping total of 5000 ppmv for CH4 + H2
+    elif species == 'CH4-balanced': # change CH4 but introduce CO and decrease CO2 (to keep C/O ratio) and H2O (to keep H content, somewhat)
+        with open(os.path.join(scratch, 'output/archean_ncho.vul'), 'rb') as handle:
+            d = pickle.load(handle)
+        original_ctoo = calc_C_to_O(d, 'atm/mixing_table_archean.txt')
+        n0 = d['atm']['n_0']        
+        CH4 = np.ones_like(N2) * new_mix
+        CO = np.ones_like(N2) * (original_ctoo*(np.sum(n0*2*(og_mixing['CO2']+og_mixing['O2'])) + np.sum(n0*og_mixing['H2O'])) - np.sum(n0*(og_mixing['CO2']+CH4)) ) / (2*original_ctoo*np.sum(n0))
+        CO2 = og_mixing['CO2'] - CO
+        H2 = np.ones_like(N2) - (N2 + CO2 + CH4 + O2 + H2O)
+    elif species == 'CH4-updated':
+        CH4 = np.ones_like(N2) * new_mix
+        CO = 100. * CH4
+        CO2 = og_mixing['CO2']
+        N2 = np.ones_like(N2) - (CO2 + CH4 + O2 + H2O + CO + H2)
     with open(output, 'w') as f:
-        f.write('# (dyne/cm2)\nPressure  N2  CO2  CH4  O2  H2O  CO\n')
+        f.write('# (dyne/cm2)\nPressure  N2  CO2  CH4  O2  H2O  CO  H2\n')
         for i in range(len(N2)):
-            f.write('{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\n'.format(og_mixing['Pressure'][i],N2[i],CO2[i],CH4[i],O2[i],H2O[i],CO[i]))
+            f.write('{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\t{:.3E}\n'.format(og_mixing['Pressure'][i],N2[i],CO2[i],CH4[i],O2[i],H2O[i],CO[i], H2[i]))
+            
 # rainout rate calculation
 def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
     ''' Calculates the rainout rate of the given species and returns it with units of kg/m2/yr.'''
@@ -224,13 +245,10 @@ def Seff_list(df, name, n, factor = 1):
 
 # %%
 def get_rad_prof(star):
-    ''' To be used in run_parallel.py. Gives back the location of the needed stellar radiation profile
-        file for a given star.'''
+    ''' Gives back the location of the needed stellar radiation profile file for a given star.'''
     rad_file = ''
-    if star == 'EARLY_SUN':
-        rad_file = 'atm/stellar_flux/Pearce_B_solar.txt'
-    elif star == 'SUN':
-        rad_file = 'atm/stellar_flux/Gueymard_solar.txt'
+    if star == 'SUN':
+        rad_file = '/home/s2555875/VULCAN-2/atm/stellar_flux/Gueymard_solar.txt'
     else:
         rad_file = '/scratch/s2555875/stellar_flux/' + star.lower() + '.txt' # just to make sure it is lower case
     return rad_file

@@ -7,11 +7,12 @@ from scipy import interpolate
 import parallel_functions as pf
 import pandas as pd
 
+version = '_updated' # to use for updated initial mixing ratios, '' for old ones
 scratch = '/scratch/s2555875'
 helios_folder = os.path.join(scratch, 'HELIOS')
-og_param = os.path.join(helios_folder, 'param.dat')
+og_param = os.path.join(helios_folder, 'param{}.dat'.format(version))
 output = os.path.join(helios_folder, 'output')
-star_df = pd.read_csv(os.path.join(scratch, 'stellar_flux', 'stellar_params.csv'))
+star_df = pd.read_csv(os.path.join(scratch, 'stellar_flux', 'stellar_params{}.csv'.format(version)))
 nsim = 15
 #%%
 def change_line(line, bit_id, new_val):
@@ -81,15 +82,12 @@ def create_new_vulcan_pt(sim_name, subfolder = ''):
 #%%
 #create_new_vulcan_pt('archean')
 #%%
-a_list = np.linspace(0.839, 1.333, nsim, endpoint = True) # tested endpoints before running this cell to make sure durface temperature is habitable
+a_list = {'': np.linspace(0.839, 1.333, nsim, endpoint = True),
+        '_updated': np.linspace(0.778, 1.307, nsim, endpoint = True)} # tested endpoints before running this cell to make sure durface temperature is habitable
 
 def run_many_dist(dist_list):
     for i,a in enumerate(dist_list):
-        sim = ''
-        if i < 10:
-            sim = 'sim_0{}_dist'.format(str(i))
-        else:
-            sim = 'sim_{}_dist'.format(str(i))
+        sim = 'sim_{:02d}_dist{}'.format(i, version)
 
         wd = os.getcwd()
         os.chdir(helios_folder)
@@ -98,16 +96,12 @@ def run_many_dist(dist_list):
         os.chdir(wd)
         create_new_vulcan_pt(sim)
 
-#run_many_dist(a_list)
+#run_many_dist(a_list[version])
 #%%
 def run_many_planets(star_table):
     name_list = star_table.Name[:]
     for i,name in enumerate(name_list):
-        sim = ''
-        if i < 10:
-            sim = 'sim_0{}_star'.format(str(i))
-        else:
-            sim = 'sim_{}_star'.format(str(i))
+        sim = 'sim_{:02d}_star{}'.format(i, version)
         
         wd = os.getcwd()
         os.chdir(helios_folder)
@@ -115,49 +109,7 @@ def run_many_planets(star_table):
         subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
         os.chdir(wd)
         create_new_vulcan_pt(sim)
-run_many_planets(star_df)
-#%%
-import astropy.io.fits as fits
-
-def get_R_star(Teff, logg, m):
-    R_sun = 6.9634e10 # cm
-    R = []
-    for T,g in zip(Teff,logg):
-        hdul = fits.open('/scratch/s2555875/phoenix_fits/{:05d}_{:.2f}_{:.1f}.fits'.format(T,g,m))
-        R.append(hdul[0].header['PHXREFF']/R_sun)
-    return R
-        
-def guess_semi_major(Teff, logg, m, Seff_0 = 0.728):
-    L_sun = 3.846e33 # erg/s
-    d = []
-    for T,g in zip(Teff,logg):
-        hdul = fits.open('/scratch/s2555875/phoenix_fits/{:05d}_{:.2f}_{:.1f}.fits'.format(T,g,m))
-        d.append( np.sqrt( (hdul[0].header['PHXLUM']/L_sun) / Seff_0 ) )
-    return d
-
-Teff_list = np.array([2600+i*300 for i in range(nsim)])
-logg_list = np.array([5. for i in range(nsim)])
-logg_list[(Teff_list>=4000)&(Teff_list<6000)] = 4.5
-logg_list[Teff_list>=6000] = 4.0
-m = 0. # solar metallicity
-R_list = get_R_star(Teff_list, logg_list, m)
-#dist_list = guess_semi_major(Teff_list, logg_list, m)
-dist_list = [0.0510, 0.0724, 0.0994, 0.1320, 0.1710, 0.3840, 0.4777, 0.5834, 0.7026, 0.8300, 0.9810, 1.1418, 2.5660, 2.9330, 3.3610]
-def run_many_star(T_list, rad_list, a_list):
-    for i,Teff in enumerate(T_list):
-        sim = ''
-        if i < 10:
-            sim = 'sim_0{}_star'.format(str(i))
-        else:
-            sim = 'sim_{}_star'.format(str(i))
-        
-        wd = os.getcwd()
-        os.chdir(helios_folder)
-        new_p = create_param_file(sim, sname = sim, manual = True, T_star = Teff, r_star = rad_list[i], dist = a_list[i])
-        subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
-        os.chdir(wd)
-        create_new_vulcan_pt(sim)
-#run_many_star(Teff_list, R_list, dist_list)
+#run_many_planets(star_df)
 #%%
 def run_star_dist(star_table, factor = 1.1):
     param_matrix = []
@@ -171,90 +123,19 @@ def run_star_dist(star_table, factor = 1.1):
 
     for i,sim_i in enumerate(param_matrix):
         i_dist = i%nsim
-        #if i_dist not in [0,14]:
-        #    continue # testing extremities
-        #if sim_i[0] in ['EARLY_SUN', 'SUN', 'GJ1214', 'GJ674', 'GJ15A', 'HD40307', 'TRAPPIST-1', 'GJ676A', 'HD97658', 'HD149026', 'WASP17','GJ729']:
-        #    continue
-        #if sim_i[0] in ['HD85512'] and i_dist == 14:
-        #    continue
+        if i_dist in [0,14]:
+            continue # extremities already done
+        if sim_i[0] in ['EARLY_SUN']: # skipping sims that are done already
+            subprocess.check_call(['cp', '-p', os.path.join(scratch, 'TP_files', 'sim_{:02d}_dist{}.txt'.format(i_dist, version)), os.path.join(scratch, 'TP_files', 'star_dist{}/star_{}_dist_{:02d}{}.txt'.format(version, sim_i[0], i_dist, version))])
+            continue
         T = star_table.loc[star_table.Name == sim_i[0]].T_eff.iloc[0]
         R = star_table.loc[star_table.Name == sim_i[0]].R.iloc[0]
-        sim = 'star_{}_'.format(sim_i[0]) # param matrix first goes through the distances
-        if i_dist < 10:
-            sim += 'dist_0{}'.format(i_dist)
-        else:
-            sim += 'dist_{}'.format(i_dist)
+        sim = 'star_{}_dist_{:02d}{}'.format(sim_i[0], i_dist, version) # param matrix first goes through the distances
         wd = os.getcwd()
         os.chdir(helios_folder)
         new_p = create_param_file(sim, sname = sim_i[0], dist = sim_i[1], manual = True, T_star = T, r_star = R)
         subprocess.check_call(['python', 'helios.py', '-parameter_file', new_p])#, cwd=helios_folder)
         os.chdir(wd)
-        create_new_vulcan_pt(sim, subfolder = 'star_dist')
-#run_star_dist(star_df)
-#%%
-# creating fastchem styled mixing ratio file for HELIOS
-location_early = '/scratch/s2555875/HELIOS/input/chemistry/early_earth/chem.dat'
-location_current = '/scratch/s2555875/HELIOS/input/chemistry/earth/chem.dat'
-mixing_file = 'atm/mixing_Pearce_B.txt'
-def change_spec_name(sp_name):
-    characters = []
-    characters[:] = sp_name
-    for i in range(len(characters)):
-        if i < len(characters)-1:
-            if characters[i+1].isnumeric() == False: # if another letter comes, it means there's only one of that element in the molecule
-                characters[i] += '1'
-        elif i == len(characters)-1:
-            if characters[i].isnumeric() == False: # if another letter comes, it means there's only one of that element in the molecule
-                characters[i] += '1'
-    new_name = ''.join(characters)
-    return new_name
-
-
-def create_fastchem_like_vmr_from_vulcan(vul_vmr_file, vul_tp_file, filename):
-    vul_vmr = np.genfromtxt(vul_vmr_file, dtype = None, comments = '#', skip_header = 1, names = True)
-    vul_tp = np.genfromtxt(vul_tp_file, dtype = None, comments = '#', skip_header = 1, names = True)
-    vmr_dict = {'P(bar)':vul_vmr['Pressure']/1e6, 'T(K)':vul_tp['Temp']}
-    # keep ntot, ng and m as dummy now...
-    vmr_dict['ntot'] = np.ones_like(vmr_dict['P(bar)'])
-    vmr_dict['ng'] = np.ones_like(vmr_dict['P(bar)'])
-    vmr_dict['m'] = np.ones_like(vmr_dict['P(bar)'])
-    new_str = ''
-    for name in vul_vmr.dtype.names:
-        if name == 'Pressure':
-            new_str += '#P(bar)\tT(k)\tn_<tot>(cm-3)\tn_g(cm-3)\tm(u)\t'
-        else:
-            new_str += '{}\t'.format(change_spec_name(name))
-            vmr_dict[name] = vul_vmr[name]
-    new_str += '\n'
-    
-    for i in range(len(vmr_dict['P(bar)'])):
-        for key in vmr_dict.keys():
-            new_str += '{:.4e}'.format(vmr_dict[key][i]) + '\t'
-        new_str += '\n'
-
-    with open(filename, 'w') as f:
-        f.write(new_str)
-    
-# %%
-import pickle
-def create_helios_vmr_from_vulcan(vul_file, filename, species):
-    with open(vul_file, 'rb') as handle:
-        data = pickle.load(handle)
-    spec_list = data['variable']['species']
-    pressure = data['atm']['pco'] # in cgs
-    new_str = '# (dyne/cm2)\nPressure\t'
-    vmrs = {'Pressure': pressure}
-    for sp in species:
-        vmrs[sp] = data['variable']['ymix'][:, spec_list.index(sp)]
-        new_str += '{}\t'.format(sp)
-    
-    new_str += '\n'
-    for i in range(len(pressure)):
-        for k in vmrs.keys():
-            new_str += '{:.3e}\t'.format(vmrs[k][i])
-        new_str += '\n'
-
-    with open(filename, 'w') as f:
-        f.write(new_str)
-
+        create_new_vulcan_pt(sim, subfolder = 'star_dist{}'.format(version))
+run_star_dist(star_df)
 # %%
