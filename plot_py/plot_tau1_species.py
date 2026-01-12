@@ -12,8 +12,8 @@ except ImportError:
 import os, sys
 import pickle
        
-plot_name = 'Earth_tau'
-vul_data = '/scratch/s2555875/output/Earth.vul'
+plot_name = 'archean_updated_tau'
+vul_data = '/scratch/s2555875/output/archean_updated_ncho_nowash.vul'
 plot_dir = '/scratch/s2555875/plot/'
 
 color_index = 0
@@ -34,10 +34,10 @@ tau1 = 1.
 tau_sp= {}
 
 #photo_sp = [ 'H2O','CO', 'CO2','H2', 'SH', 'H2S', 'CH4', 'S2'] # , 'H2', 'CH4', 'CO2'   
-photo_sp = ['H2CO', 'HCO',  'O2',  'HCN', 'NH3', 'NO', 'N2',  'NO2', 'N2O', 'O3', 'HO2', 'H2O2', 'NO3', 'HNO3', 'HNO2'  ]
+photo_sp = ['N2', 'CO2', 'CO', 'CH4', 'H2O', 'C2H4', 'C2H2','C2H6']
 #, 'N2', 'C2H4', 'C2H2','C2H6', 'CH3', 'CO2', 'HCO','HCN'  ,'CH3CHO','NO' , 'NO2'
 #scat_sp = ['H2','He']
-scat_sp = ['N2', 'O2']
+scat_sp = ['N2', 'CO2']
 
 bins = data['variable']['bins']
 dz = data['atm']['dz']
@@ -117,10 +117,10 @@ plt.plot(bins, photosph_scat, color=colors[color_index+1], label = 'Rayleigh', a
 plt.gca().set_yscale('log') 
 plt.gca().invert_yaxis() 
 #plt.ylim((0,95))
-plt.xlim((200,300))
+plt.xlim((0,300))
 plt.legend(frameon=0, prop={'size':13}, loc='best')
 plt.xlabel("wavelength (nm)", fontsize=16)
-plt.ylabel("Height (km)", fontsize=16)
+plt.ylabel("Pressure (bar)", fontsize=16)
 plt.title('Photosphere')
 plt.savefig(plot_dir + plot_name + '.png')
 plt.savefig(plot_dir + plot_name + '.pdf')

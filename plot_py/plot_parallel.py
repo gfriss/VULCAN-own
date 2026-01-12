@@ -11,6 +11,7 @@ import pandas as pd
 wd = os.getcwd()
 os.chdir('../')
 from vulcan_cfg import yconv_cri, yconv_min, slope_cri, nl_ignore
+import parallel_functions as pf
 os.chdir(wd)
 # setting up plot style
 import plot_reset as pr
@@ -21,10 +22,12 @@ out_folder = '/scratch/s2555875/output/'
 plot_folder = '/scratch/s2555875/plot/'
 sim_names = ['sim_0{}'.format(i) for i in range(nsim) if i < 10] + ['sim_{}'.format(i) for i in range(nsim) if i >= 10]
 # end string of the VULCAN output files
-end_str = {'BC': '_meteor', 'CtoO': '_CtoO', 'star': '_star', 'dist': '_dist'}
+end_str = {'BC': '_meteor', 'CtoO': '_CtoO', 'star': '_star', 'dist': '_dist', 'methane': '_methane', 'CH4-H2': '_CH4-H2', 'CH4-balanced': '_CH4-balanced'}
 nowash = '_nowash' # no washout case
 # setting chemical network for naming (empty if crahcno/no ignore as these are the defaults)
 network = '_ncho'
+# version tag for different cases
+version = '_updated' # '', '_updated'
 # setting up the boundary condition case
 bomb_rate = np.linspace(3e23, 1e25, nsim) # values from Pearce et al. (2022) Fig A4 min and max
 bc_folder= '/scratch/s2555875/BC_files/'
@@ -47,61 +50,29 @@ stellar_spectra_folder = '/scratch/s2555875/stellar_flux/'
 # setting up the distance case
 a_list = np.linspace(0.839, 1.333, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
 
+# setting up methane test case
+ch4_range = np.logspace(-6, np.log10(5e-3), 15, endpoint = False) # mixing ratio range for methane, 1-5000ppmv (ommit endpoint to avoid overlap with Achean case)
+
 # base simulation of Archean
-base_sim = out_folder+'archean'+network+nowash+'.vul'
+base_sim = out_folder+'archean'+version+network+nowash+'.vul'
 with open(base_sim, 'rb') as handle:
     data_archean = pickle.load(handle)
 
 # setting up plotting labels
-archean_params = {'BC': 1.2e24 * 2.3/3.42, 'CtoO': 0.5143, 'star': 5680, 'dist': 1.}
-xlab = {'BC': r'$\dot{M}_{del}$ [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]', 'dist': 'Distance [AU]'}
-xscale = {'BC': 'log', 'CtoO': 'linear', 'star': 'linear', 'dist': 'linear'}
-legend_lab = {'BC': r'$\dot{{M}}_{{del}}$ = {:.2e} g/Gyr', 'CtoO': 'C/O = {:.3f}', 'star': r'T$_{{eff}}$ = {} K', 'dist': 'a = {:.3f} AU'}
+archean_params = {'BC': 1.2e24 * 2.3/3.42, 'CtoO': pf.calc_C_to_O(data_archean, '/home/s2555875/VULCAN-2/atm/mixing_table_archean_updated.txt'), 'star': 5680, 'dist': 1., 'methane': 5.e-3, 'CH4-H2': 5.e-3, 'CH4-balanced': 5.e-3}
+xlab = {'BC': r'$\dot{M}_{del}$ [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]', 'dist': 'Distance [AU]', 'methane': r'$X_{CH_4}$', 'CH4-H2': r'$X_{CH_4}$', 'CH4-balanced': r'$X_{CH_4}$'}
+xscale = {'BC': 'log', 'CtoO': 'linear', 'star': 'linear', 'dist': 'linear', 'methane': 'log', 'CH4-H2': 'log', 'CH4-balanced': 'log'}
+legend_lab = {'BC': r'$\dot{{M}}_{{del}}$ = {:.2e} g/Gyr', 'CtoO': 'C/O = {:.3f}', 'star': r'T$_{{eff}}$ = {} K', 'dist': 'a = {:.3f} AU', 'methane': r'$X_{{CH_4}}$ = {:.3e}', 'CH4-H2': r'$X_{{CH_4}}$ = {:.3e}', 'CH4-balanced': r'$X_{{CH_4}}$ = {:.3e}'}
 archean_marker = 's' #'$\u2295$'
 archean_colour = 'k'
 # pressure levels for reaction rate plots
 pressure_levels = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
 # sim numbers to plot selected, detailed reaction rates, BC not needed
-plot_idx = {'CtoO': ['archean', 4, 8, 12, 14], 'star': [0, 7, 'archean', 11, 12], 'dist': [0, 'archean', 8, 13, 14]}
+plot_idx = {'CtoO': ['archean', 4, 8, 12, 14], 'star': [0, 7, 'archean', 11, 12], 'dist': [0, 'archean', 8, 13, 14], 'CH4-balanced': [0, 5, 11, 13, 'archean']}
 plot_ls = ['-', '--', '-.', ':', (0, (1, 7))]
 #%%
 def lin(x, a, b):
     return a*x + b
-
-def get_element_number(species, element):
-    ''' Gets the number of an element in a given species. Used to calculate C/O ratio later.'''
-    char_list = list(species)
-    ele_number = 0
-    for i,char in enumerate(char_list):
-        if i < len(char_list)-1 and char == element:
-            if char_list[i+1].isnumeric():
-                ele_number += 1*int(char_list[i+1])
-            else:
-                ele_number += 1
-        if i == len(char_list)-1 and char == element:
-            ele_number += 1
-    return ele_number
-
-def calc_C_to_O(dat, mixing_file):
-    ''' For simplicity and fewer calculations this funtion uses initial abundances, knowing the initial species that are none zero.
-        It is generalised to get the species from the mixing ratio file used for the simulation.'''
-    dat_species = dat['variable']['species']
-    mix_data = np.genfromtxt(mixing_file, dtype = None, skip_header = 1, names = True, max_rows = 5) # max_rows so it wouldn't use too much unneccessary memory
-    C_profile = np.zeros_like(dat['variable']['y_ini'][:,0])
-    O_profile = np.zeros_like(dat['variable']['y_ini'][:,0])
-    for name in mix_data.dtype.names:
-        if name != 'Pressure' and 'C' in name:
-            mul = get_element_number(name, 'C')
-            C_profile += mul * dat['variable']['y_ini'][:, dat_species.index(name)]
-        if name != 'Pressure' and 'O' in name:
-            mul = get_element_number(name, 'O')
-            O_profile += mul * dat['variable']['y_ini'][:, dat_species.index(name)]
-
-    return np.sum(C_profile) / np.sum(O_profile)
-
-def calc_mixing_h2(h2_bar):
-    new_total = 1 + h2_bar
-    return h2_bar / new_total
 
 def read_in(sim_type, number_of_sim, start_str = ''):
     ''' Reads in all the data for a specific simulation type. The simulation type dictates how the files
@@ -112,9 +83,8 @@ def read_in(sim_type, number_of_sim, start_str = ''):
     T_surface = []
     ctoo = []
     for i in range(number_of_sim):
-        sim = start_str + sim_names[i] # setting up the names of files
-        sim += end_str[sim_type]
-        sim_file = sim+'{}{}.vul'.format(network, nowash) # adding network and no washout if needed
+        sim = start_str + sim_names[i] + end_str[sim_type] # setting up the names of files
+        sim_file = sim+'{}{}{}.vul'.format(network, nowash, version) # adding network and no washout if needed
         with open(out_folder+sim_file, 'rb') as handle:
             data_i = pickle.load(handle)
             dat_list.append(data_i)
@@ -138,9 +108,9 @@ def read_in(sim_type, number_of_sim, start_str = ''):
                         H2_flux.append(float(lin[1]))
                         break
         elif sim_type == 'CtoO':
-            ctoo.append(calc_C_to_O(data_i, mixing_folder + sim + 'mixing.txt'))
+            ctoo.append(pf.calc_C_to_O(data_i, mixing_folder + sim + version + 'mixing.txt'))
         elif sim_type == 'dist':
-            surface_temp = np.genfromtxt(helios_output_folder + sim + '/{}_tp.dat'.format(sim), dtype = None, skip_header = 2, usecols = (1))[0]
+            surface_temp = np.genfromtxt(helios_output_folder + sim  + version + '/{}{}_tp.dat'.format(sim, version), dtype = None, skip_header = 2, usecols = (1))[0]
             T_surface.append(surface_temp)
 
     if sim_type == 'BC':
@@ -152,21 +122,11 @@ def read_in(sim_type, number_of_sim, start_str = ''):
     else:
         return dat_list
 
-def rainout(dat, rain_spec = 'HCN_rain', g_per_mol = 27):
-    ''' Calculates the rainout rate of the given species and returns it with units of kg/m2/yr.'''
-    #rain_rate = np.sum(dat['variable']['y_rain'][rain_spec][:-1] * dat['atm']['dzi']) / dat['variable']['dt'] # 1/cm2s
-    rain_rate = trapezoid(y=dat['variable']['y_rain'][rain_spec], x=dat['atm']['zmco']) / dat['variable']['dt'] # 1/cm2s
-    rain_rate = rain_rate * 5.237e-13 # mol/m2yr
-    return rain_rate * (g_per_mol/1000.) # kg/m2yr
-
-def create_dummy_line(**kwds):
-    return Line2D([], [], **kwds)
-
 def plot_rain(hcn_rain_list, param_list, sim_type, figsave, extra_list = [], yscale = 'log', rain_spec = 'HCN_rain'):
     ''' Function to plot rainout rates of different simulatio types along with the Archean results.'''
     fig, ax = plt.subplots(tight_layout = True)
     ax.plot(param_list, hcn_rain_list, color = 'navy', linestyle = '', marker = '.', markersize = 10)
-    ax.plot(archean_params[sim_type], rainout(data_archean, rain_spec = rain_spec), color = archean_colour, marker = archean_marker, markersize = 10)
+    ax.plot(archean_params[sim_type], pf.rainout(data_archean, rain_spec = rain_spec), color = archean_colour, marker = archean_marker, markersize = 10)
     ax.set_xlabel(xlab[sim_type])
     ax.set_xscale(xscale[sim_type])
     ax.set_ylabel(rain_spec[:-5] + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]')
@@ -184,7 +144,7 @@ def plot_rain(hcn_rain_list, param_list, sim_type, figsave, extra_list = [], ysc
         ax1.invert_xaxis()
 
     if figsave:
-        fig.savefig(plot_folder + 'rainout_rates/'+rain_spec+'out'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'rainout_rates/'+rain_spec+'out'+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
 
 def calc_rate(dat, spec_list, re_id, n):
     ''' Calculates the reaction rate by multiplying the reaction coefficient with the number densty of
@@ -198,12 +158,9 @@ def calc_rate(dat, spec_list, re_id, n):
     return rate
 
 def get_species(eq_side):
-    ''' Returns the species in a given reaction in an array.'''
+    ''' Returns the species in a given reaction side in a list.'''
     side_split = eq_side.split('+')
-    if len(side_split) == 1: # stripping them from white spaces
-        side_split = np.array([side_split[0].strip()]) # with array length 1 the other method fails so doing it separately
-    else:
-        side_split = np.array([r.strip() for r in side_split])
+    side_split = [r.strip() for r in side_split] # stripping them from white spaces
     return side_split
 
 def print_max_re(dat, mol, n = 0, prod = False):
@@ -269,7 +226,7 @@ def plot_vertical_n(dat_list, spec, param_list, sim_type, figsave):
     ax.invert_yaxis()
     fig.legend(bbox_to_anchor = (1.35, 0.97))
     if figsave:
-        fig.savefig(plot_folder + 'vertical_profiles/'+spec+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'vertical_profiles/'+spec+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
 
 def plot_vertical_many(dat_list, param_list, sim_type, figsave, species_prod = ['CH4', 'HNCO', 'H2CN', 'C2H3CN', 'C2H6', 'CN', 'CH', 'N', 'NO'], species_dest = ['H', 'O', 'OH', 'C2H3', 'HCN']):
     fig, ax = plt.subplots(ncols = 2, tight_layout = True, sharex = True, sharey = True)
@@ -311,7 +268,7 @@ def plot_vertical_many(dat_list, param_list, sim_type, figsave, species_prod = [
     #fig.legend(handles = prod_leg, bbox_to_anchor = (0.385, 0.03), ncol = 3)
     #fig.legend(handles = dest_leg, bbox_to_anchor = (0.855, 0.03), ncol = 2)
     if figsave:
-        fig.savefig(plot_folder + 'vertical_profiles/many'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'vertical_profiles/many'+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
         
 def plot_end_time(dat_list, figsave, sim_type = None):
     ''' Plots the end-of-simulation times for a list of simulations. It is used as a way of 
@@ -324,7 +281,7 @@ def plot_end_time(dat_list, figsave, sim_type = None):
     ax.set_xlabel('Simulation number')
     ax.set_ylabel('End of simulation time [s]')
     if figsave:
-        fig.savefig(plot_folder + 'end_time/'+end_str[sim_type][1:]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'end_time/'+end_str[sim_type][1:]+network+version+'.pdf', bbox_inches = 'tight')
 
 def plot_evo_layer(dat_list, param_list, spec, layer, figsave, sim_type = None):
     ''' Plots the evolution of a given species in a given layer for a list of simulations.'''
@@ -337,7 +294,7 @@ def plot_evo_layer(dat_list, param_list, spec, layer, figsave, sim_type = None):
     ax.set_ylim(1e-2,None)
     fig.legend(bbox_to_anchor = (1.35, 0.97))
     if figsave:
-        fig.savefig(plot_folder + 'evolution/'+spec+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'evolution/'+spec+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
 
 def check_convergence(dat):
     ''' It checks whether the convergence criteria has been met in the given simulation (dat is the 
@@ -364,7 +321,7 @@ def plot_convergence(dat_list, figsave, sim_type = None):
     ax.set_ylabel('Converged')
     
     if figsave:
-        fig.savefig(plot_folder + 'convergence/'+end_str[sim_type][1:]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'convergence/'+end_str[sim_type][1:]+network+version+'.pdf', bbox_inches = 'tight')
 
 def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figsave, rain_spec = 'HCN_rain', extra_list = [], plot_non_conv = False):
     ''' Plots the rainout rates for a list of simulations for a given simulation types. It 
@@ -385,7 +342,7 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figsave, rain
             if extra_list:
                 non_conv_extra_list.append(extra_list[i])
     gpm = {'HCN_rain': 27, 'H2O_rain': 18} # g per mol for the species
-    rain_archean = rainout(data_archean, rain_spec = rain_spec, g_per_mol = gpm[rain_spec])
+    rain_archean = pf.rainout(data_archean, rain_spec = rain_spec, g_per_mol = gpm[rain_spec])
     
     popt, pcov = curve_fit(lin, conv_param_list, conv_rain_list)
     param_x = np.linspace(conv_param_list[0], conv_param_list[-1], 42, endpoint = True)
@@ -417,14 +374,8 @@ def plot_rain_converged(dat_list, rain_list, param_list, sim_type, figsave, rain
     ax.set_ylabel(rain_spec[:-5] + r' rain-out rate [kg m$^{-2}$ yr$^{-1}$]')
 
     if figsave:
-        fig.savefig(plot_folder + 'rainout_rates/'+file_start+rain_spec+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
-    
-def get_species(eq_side):
-    ''' Returns the species in a given reaction side in a list.'''
-    side_split = eq_side.split('+')
-    side_split = [r.strip() for r in side_split] # stripping them from white spaces
-    return side_split
-    
+        fig.savefig(plot_folder + 'rainout_rates/'+file_start+rain_spec+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
+        
 def get_total_reaction_rate(dat, diag_sp = 'HCN'):
     species = dat['variable']['species']
     total_rate = np.zeros_like(dat['atm']['pco'])
@@ -453,63 +404,7 @@ def get_total_reaction_rate(dat, diag_sp = 'HCN'):
             dest_rate += np.array(reverse_rate) # it is destroyed when reacting with something
     total_rate = prod_rate - dest_rate
     return prod_rate, dest_rate, total_rate    
-    
-def colored_line(x, y, c, ax, **lc_kwargs):
-    """
-    Plot a line with a color specified along the line by a third value.
-
-    It does this by creating a collection of line segments. Each line segment is
-    made up of two straight lines each connecting the current (x, y) point to the
-    midpoints of the lines connecting the current point with its two neighbors.
-    This creates a smooth line with no gaps between the line segments.
-
-    Parameters
-    ----------
-    x, y : array-like
-        The horizontal and vertical coordinates of the data points.
-    c : array-like
-        The color values, which should be the same size as x and y.
-    ax : Axes
-        Axis object on which to plot the colored line.
-    **lc_kwargs
-        Any additional arguments to pass to matplotlib.collections.LineCollection
-        constructor. This should not include the array keyword argument because
-        that is set to the color argument. If provided, it will be overridden.
-
-    Returns
-    -------
-    matplotlib.collections.LineCollection
-        The generated line collection representing the colored line.
-    """
-    # Default the capstyle to butt so that the line segments smoothly line up
-    default_kwargs = {"capstyle": "butt"}
-    default_kwargs.update(lc_kwargs)
-
-    # Compute the midpoints of the line segments. Include the first and last points
-    # twice so we don't need any special syntax later to handle them.
-    x = np.asarray(x)
-    y = np.asarray(y)
-    x_midpts = np.hstack((x[0], 0.5 * (x[1:] + x[:-1]), x[-1]))
-    y_midpts = np.hstack((y[0], 0.5 * (y[1:] + y[:-1]), y[-1]))
-
-    # Determine the start, middle, and end coordinate pair of each line segment.
-    # Use the reshape to add an extra dimension so each pair of points is in its
-    # own list. Then concatenate them to create:
-    # [
-    #   [(x1_start, y1_start), (x1_mid, y1_mid), (x1_end, y1_end)],
-    #   [(x2_start, y2_start), (x2_mid, y2_mid), (x2_end, y2_end)],
-    #   ...
-    # ]
-    coord_start = np.column_stack((x_midpts[:-1], y_midpts[:-1]))[:, np.newaxis, :]
-    coord_mid = np.column_stack((x, y))[:, np.newaxis, :]
-    coord_end = np.column_stack((x_midpts[1:], y_midpts[1:]))[:, np.newaxis, :]
-    segments = np.concatenate((coord_start, coord_mid, coord_end), axis=1)
-
-    lc = LineCollection(segments, **default_kwargs)
-    lc.set_array(c)  # set the colors of each segment
-
-    return ax.add_collection(lc)    
-    
+        
 def plot_tot_rate(dat_list, param_list, sim_type, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True)
     for d,p in zip(dat_list, param_list):
@@ -524,7 +419,7 @@ def plot_tot_rate(dat_list, param_list, sim_type, diag_sp, figsave):
     ax.set_xlabel(r'k$_{tot}$ [cm$^3$s$^{-1}$]')  
     fig.legend(bbox_to_anchor = (1.35,0.97))
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/total'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/total'+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
         
 def plot_tot_rate_selected(dat_list, param_list, sim_type, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True)
@@ -547,7 +442,7 @@ def plot_tot_rate_selected(dat_list, param_list, sim_type, diag_sp, figsave):
     ax.set_xlabel(r'k$_{tot}$ [cm$^3$s$^{-1}$]')  
     ax.legend(loc = 'lower right')
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/selected_total'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/selected_total'+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
         
 def plot_prod_dest(dat_list, param_list, sim_type, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True, nrows = 2, ncols = 1, sharex = True, figsize = (6,8))
@@ -566,7 +461,7 @@ def plot_prod_dest(dat_list, param_list, sim_type, diag_sp, figsave):
     ax[1].set_xlabel(r'k$_{dest}$ [cm$^3$s$^{-1}$]')  
     fig.legend(bbox_to_anchor = (1.45,0.85))
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/net'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/net'+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
 
 def plot_prod_dest_selected(dat_list, param_list, sim_type, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True)
@@ -593,7 +488,7 @@ def plot_prod_dest_selected(dat_list, param_list, sim_type, diag_sp, figsave):
     ax.set_xlabel(r'k [cm$^3$s$^{-1}$]')
     fig.legend(handles=plot_leg, bbox_to_anchor = (0.47,0.97))
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/selected_net'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/selected_net'+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
         
 def plot_prod_dest_layer(dat_list, param_list, sim_type, layer, diag_sp, figsave):
     fig, ax = plt.subplots(tight_layout = True)
@@ -610,7 +505,7 @@ def plot_prod_dest_layer(dat_list, param_list, sim_type, layer, diag_sp, figsave
     ax.set_yscale('log')
     ax.legend()
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/layer_'+str(layer)+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/layer_'+str(layer)+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
 
 def get_layer(dat, pressure):
     ''' Returns the layer that is the closest to the given pressure (in bar) in the given VULCAN data.'''
@@ -645,7 +540,7 @@ def plot_prod_dest_many_layer(dat_list, param_list, sim_type, pressures, ncols, 
         axes.set_yscale('log')
         axes.legend(title = 'P = {:.1e} bar'.format(pressures[i]), loc = 'upper left')
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/many_layers'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/many_layers'+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
 
 def get_prod_dest_rates(dat, diag_sp):
     ''' Function to get the production and destruction rates for a given species (diag_sp) in a given, already read-in VULCAN simulation (dat).
@@ -742,7 +637,7 @@ def plot_prod_dest_rates(dat_list, param_list, diag_sp, rplot, xlim_lower, xlim_
             ax[j].legend(bbox_to_anchor = (1,0.85))
         ax[0].set_title(legend_lab[sim_type].format(param_list[i]))
         if figsave:
-            fig.savefig(plot_folder + 'prod_dest/detailed'+end_str[sim_type]+'_'+sim_names[i]+network+'.pdf', bbox_inches = 'tight')
+            fig.savefig(plot_folder + 'prod_dest/detailed'+end_str[sim_type]+'_'+sim_names[i]+network+version+'.pdf', bbox_inches = 'tight')
 
 def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, net_lower, net_upper, figsave, sim_type):
     for i,d in enumerate(dat_list):
@@ -772,7 +667,7 @@ def plot_prod_dest_rates_normed(dat_list, param_list, diag_sp, rplot, net_lower,
             ax[j].invert_yaxis()
         ax[0].set_title(legend_lab[sim_type].format(param_list[i]))
         if figsave:
-            fig.savefig(plot_folder + 'prod_dest/normed_detailed'+end_str[sim_type]+'_'+sim_names[i]+network+'.pdf', bbox_inches = 'tight')
+            fig.savefig(plot_folder + 'prod_dest/normed_detailed'+end_str[sim_type]+'_'+sim_names[i]+network+version+'.pdf', bbox_inches = 'tight')
             
 def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, figsave, sim_type):
     legend_xanchors = [0.5, 0.5] # otherwise legends are all over the place, not sure why...
@@ -831,7 +726,7 @@ def plot_prod_dest_rates_normed_selected(dat_list, param_list, diag_sp, rplot, f
             ax[0,i].set_title(legend_lab[sim_type].format(param_list[idx]))
     ax[0,0].invert_yaxis() # due to sharey, only need to reverse one
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/selected_normed_detailed'+end_str[sim_type]+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/selected_normed_detailed'+end_str[sim_type]+network+version+'.pdf', bbox_inches = 'tight')
 
 def plot_prod_dest_rates_archean(dat, diag_sp, rplot, xlim_lower, xlim_upper, figsave):
     prod_dest, _ = get_prod_dest_rates(dat, diag_sp)
@@ -856,7 +751,7 @@ def plot_prod_dest_rates_archean(dat, diag_sp, rplot, xlim_lower, xlim_upper, fi
         ax[j].invert_yaxis()
         ax[j].legend(bbox_to_anchor = (1,0.85))
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/archean'+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/archean'+network+version+'.pdf', bbox_inches = 'tight')
 
 def plot_prod_dest_rates_archean_normed(dat, diag_sp, rplot, net_lower, net_upper, figsave):
     prod_dest, _ = get_prod_dest_rates(dat, diag_sp)
@@ -884,7 +779,7 @@ def plot_prod_dest_rates_archean_normed(dat, diag_sp, rplot, net_lower, net_uppe
         ax[j].set_xlabel(labels[j])
         ax[j].invert_yaxis()
     if figsave:
-        fig.savefig(plot_folder + 'prod_dest/normed_archean'+network+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'prod_dest/normed_archean'+network+version+'.pdf', bbox_inches = 'tight')
 
 def plot_pt(dat_list, param_list, sim_type, figsave):
     fig, ax = plt.subplots(tight_layout = True)
@@ -896,7 +791,7 @@ def plot_pt(dat_list, param_list, sim_type, figsave):
     ax.set_xlabel('T [K]')  
     ax.legend(bbox_to_anchor = (1,0.95))
     if figsave:
-        fig.savefig(plot_folder + 'TPs/'+end_str[sim_type][1:]+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'TPs/'+end_str[sim_type][1:]+version+'.pdf', bbox_inches = 'tight')
 
 def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists, figsave):
     fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27), tight_layout = True)
@@ -905,7 +800,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
     # legends below subplots
     legend_xanchors = [0.5, 0.5, 0.5, 0.5] # otherwise legends are all over the place, not sure why...
     legend_yanchors = [0.756, 0.503, 0.248, -0.015]
-    hcn_rain_archean = rainout(data_archean)
+    hcn_rain_archean = pf.rainout(data_archean)
     colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
     i = 0
     for dat_list,param_list,hcn_rain_list in zip(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists):
@@ -956,17 +851,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         i += 4
     
     if figsave:
-        fig.savefig(plot_folder + 'rainout_rates/rain_vertical_pt'+network+'.pdf', bbox_inches = 'tight')
-    
-def get_rad_prof(star):
-    ''' Taken from parallel_functions.py but changed so relative passes are correct. 
-        Gives back the location of the needed stellar radiation profile file for a given star.'''
-    rad_file = ''
-    if star == 'SUN':
-        rad_file = '../atm/stellar_flux/Gueymard_solar.txt'
-    else:
-        rad_file = '/scratch/s2555875/stellar_flux/' + star.lower() + '.txt' # just to make sure it is lower case
-    return rad_file
+        fig.savefig(plot_folder + 'rainout_rates/rain_vertical_pt'+network+version+'.pdf', bbox_inches = 'tight')
 
 def plot_stellar_spectra(figsave):
     fig, ax = plt.subplots(nrows = 3, ncols = 1, sharex = True, sharey = True, tight_layout = True, figsize = (8, 10))
@@ -995,8 +880,8 @@ data_bc, bc_flux = read_in('BC', nsim)
 
 hcn_rain_bc, rain_bc = [], [] # storing the rainout rates of HCN and water
 for d in data_bc:
-    hcn_rain_bc.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
-    rain_bc.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+    hcn_rain_bc.append(pf.rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_bc.append(pf.rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 plot_vertical_n(data_bc, 'HCN', bomb_rate, 'BC', figsave = True)
 plot_vertical_n(data_bc, 'H2O_l_s', bomb_rate, 'BC', figsave = True)
@@ -1022,8 +907,8 @@ data_CtoO, C_to_O = read_in('CtoO', nsim)
 
 hcn_rain_CtoO, rain_CtoO = [], []
 for d in data_CtoO:
-    hcn_rain_CtoO.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
-    rain_CtoO.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+    hcn_rain_CtoO.append(pf.rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_CtoO.append(pf.rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
 plot_vertical_n(data_CtoO, 'HCN', C_to_O, 'CtoO', figsave = True)
@@ -1052,8 +937,8 @@ data_star = read_in('star', number_of_sim = 13)
 hcn_rain_star, rain_star = [], []
 
 for d in data_star:
-    hcn_rain_star.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
-    rain_star.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+    hcn_rain_star.append(pf.rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_star.append(pf.rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
 plot_vertical_n(data_star, 'HCN', T_eff, 'star', figsave = True)
@@ -1084,8 +969,8 @@ data_dist, T_surf = read_in('dist', nsim)
 hcn_rain_dist, rain_dist = [], []
 
 for d in data_dist:
-    hcn_rain_dist.append(rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
-    rain_dist.append(rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+    hcn_rain_dist.append(pf.rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_dist.append(pf.rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
 
 # do all the ploting
 plot_vertical_n(data_dist, 'HCN', a_list, 'dist', figsave = True)
@@ -1110,15 +995,79 @@ plot_prod_dest_layer(data_dist, a_list, 'dist', 0, diag_sp = 'HCN', figsave = Tr
 plot_prod_dest_many_layer(data_dist, a_list, 'dist', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_selected(data_dist, a_list, 'dist', 'HCN', True)
 #%%
+# methane case
+data_methane = read_in('methane', nsim)
+hcn_rain_methane, rain_methane = [], []
+
+for d in data_methane:
+    hcn_rain_methane.append(pf.rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_methane.append(pf.rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+    
+# do all the ploting
+plot_vertical_n(data_methane, 'HCN', ch4_range, 'methane', figsave = True)
+plot_vertical_n(data_methane, 'H2O_l_s', ch4_range, 'methane', figsave = True)
+plot_vertical_n(data_methane, 'HNCO', ch4_range, 'methane', figsave = True)
+plot_vertical_n(data_methane, 'H2CN', ch4_range, 'methane', figsave = True)
+plot_vertical_n(data_methane, 'C2H3CN', ch4_range, 'methane', figsave = True)
+plot_vertical_n(data_methane, 'C2H3', ch4_range, 'methane', figsave = True)
+plot_vertical_n(data_methane, 'C2H6', ch4_range, 'methane', figsave = True)
+plot_vertical_n(data_methane, 'CH4', ch4_range, 'methane', figsave = True)
+plot_vertical_n(data_methane, 'CH3', ch4_range, 'methane', figsave = True)
+plot_rain(hcn_rain_methane, ch4_range, 'methane', figsave = True, rain_spec = 'HCN_rain')
+plot_rain(rain_methane, ch4_range, 'methane', figsave = True, rain_spec = 'H2O_rain')
+#%%
+# CH4-H2 case
+data_ch4h2 = read_in('CH4-H2', nsim)
+hcn_rain_ch4h2, rain_ch4h2 = [], []
+
+for d in data_ch4h2:
+    hcn_rain_ch4h2.append(pf.rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_ch4h2.append(pf.rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+    
+# do all the ploting
+plot_vertical_n(data_ch4h2, 'HCN', ch4_range, 'CH4-H2', figsave = True)
+plot_vertical_n(data_ch4h2, 'H2O_l_s', ch4_range, 'CH4-H2', figsave = True)
+plot_vertical_n(data_ch4h2, 'HNCO', ch4_range, 'CH4-H2', figsave = True)
+plot_vertical_n(data_ch4h2, 'H2CN', ch4_range, 'CH4-H2', figsave = True)
+plot_vertical_n(data_ch4h2, 'C2H3CN', ch4_range, 'CH4-H2', figsave = True)
+plot_vertical_n(data_ch4h2, 'C2H3', ch4_range, 'CH4-H2', figsave = True)
+plot_vertical_n(data_ch4h2, 'C2H6', ch4_range, 'CH4-H2', figsave = True)
+plot_vertical_n(data_ch4h2, 'CH4', ch4_range, 'CH4-H2', figsave = True)
+plot_vertical_n(data_ch4h2, 'CH3', ch4_range, 'CH4-H2', figsave = True)
+plot_rain(hcn_rain_ch4h2, ch4_range, 'CH4-H2', figsave = True, rain_spec = 'HCN_rain')
+plot_rain(rain_ch4h2, ch4_range, 'CH4-H2', figsave = True, rain_spec = 'H2O_rain')
+#%%
+# CH4-balanced case
+data_ch4_balanced = read_in('CH4-balanced', nsim)
+hcn_rain_ch4_balanced, rain_ch4_balanced = [], []
+
+for d in data_ch4_balanced:
+    hcn_rain_ch4_balanced.append(pf.rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_ch4_balanced.append(pf.rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+    
+# do all the ploting
+plot_vertical_n(data_ch4_balanced, 'HCN', ch4_range, 'CH4-balanced', figsave = True)
+plot_vertical_n(data_ch4_balanced, 'H2O_l_s', ch4_range, 'CH4-balanced', figsave = True)
+plot_vertical_n(data_ch4_balanced, 'HNCO', ch4_range, 'CH4-balanced', figsave = True)
+plot_vertical_n(data_ch4_balanced, 'H2CN', ch4_range, 'CH4-balanced', figsave = True)
+plot_vertical_n(data_ch4_balanced, 'C2H3CN', ch4_range, 'CH4-balanced', figsave = True)
+plot_vertical_n(data_ch4_balanced, 'C2H3', ch4_range, 'CH4-balanced', figsave = True)
+plot_vertical_n(data_ch4_balanced, 'C2H6', ch4_range, 'CH4-balanced', figsave = True)
+plot_vertical_n(data_ch4_balanced, 'CH4', ch4_range, 'CH4-balanced', figsave = True)
+plot_vertical_n(data_ch4_balanced, 'CH3', ch4_range, 'CH4-balanced', figsave = True)
+plot_rain(hcn_rain_ch4_balanced, ch4_range, 'CH4-balanced', figsave = True, rain_spec = 'HCN_rain')
+plot_rain(rain_ch4_balanced, ch4_range, 'CH4-balanced', figsave = True, rain_spec = 'H2O_rain')
+#%%
 # vetical mixing ratio plots for chosen prod and dest species
 pr.reset_plt(ticksize = 14, fontsize = 16, fxsize = 16, fysize = 8)
 plot_vertical_many(data_CtoO, C_to_O, 'CtoO', True)
 plot_vertical_many(data_star, T_eff, 'star', True)
 plot_vertical_many(data_dist, a_list, 'dist', True)
+plot_vertical_many(data_ch4_balanced, ch4_range, 'CH4-balanced', True)
 #%%
 # reaction rate plots
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 10)
-r_to_lot, xmin, xmax, netmin, netmax = get_prod_dest_reactions_to_plot([data_bc, data_CtoO, data_dist, data_star], 'HCN')
+r_to_lot, xmin, xmax, netmin, netmax = get_prod_dest_reactions_to_plot([data_bc, data_CtoO, data_dist, data_star, data_ch4_balanced], 'HCN')
 # boundary condition case
 plot_prod_dest_rates(data_bc, bomb_rate, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'BC')
 # C/O case
@@ -1129,6 +1078,8 @@ plot_prod_dest_rates(data_dist, a_list, 'HCN', r_to_lot, xmin, xmax, figsave = T
 plot_prod_dest_rates(data_star, T_eff, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'star')
 # archean case
 plot_prod_dest_rates_archean(data_archean, 'HCN', r_to_lot, xmin, xmax, figsave = True)
+# CH4-balanced case
+plot_prod_dest_rates(data_ch4_balanced, ch4_range, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'CH4-balanced')
 #%%
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 15)
 plot_prod_dest_rates_normed(data_bc, bomb_rate, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'BC')
@@ -1141,6 +1092,7 @@ pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 24, fysize = 18)
 plot_prod_dest_rates_normed_selected(data_CtoO, C_to_O, 'HCN', r_to_lot, figsave = True, sim_type = 'CtoO')
 plot_prod_dest_rates_normed_selected(data_dist, a_list, 'HCN', r_to_lot, figsave = True, sim_type = 'dist')
 plot_prod_dest_rates_normed_selected(data_star, T_eff, 'HCN', r_to_lot, figsave = True, sim_type = 'star')
+plot_prod_dest_rates_normed_selected(data_ch4_balanced, ch4_range, 'HCN', r_to_lot, figsave = True, sim_type = 'CH4-balanced')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_CtoO, data_dist, data_star, data_bc], [C_to_O, a_list, T_eff, bomb_rate], [hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star, hcn_rain_bc], figsave = True)
