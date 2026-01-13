@@ -46,7 +46,7 @@ def calc_C_to_O(dat, mixing_file):
         if name != 'Pressure' and 'O' in name:
             mul = get_element_number(name, 'O')
             O_profile += mul * dat['atm']['n_0'] * mix_data[name]
-    return np.sum(C_profile) / np.sum(O_profile)
+    return trapezoid(C_profile, dat['atm']['zmco']) / trapezoid(O_profile, dat['atm']['zmco'])
 
 def get_C_to_O_conjoint(nsim, network, nowash, version):
     ''' Using the above function, calculate the C/O ratio for all runs in the conjoint study.'''

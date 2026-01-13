@@ -48,7 +48,8 @@ helios_output_folder = '/scratch/s2555875/HELIOS/output/'
 stellar_spectra_folder = '/scratch/s2555875/stellar_flux/'
 
 # setting up the distance case
-a_list = np.linspace(0.839, 1.333, nsim, endpoint = True) #HZ limits from Kopprapau et al. (2013) are 0.99 and 1.7, let's explore a bit more, from Venus to 2 au
+a_list = {'': np.linspace(0.839, 1.333, nsim, endpoint = True),
+        '_updated': np.linspace(0.778, 1.307, nsim, endpoint = True)}[version] # tested endpoints before running this cell to make sure surface temperature is habitable
 
 # setting up methane test case
 ch4_range = np.logspace(-6, np.log10(5e-3), 15, endpoint = False) # mixing ratio range for methane, 1-5000ppmv (ommit endpoint to avoid overlap with Achean case)
@@ -802,6 +803,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
     legend_yanchors = [0.756, 0.503, 0.248, -0.015]
     hcn_rain_archean = pf.rainout(data_archean)
     colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    hcn_ylim = (min(map(min, list_of_hcn_rain_lists))*0.8, max(map(max, list_of_hcn_rain_lists))*1.2)
     i = 0
     for dat_list,param_list,hcn_rain_list in zip(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists):
         st = sim_types[i//4]
@@ -810,8 +812,9 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
             ax[i+0].plot(p, r, color = c, linestyle = '', marker = 'o', markersize = 10)
         ax[i+0].plot(archean_params[st], hcn_rain_archean, color = archean_colour, marker = archean_marker, markersize = 10)
         ax[i+0].set_ylabel(r'HCN rain-out rate [kg m$^{-2}$ yr$^{-1}$]')
-        if i != sim_types.index('BC')*4: # only bottom row gets x label
-            ax[i+0].set_yscale('log')
+        #if i != sim_types.index('BC')*4: # only bottom row gets x label
+        ax[i+0].set_yscale('log')
+        ax[i+0].set_ylim(hcn_ylim)
         ax[i+0].set_xscale(xscale[st])
         ax[i+0].set_xlabel(xlab[st])
         ax[i+0].text(0.03, 0.93, '{})'.format(chr(97+i+0)), transform=ax[i+0].transAxes)
