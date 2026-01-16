@@ -21,7 +21,7 @@ check_conv = True
 # ------setting up parameterspace for all runs------
 # version (nowash and for updated methane conc.)
 nowash = '_nowash'
-version = '_updated' # '_updated' or '' for old
+version = '' # '_updated' or '' for old
 mixing_file = {'': './atm/mixing_table_archean.txt', '_updated': './atm/mixing_table_archean_updated.txt'}
 # meteoritic bombardment
 bomb_rate = np.linspace(3e23, 1e25, nsim) # values from Pearce et al. (2022) Fig A4 min and max
@@ -119,7 +119,7 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         mixing_change = ','.join(['vul_ini', new_mixing_file, 'str'])
         pf.gen_mixing(ch4_range[i], new_mixing_file, species = 'CH4-balanced') # convert bar to dyne/cm2
         # then change vulcan_cfg.py file
-        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, out_change])
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, tp_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     wd = os.getcwd()
     os.chdir(sim_folder)

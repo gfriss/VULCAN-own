@@ -121,7 +121,8 @@ def gen_mixing(new_mix, output, species = 'CO2', version = ''):
         CH4 = np.ones_like(N2) * new_mix
         CO = np.ones_like(N2) * (original_ctoo*(np.sum(n0*2*(og_mixing['CO2']+og_mixing['O2'])) + np.sum(n0*og_mixing['H2O'])) - np.sum(n0*(og_mixing['CO2']+CH4)) ) / (2*original_ctoo*np.sum(n0))
         CO2 = og_mixing['CO2'] - CO
-        H2 = np.ones_like(N2) - (N2 + CO2 + CH4 + O2 + H2O)
+        N2 = np.ones_like(N2) - (CO2 + CH4 + O2 + H2O + CO + H2)
+        #H2 = np.ones_like(N2) - (N2 + CO2 + CH4 + O2 + H2O)
     elif species == 'CH4-updated':
         CH4 = np.ones_like(N2) * new_mix
         CO = 100. * CH4
