@@ -3,6 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import plot_reset as pr
+import os
+wd = os.getcwd()
+os.chdir('../')
+import parallel_functions as pf
+os.chdir(wd)
+
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
 
 datastore = '/tmp/datastore/s2555875/'
@@ -541,3 +547,56 @@ ax1.set_xscale('log')
 ax1.tick_params(axis = 'x', labelcolor = colour[6])
 fig.savefig(scratch + 'plot/TPs/archean_T_Kzz.pdf')
 #%%
+original_archean = scratch + 'output/archean_ncho_nowash.vul'
+with open(original_archean, 'rb') as handle:
+  data_original_archean = pickle.load(handle)
+  
+original_archean_updated = scratch + 'output/archean_updated_ncho_nowash.vul'
+with open(original_archean_updated, 'rb') as handle:
+  data_original_archean_updated = pickle.load(handle)  
+  
+stellarcut_archean = scratch + 'output/archean_ncho_stellarcut.vul'
+with open(stellarcut_archean, 'rb') as handle:
+  data_stellarcut_archean = pickle.load(handle)
+
+stellarcut_archean_updated = scratch + 'output/archean_updated_ncho_stellarcut.vul'
+with open(stellarcut_archean_updated, 'rb') as handle:
+  data_stellarcut_archean_updated = pickle.load(handle)
+  
+sims_to_compare = ['Archean', 'Archean updated', 'Archean stellar cut', 'Archean updated stellar cut']
+sim_data = [data_original_archean, data_original_archean_updated, data_stellarcut_archean, data_stellarcut_archean_updated]
+  
+pr.reset_plt(ticksize = 20, fontsize = 24, fxsize = 16, fysize = 8)
+  
+fig, ax = plt.subplots(tight_layout = True, ncols = 2, sharey = True, sharex = True)
+ax = ax.flatten()
+for i, sim in enumerate(sim_data):
+  ax[0].plot(sim['variable']['ymix'][:,sim['variable']['species'].index('HCN')], sim['atm']['pco']/1.e6, label = sims_to_compare[i])
+  ax[1].plot(sim['variable']['ymix'][:,sim['variable']['species'].index('H2O_l_s')], sim['atm']['pco']/1.e6, label = sims_to_compare[i])
+ax[0].set_xlabel(r'$X_{HCN}$')
+ax[0].set_ylabel('Pressure [bar]')
+ax[0].set_xscale('log')
+ax[0].set_yscale('log')
+ax[0].set_xlim((1e-21, None))
+ax[0].invert_yaxis()
+ax[1].set_xlabel(r'$X_{H_2O_{l/s}}$')
+ax[1].legend()
+fig.savefig(scratch + 'plot/vertical_profiles/archean_stellarcut_compare.pdf')
+#%%
+pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6)
+
+hcn_rain, h2o_rain = [], []
+for d in [data_original_archean, data_original_archean_updated, data_stellarcut_archean, data_stellarcut_archean_updated]:
+  hcn_rain.append(pf.rainout(dat = d, rain_spec = 'HCN_rain', g_per_mol = 27))
+  h2o_rain.append(pf.rainout(dat = d, rain_spec = 'H2O_rain', g_per_mol = 18))
+fig, ax = plt.subplots(tight_layout = True)
+ax.plot(sims_to_compare, hcn_rain, linestyle = '', marker = 'o')
+ax.set_yscale('log')
+ax.tick_params(axis='x', rotation=15)
+ax.set_ylabel('HCN rainout [kg/m2/yr]')
+ax2 = ax.twinx()
+ax2.plot(sims_to_compare, h2o_rain, linestyle = '', marker = 's', color = 'orange', alpha = 0.7)
+ax2.set_yscale('log')
+ax2.set_ylabel('H2O rainout [kg/m2/yr]')
+fig.savefig(scratch + 'plot/rainout_rates/archean_rainout_compare.pdf')
+# %%
