@@ -27,7 +27,7 @@ nowash = '_nowash' # no washout case
 # setting chemical network for naming (empty if crahcno/no ignore as these are the defaults)
 network = '_ncho'
 # version tag for different cases
-version = '_updated' # '', '_updated'
+version = '' # '', '_updated'
 # setting up the boundary condition case
 bomb_rate = np.linspace(3e23, 1e25, nsim) # values from Pearce et al. (2022) Fig A4 min and max
 bc_folder= '/scratch/s2555875/BC_files/'
@@ -794,16 +794,15 @@ def plot_pt(dat_list, param_list, sim_type, figsave):
     if figsave:
         fig.savefig(plot_folder + 'TPs/'+end_str[sim_type][1:]+version+'.pdf', bbox_inches = 'tight')
 
-def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists, figsave):
+def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists, sim_types, figsave, name_ending = ''):
     fig, ax = plt.subplots(nrows = 4, ncols = 4, figsize = (24,27), tight_layout = True)
     ax = ax.flatten()
-    sim_types = ['CtoO', 'dist', 'star', 'BC']
     # legends below subplots
     legend_xanchors = [0.5, 0.5, 0.5, 0.5] # otherwise legends are all over the place, not sure why...
     legend_yanchors = [0.756, 0.503, 0.248, -0.015]
     hcn_rain_archean = pf.rainout(data_archean)
     colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    hcn_ylim = (min(map(min, list_of_hcn_rain_lists))*0.8, max(map(max, list_of_hcn_rain_lists))*1.2)
+    #hcn_ylim = (min(map(min, list_of_hcn_rain_lists))*0.8, max(map(max, list_of_hcn_rain_lists))*1.2)
     i = 0
     for dat_list,param_list,hcn_rain_list in zip(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists):
         st = sim_types[i//4]
@@ -814,7 +813,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+0].set_ylabel(r'HCN rain-out rate [kg m$^{-2}$ yr$^{-1}$]')
         #if i != sim_types.index('BC')*4: # only bottom row gets x label
         ax[i+0].set_yscale('log')
-        ax[i+0].set_ylim(hcn_ylim)
+        #ax[i+0].set_ylim(hcn_ylim)
         ax[i+0].set_xscale(xscale[st])
         ax[i+0].set_xlabel(xlab[st])
         ax[i+0].text(0.03, 0.93, '{})'.format(chr(97+i+0)), transform=ax[i+0].transAxes)
@@ -840,7 +839,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+2].invert_yaxis()
         ax[i+2].text(0.03, 0.93, '{})'.format(chr(97+i+2)), transform=ax[i+2].transAxes)
         # plotting the fixed T-P profiles for BC and CtoO simulations and setting scales and labels for all
-        if sim_types[i//4] == 'BC' or sim_types[i//4] == 'CtoO':
+        if sim_types[i//4] in ['BC', 'CtoO', 'CH4-balanced']:
             ax[i+3].plot(data_archean['atm']['Tco'], data_archean['atm']['pco']/1e6, linewidth = 2.5)
         ax[i+3].set_xlabel('T [K]')
         ax[i+3].set_yscale('log')
@@ -854,7 +853,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         i += 4
     
     if figsave:
-        fig.savefig(plot_folder + 'rainout_rates/rain_vertical_pt'+network+version+'.pdf', bbox_inches = 'tight')
+        fig.savefig(plot_folder + 'rainout_rates/rain_vertical_pt'+network+version+name_ending+'.pdf', bbox_inches = 'tight')
 
 def plot_stellar_spectra(figsave):
     fig, ax = plt.subplots(nrows = 3, ncols = 1, sharex = True, sharey = True, tight_layout = True, figsize = (8, 10))
@@ -1098,5 +1097,6 @@ plot_prod_dest_rates_normed_selected(data_star, T_eff, 'HCN', r_to_lot, figsave 
 plot_prod_dest_rates_normed_selected(data_ch4_balanced, ch4_range, 'HCN', r_to_lot, figsave = True, sim_type = 'CH4-balanced')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
-plot_rainrates_hcn_watercon_air_PT([data_CtoO, data_dist, data_star, data_bc], [C_to_O, a_list, T_eff, bomb_rate], [hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star, hcn_rain_bc], figsave = True)
+plot_rainrates_hcn_watercon_air_PT([data_CtoO, data_dist, data_star, data_bc], [C_to_O, a_list, T_eff, bomb_rate], [hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star, hcn_rain_bc], sim_types = ['CtoO', 'dist', 'star', 'BC'], figsave = True)
+plot_rainrates_hcn_watercon_air_PT([data_CtoO, data_dist, data_star, data_ch4_balanced], [C_to_O, a_list, T_eff, ch4_range], [hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star, hcn_rain_ch4_balanced], sim_types = ['CtoO', 'dist', 'star', 'CH4-balanced'], figsave = True, name_ending = 'CH4-balanced')
 #%%
