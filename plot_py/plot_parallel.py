@@ -59,6 +59,14 @@ base_sim = out_folder+'archean'+version+network+nowash+'.vul'
 with open(base_sim, 'rb') as handle:
     data_archean = pickle.load(handle)
 
+# estimated upper limit of exogenous HCN delivery rate     
+max_mass_del = 1e22 * 1e-6 # g/yr, maximum mass delivery rate from kg/Gyr to g/yr
+met_hcn = 2472 # HCN meteoritic content in nmol/g by Smith et al. 2019
+M_hcn = 27e-12 # kg/nmol, molar mass of HCN converted from 27 g/mol
+A_earth = 5.1e14 # m2, surface area of the Earth
+# meteoritic flux in kg/m2/yr
+max_flux_met = met_hcn * max_mass_del * M_hcn / A_earth
+
 # setting up plotting labels
 archean_params = {'BC': 1.2e24 * 2.3/3.42, 'CtoO': pf.calc_C_to_O(data_archean, '/home/s2555875/VULCAN-2/atm/mixing_table_archean_updated.txt'), 'star': 5680, 'dist': 1., 'methane': 5.e-3, 'CH4-H2': 5.e-3, 'CH4-balanced': 5.e-3}
 xlab = {'BC': r'$\dot{M}_{del}$ [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]', 'dist': 'Distance [AU]', 'methane': r'$X_{CH_4}$', 'CH4-H2': r'$X_{CH_4}$', 'CH4-balanced': r'$X_{CH_4}$'}
@@ -802,10 +810,12 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
     legend_yanchors = [0.756, 0.503, 0.248, -0.015]
     hcn_rain_archean = pf.rainout(data_archean)
     colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    #hcn_ylim = (min(map(min, list_of_hcn_rain_lists))*0.8, max(map(max, list_of_hcn_rain_lists))*1.2)
+    hcn_ylim = (min(map(min, list_of_hcn_rain_lists))*0.8, max(map(max, list_of_hcn_rain_lists))*1.2)
     i = 0
     for dat_list,param_list,hcn_rain_list in zip(list_of_dat_lists, list_of_param_lists, list_of_hcn_rain_lists):
         st = sim_types[i//4]
+        # plotting exogenous HCN delivery rate estimate first
+        ax[i+0].axhline(max_flux_met, c = 'gray', lw = 2, ls = '--')
         # plotting hcn rain rates in zeroth column
         for p,r,c in zip(param_list, hcn_rain_list, colours):
             ax[i+0].plot(p, r, color = c, linestyle = '', marker = 'o', markersize = 10)
@@ -813,7 +823,7 @@ def plot_rainrates_hcn_watercon_air_PT(list_of_dat_lists, list_of_param_lists, l
         ax[i+0].set_ylabel(r'HCN rain-out rate [kg m$^{-2}$ yr$^{-1}$]')
         #if i != sim_types.index('BC')*4: # only bottom row gets x label
         ax[i+0].set_yscale('log')
-        #ax[i+0].set_ylim(hcn_ylim)
+        ax[i+0].set_ylim(hcn_ylim)
         ax[i+0].set_xscale(xscale[st])
         ax[i+0].set_xlabel(xlab[st])
         ax[i+0].text(0.03, 0.93, '{})'.format(chr(97+i+0)), transform=ax[i+0].transAxes)
