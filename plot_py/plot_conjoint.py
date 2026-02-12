@@ -212,14 +212,37 @@ def plot_3d(x, y, z, v, x_label, y_label, z_label, figsave = False):
     if figsave:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/rain_3d'+network+'.pdf'), bbox_inches='tight')
 
-def get_meshgrid_base(dat):
-    base_CtoO = np.min(dat.CtoO) # the first C/O value in the dataframe
-    x = np.array(dat.Seff[dat.CtoO == base_CtoO]).reshape(13,15)
-    y = np.array(dat.Teff[dat.CtoO == base_CtoO]).reshape(13,15)
-    z = np.array(dat.HCN_rain[dat.CtoO == base_CtoO]).reshape(13,15)
-    e = np.full(shape=(13,15), fill_value='none')
-    e[9,4] = archean_colour # the Archean Earth is always at the same position in the meshgrid
-    e = e.flatten()
+def get_meshgrid_base(dat, type = 'CtoO'):
+    if type == 'CtoO':
+        base_CtoO = np.min(dat.CtoO) # the first C/O value in the dataframe
+        x = np.array(dat.Seff[dat.CtoO == base_CtoO]).reshape(13,15)
+        y = np.array(dat.Teff[dat.CtoO == base_CtoO]).reshape(13,15)
+        z = np.array(dat.HCN_rain[dat.CtoO == base_CtoO]).reshape(13,15)
+        e = np.full(shape=(13,15), fill_value='none')
+        e[9,4] = archean_colour # the Archean Earth is always at the same position in the meshgrid
+        e = e.flatten()
+    elif type == 'Seff':
+        base_Seff = 10**-0.128 # Early Earth insulation
+        x, y, z = [], [], []
+        for t in sorted(list(set(dat.Teff))): # searching for the closest to early Eart like insulation for each stellar host
+            s = np.array(list(dat.Seff[dat.Teff == t])) # insulations for a host star
+            i = np.argmin(abs(s-10**-0.128)) # finding the closest to early Earth insulation
+            # then adding the relevant values to x, y, and z (the given Seff value is unique across all stars)
+            x.append(np.array(dat.CtoO[dat.Seff == s[i]]))
+            y.append(np.array(dat.Teff[dat.Seff == s[i]]))
+            z.append(np.array(dat.HCN_rain[dat.Seff == s[i]]))
+        x, y, z = np.array(x), np.array(y), np.array(z)
+        e = np.full(shape=(13,15), fill_value='none')
+        e[0,9] = archean_colour # the Archean Earth is always at the same position in the meshgrid
+        e = e.flatten()
+    elif type == 'Teff':
+        base_Teff = 5680
+        x = np.array(dat.CtoO[dat.Teff == base_Teff]).reshape(15,15)
+        y = np.array(dat.Seff[dat.Teff == base_Teff]).reshape(15,15)
+        z = np.array(dat.HCN_rain[dat.Teff == base_Teff]).reshape(15,15)
+        e = np.full(shape=(13,15), fill_value='none')
+        e[0,8] = archean_colour # the Archean Earth is always at the same position in the meshgrid
+        e = e.flatten()
     return x, y, z, e
 
 def get_meshgrid_many(dat, idx):
@@ -356,6 +379,64 @@ def plot_meshgrid_condensed(data, rain_type = 'HCN_rain', figsave = False):
     if figsave:
         fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'meshgrid_condensed'+network+'.pdf'), bbox_inches='tight')
 
+def plot_meshgrid_hist(data, rain_type = 'HCN_rain', bins = 50, figsave = False):
+    fig, ax = plt.subplots(tight_layout = True, ncols = 2)
+    ax = ax.flatten()
+    cmap = plt.get_cmap()
+    cmap.set_under('none')
+    # first doing the meshgrid for the base C/O value
+    x, y, z, e = get_meshgrid_base(data)
+    vmin = np.nanmin(z)
+    vmin = 0.9 * np.min([vmin, min_flux_met])
+    cm = ax[0].pcolormesh(x, y, z, cmap = cmap, norm = mc.LogNorm(vmin=vmin))
+    ax[0].pcolormesh(x, y, z, edgecolors=e, facecolors='none', lw = 2)
+    #ax[0].add_patch(plt.Rectangle(((x[9,4]+x[9,3])/2, y[9,4]), x[9,5]-x[9,4], y[10,4]-y[9,4], fc='none', edgecolor=archean_colour, lw=2, clip_on = False)) # Archean Earth
+    cbar = plt.colorbar(cm, ax = ax[0], label = rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
+    #cbar.set_label('{} rainout rate [kg m$^{-2}$ yr$^{-1}]'.format(rain_type[:-5]))
+    ax[0].set_ylabel(r'T$_{eff}$ [K]')
+    ax[0].set_xlabel(u'S$_{eff}$ [S$_\u2295$]')
+    ax[0].invert_xaxis()
+    # then the histogram of rainout rates
+    r = data[rain_type][data[rain_type] > 0] # only positive values
+    r = r.dropna() # remove nan
+    sns.histplot(r, bins = bins, stat = 'count', log_scale = True)
+    ax[1].set_xlabel(rain_type[:-5] + r' rainout [kg m$^{-2}$ yr$^{-1}$]')
+    ax[1].set_ylabel('Number of simulations')
+    ax[1].axvline(max_flux_met, c = 'k', lw = 2, ls = '--', label = 'Max meteoritic flux')
+    ax[1].axvline(1.835e-5, c = 'r', ls = '--', lw = 2, label = 'Archean Earth')
+    ax[1].axvline(np.median(r), c = 'pink', ls = '--', lw = 2, label = 'Median')
+    ax[1].legend()
+    # and put letters on plots
+    ax[0].text(0.03, 0.93, 'a)', transform=ax[0].transAxes)
+    ax[1].text(0.03, 0.93, 'b)', transform=ax[1].transAxes)
+    if figsave:
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/'+rain_type+'meshgrid_hist'+network+'.pdf'), bbox_inches='tight')
+
+def plot_meshgrid_bases(data, met_flux = True, figsave = False, xlabels = [u'S$_{eff}$ [S$_\u2295$]', 'C/O', 'C/O'], ylabels = [r'T$_{eff}$ [K]', r'T$_{eff}$ [K]', u'S$_{eff}$ [S$_\u2295$]']):
+    fig, axs = plt.subplots(ncols = 3, nrows = 1, tight_layout = True)
+    ax = axs.flatten()
+    cmap = plt.get_cmap()
+    cmap.set_under('none')
+    vmin = np.nanmin(np.array(data['HCN_rain'][data['HCN_rain']>0])) # min value for the colour bar
+    vmax = np.nanmax(np.array(data['HCN_rain'])) # max value for the colour bar
+    if met_flux:
+        vmin = 0.9 * np.min([vmin, min_flux_met])
+    for i,typ in enumerate(['CtoO', 'Seff', 'Teff']):
+        x,y,z,e = get_meshgrid_base(data, typ)
+        cm = ax[i].pcolormesh(x, y, z, cmap = cmap, norm = mc.LogNorm(vmin = vmin, vmax = vmax))
+        ax[i].set_xlabel(xlabels[i])
+        ax[i].set_ylabel(ylabels[i])
+        if typ == 'CtoO':
+            ax[i].invert_xaxis()
+        elif typ == 'Teff':
+            ax[i].invert_yaxis()
+    cbar = fig.colorbar(cm)
+    cbar.set_label(r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]')
+    if met_flux:
+        cbar.ax.axhline(max_flux_met, c = 'gray', lw = 2)
+    if figsave:
+        fig.savefig(os.path.join(plot_folder,'rainout_rates/HCN_rain_meshgrid_bases'+network+'.pdf'), bbox_inches='tight')
+
 def plot_box_star(dat, rain_type = 'HCN_rain', figsave = False):
     type_stars = ['M', 'K', 'G', 'F']
     rains = []
@@ -421,10 +502,18 @@ plot_meshgrid_many(data_3d, val_label = r'HCN rainout [kg m$^{-2}$ yr$^{-1}$]', 
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 16, fysize = 6, grid = False)
 plot_meshgrid_condensed(data_3d, rain_type = 'HCN_rain', figsave = True)
 #%%
+# meshgrid and histogram side by side
+pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 14, fysize = 6, grid = False)
+plot_meshgrid_hist(data_3d, rain_type = 'HCN_rain', figsave = True)
+#%%
 # condensed and histogram version
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
 plot_rainout_condensed(data_3d, figsave = True, rain_type = 'HCN_rain')
 plot_hist(data_3d, figsave = True)
+#%%
+# base meshgrid plots
+pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 18, fysize = 6, grid = False)
+plot_meshgrid_bases(data_3d, figsave = True)
 #%%
 # probability plots (need normalisation!!! and flat prior...)
 pr.reset_plt(ticksize = 13, fontsize = 15, fxsize = 8, fysize = 6, grid = False)
