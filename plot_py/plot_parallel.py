@@ -886,6 +886,54 @@ def plot_stellar_spectra(figsave):
     
     if figsave:
         fig.savefig(plot_folder + 'spectra_comp/stellar_spectra_comp.pdf', bbox_inches = 'tight')
+
+def calc_elemental_ratios(dat, ini_species):
+    """ Calcualtes the elemental abundances of C, O and H by integrating the vertical profiles of the species that contain these elements. 
+        It then calculates the elemental ratios (O-H)/(O+H) and C/(H+O+C) and also returns the column-averaged mixing ratios of the species 
+        in ini_species with ignoring N2."""
+    C_profile, O_profile, H_profile = np.zeros_like(dat['atm']['n_0']), np.zeros_like(dat['atm']['n_0']), np.zeros_like(dat['atm']['n_0'])
+    n = {}
+    species = dat['variable']['species']
+    for sp in ini_species:
+        if 'C' in sp:
+            mul = pf.get_element_number(sp, 'C')
+            C_profile += mul * dat['variable']['y_ini'][:, species.index(sp)]
+        if 'O' in sp:
+            mul = pf.get_element_number(sp, 'O')
+            O_profile += mul * dat['variable']['y_ini'][:, species.index(sp)]
+        if 'H' in sp:
+            mul = pf.get_element_number(sp, 'H')
+            H_profile += mul * dat['variable']['y_ini'][:, species.index(sp)]
+        n[sp] = np.sum(dat['variable']['y_ini'][:, species.index(sp)] / (dat['atm']['n_0'] - dat['variable']['y_ini'][:, species.index('N2')]))
+    C = np.trapezoid(C_profile, dat['atm']['zmco'])
+    O = np.trapezoid(O_profile, dat['atm']['zmco'])
+    H = np.trapezoid(H_profile, dat['atm']['zmco'])
+    
+    return (O-H)/(O+H), C/(H+O+C), n
+
+def plot_elemental_ratios(dat_list, ini_species, nrow, ncol, figsave):
+    """ Plots the elemental ratios (O-H)/(O+H) vs C/(H+O+C) for the different simulations. The color of the points corresponds to the column-averaged 
+        mixing ratio of the species in ini_species (ignoring N2). Plot limits are same as in Woitke et al. 2020."""
+    O_H_ratio, C_HOC_ratio, n_ratio = [], [], []
+    for dat in dat_list:
+        o_h, c_hoc, n = calc_elemental_ratios(dat, ini_species)
+        O_H_ratio.append(o_h)
+        C_HOC_ratio.append(c_hoc)
+        n_ratio.append(n)
+    fig, ax = plt.subplots(nrows = nrow, ncols = ncol, tight_layout = True, sharex = True, sharey = True)
+    ax = ax.flatten()
+    ax[0].set_xlim((0, 0.35))
+    ax[0].set_ylim((-1, 1))
+    for i,sp in enumerate(ini_species):
+        s = ax[i].scatter(C_HOC_ratio, O_H_ratio, c = [n[sp] for n in n_ratio], vmin = 0.001, vmax = 1)
+        if i % ncol == 0: # only left column gets y label
+            ax[i].set_ylabel('(O-H)/(O+H)')
+        if i // ncol == ncol-1: # only bottom row gets x label
+            ax[i].set_xlabel('C/(H+O+C)')
+        ax[i].text(0.03, 0.93, sp, transform=ax[i].transAxes)
+    plt.colorbar(s, ax = ax[-1], label = r'n/(n_{tot}-n_{N2}')    
+    if figsave:
+        fig.savefig(plot_folder + 'elemental_ratios/elemental_ratios{}.pdf'.format(version), bbox_inches = 'tight')
 #%%
 # boundary condition case
 data_bc, bc_flux = read_in('BC', nsim)
@@ -943,6 +991,7 @@ plot_prod_dest(data_CtoO, C_to_O, 'CtoO', diag_sp = 'HCN', figsave = True)
 plot_prod_dest_layer(data_CtoO, C_to_O, 'CtoO', 0, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_many_layer(data_CtoO, C_to_O, 'CtoO', pressure_levels, 4, diag_sp = 'HCN', figsave = True)
 plot_prod_dest_selected(data_CtoO, C_to_O, 'CtoO', 'HCN', True)
+plot_elemental_ratios([data_archean]+data_CtoO, ini_species = ['H2O', 'CO2', 'CH4', 'O2', 'CO'], ncol = 3, figsave = True)
 # %%
 # star case
 data_star = read_in('star', number_of_sim = 13)
