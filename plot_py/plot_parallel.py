@@ -911,7 +911,7 @@ def calc_elemental_ratios(dat, ini_species):
     
     return (O-H)/(O+H), C/(H+O+C), n
 
-def plot_elemental_ratios(dat_list, ini_species, nrow, ncol, figsave):
+def plot_elemental_ratios(dat_list, ini_species, ncol, figsave):
     """ Plots the elemental ratios (O-H)/(O+H) vs C/(H+O+C) for the different simulations. The color of the points corresponds to the column-averaged 
         mixing ratio of the species in ini_species (ignoring N2). Plot limits are same as in Woitke et al. 2020."""
     O_H_ratio, C_HOC_ratio, n_ratio = [], [], []
@@ -920,6 +920,7 @@ def plot_elemental_ratios(dat_list, ini_species, nrow, ncol, figsave):
         O_H_ratio.append(o_h)
         C_HOC_ratio.append(c_hoc)
         n_ratio.append(n)
+    nrow = (len(ini_species) // ncol) + 1
     fig, ax = plt.subplots(nrows = nrow, ncols = ncol, tight_layout = True, sharex = True, sharey = True)
     ax = ax.flatten()
     ax[0].set_xlim((0, 0.35))
@@ -928,10 +929,10 @@ def plot_elemental_ratios(dat_list, ini_species, nrow, ncol, figsave):
         s = ax[i].scatter(C_HOC_ratio, O_H_ratio, c = [n[sp] for n in n_ratio], vmin = 0.001, vmax = 1)
         if i % ncol == 0: # only left column gets y label
             ax[i].set_ylabel('(O-H)/(O+H)')
-        if i // ncol == ncol-1: # only bottom row gets x label
+        if i // ncol == nrow-1: # only bottom row gets x label
             ax[i].set_xlabel('C/(H+O+C)')
         ax[i].text(0.03, 0.93, sp, transform=ax[i].transAxes)
-    plt.colorbar(s, ax = ax[-1], label = r'n/(n_{tot}-n_{N2}')    
+    plt.colorbar(s, ax = ax[-1], label = r'$n/(n_{tot}-n_{N2})$')    
     if figsave:
         fig.savefig(plot_folder + 'elemental_ratios/elemental_ratios{}.pdf'.format(version), bbox_inches = 'tight')
 #%%
