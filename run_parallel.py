@@ -53,8 +53,6 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
                                                             # this is the magic, after this just think of it as a normal, sequential loop
     if run_type == 'star' and i >= len(star_df.Name): # fewer stars than 15...
         continue
-    if i != 0:
-        continue
     sim = 'sim_{:02d}_{}'.format(i, run_type) # input files use this and they are the same for all versions and networks
     sim_folder = os.path.join(main_folder,sim + network + version)
     # build files for simulation
