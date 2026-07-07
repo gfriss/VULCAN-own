@@ -40,6 +40,8 @@ a_list = {'': np.linspace(0.839, 1.333, nsim, endpoint = True),
         '_updated': np.linspace(0.778, 1.307, nsim, endpoint = True)} # tested endpoints before running this cell to make sure surface temperature is habitable
 # methane test case
 ch4_range = np.logspace(-6, np.log10(5e-3), 15, endpoint = False) # mixing ratio range for methane, 1-5000ppmv (ommit endpoint to avoid overlap with Achean case)
+# TOA pressure test case
+toa_pressure = np.linspace(5e-2, 10, nsim) # TOA pressure range in dyne/cm2 (= 5e-8 to 1e-5 bar) for testing the effect of TOA pressure on the results
 # defining network (crahcno is defualt), only used to identify sim folders and outputs
 #network = ''
 network = '_ncho'
@@ -50,6 +52,8 @@ check_conv = True
 for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation itself, it spreads the task between the CPUs
                                                             # this is the magic, after this just think of it as a normal, sequential loop
     if run_type == 'star' and i >= len(star_df.Name): # fewer stars than 15...
+        continue
+    if i != 0:
         continue
     sim = 'sim_{:02d}_{}'.format(i, run_type) # input files use this and they are the same for all versions and networks
     sim_folder = os.path.join(main_folder,sim + network + version)
@@ -120,6 +124,10 @@ for i in range(rank*sim_per_rank, (rank+1)*sim_per_rank):   # paralellisation it
         pf.gen_mixing(ch4_range[i], new_mixing_file, species = 'CH4-balanced') # convert bar to dyne/cm2
         # then change vulcan_cfg.py file
         subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, tp_change, out_change])
+    elif run_type == 'TOA':
+        # change TOA pressure in cfg file
+        toa_change = ','.join(['P_t', str(toa_pressure[i]), 'val'])
+        subprocess.check_call(['python', 'gen_cfg.py', new_cfg, mixing_change, tp_change, toa_change, out_change])
     # then change to simulation folder and put symlinks in there to avoid copyying and make importing possible
     wd = os.getcwd()
     os.chdir(sim_folder)
