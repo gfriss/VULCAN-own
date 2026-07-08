@@ -22,7 +22,7 @@ out_folder = '/scratch/s2555875/output/'
 plot_folder = '/scratch/s2555875/plot/'
 sim_names = ['sim_0{}'.format(i) for i in range(nsim) if i < 10] + ['sim_{}'.format(i) for i in range(nsim) if i >= 10]
 # end string of the VULCAN output files
-end_str = {'BC': '_meteor', 'CtoO': '_CtoO', 'star': '_star', 'dist': '_dist', 'methane': '_methane', 'CH4-H2': '_CH4-H2', 'CH4-balanced': '_CH4-balanced'}
+end_str = {'BC': '_meteor', 'CtoO': '_CtoO', 'star': '_star', 'dist': '_dist', 'methane': '_methane', 'CH4-H2': '_CH4-H2', 'CH4-balanced': '_CH4-balanced', 'TOA': '_TOA'}
 nowash = '_nowash' # no washout case
 # setting chemical network for naming (empty if crahcno/no ignore as these are the defaults)
 network = '_ncho'
@@ -54,6 +54,9 @@ a_list = {'': np.linspace(0.839, 1.333, nsim, endpoint = True),
 # setting up methane test case
 ch4_range = np.logspace(-6, np.log10(5e-3), 15, endpoint = False) # mixing ratio range for methane, 1-5000ppmv (ommit endpoint to avoid overlap with Achean case)
 
+# setting up the TOA pressure test case
+toa_pressure = np.linspace(5e-2, 10, nsim)*1e-6 # TOA pressure range in bar
+
 # base simulation of Archean
 base_sim = out_folder+'archean'+version+network+nowash+'.vul'
 with open(base_sim, 'rb') as handle:
@@ -68,16 +71,16 @@ A_earth = 5.1e14 # m2, surface area of the Earth
 max_flux_met = met_hcn * max_mass_del * M_hcn / A_earth
 
 # setting up plotting labels
-archean_params = {'BC': 1.2e24 * 2.3/3.42, 'CtoO': pf.calc_C_to_O(data_archean, '/home/s2555875/VULCAN-2/atm/mixing_table_archean_updated.txt'), 'star': 5680, 'dist': 1., 'methane': 5.e-3, 'CH4-H2': 5.e-3, 'CH4-balanced': 5.e-3}
-xlab = {'BC': r'$\dot{M}_{del}$ [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]', 'dist': 'Distance [AU]', 'methane': r'$X_{CH_4}$', 'CH4-H2': r'$X_{CH_4}$', 'CH4-balanced': r'$X_{CH_4}$'}
-xscale = {'BC': 'log', 'CtoO': 'linear', 'star': 'linear', 'dist': 'linear', 'methane': 'log', 'CH4-H2': 'log', 'CH4-balanced': 'log'}
-legend_lab = {'BC': r'$\dot{{M}}_{{del}}$ = {:.2e} g/Gyr', 'CtoO': 'C/O = {:.3f}', 'star': r'T$_{{eff}}$ = {} K', 'dist': 'a = {:.3f} AU', 'methane': r'$X_{{CH_4}}$ = {:.3e}', 'CH4-H2': r'$X_{{CH_4}}$ = {:.3e}', 'CH4-balanced': r'$X_{{CH_4}}$ = {:.3e}'}
+archean_params = {'BC': 1.2e24 * 2.3/3.42, 'CtoO': pf.calc_C_to_O(data_archean, '/home/s2555875/VULCAN-2/atm/mixing_table_archean_updated.txt'), 'star': 5680, 'dist': 1., 'methane': 5.e-3, 'CH4-H2': 5.e-3, 'CH4-balanced': 5.e-3, 'TOA': 5e-8}
+xlab = {'BC': r'$\dot{M}_{del}$ [g/Gyr]', 'CtoO': 'C/O', 'star': r'T$_{eff}$ [K]', 'dist': 'Distance [AU]', 'methane': r'$X_{CH_4}$', 'CH4-H2': r'$X_{CH_4}$', 'CH4-balanced': r'$X_{CH_4}$', 'TOA': r'$P_{TOA}$'}
+xscale = {'BC': 'log', 'CtoO': 'linear', 'star': 'linear', 'dist': 'linear', 'methane': 'log', 'CH4-H2': 'log', 'CH4-balanced': 'log', 'TOA': 'linear'}
+legend_lab = {'BC': r'$\dot{{M}}_{{del}}$ = {:.2e} g/Gyr', 'CtoO': 'C/O = {:.3f}', 'star': r'T$_{{eff}}$ = {} K', 'dist': 'a = {:.3f} AU', 'methane': r'$X_{{CH_4}}$ = {:.3e}', 'CH4-H2': r'$X_{{CH_4}}$ = {:.3e}', 'CH4-balanced': r'$X_{{CH_4}}$ = {:.3e}', 'TOA': r'$P_{{TOA}}$ = {:.2e} bar'}
 archean_marker = 's' #'$\u2295$'
 archean_colour = 'k'
 # pressure levels for reaction rate plots
 pressure_levels = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
 # sim numbers to plot selected, detailed reaction rates, BC not needed
-plot_idx = {'CtoO': ['archean', 4, 8, 12, 14], 'star': [0, 7, 'archean', 11, 12], 'dist': [0, 'archean', 8, 13, 14], 'CH4-balanced': [0, 5, 11, 13, 'archean']}
+plot_idx = {'CtoO': ['archean', 4, 8, 12, 14], 'star': [0, 7, 'archean', 11, 12], 'dist': [0, 'archean', 8, 13, 14], 'CH4-balanced': [0, 5, 11, 13, 'archean'], 'TOA': ['archean', 1, 4, 10, 14]}
 plot_ls = ['-', '--', '-.', ':', (0, (1, 7))]
 #%%
 def lin(x, a, b):
@@ -1120,16 +1123,37 @@ plot_vertical_n(data_ch4_balanced, 'CH3', ch4_range, 'CH4-balanced', figsave = T
 plot_rain(hcn_rain_ch4_balanced, ch4_range, 'CH4-balanced', figsave = True, rain_spec = 'HCN_rain')
 plot_rain(rain_ch4_balanced, ch4_range, 'CH4-balanced', figsave = True, rain_spec = 'H2O_rain')
 #%%
+# TOA pressure test case
+data_toa = read_in('TOA', nsim)
+hcn_rain_toa, rain_toa = [], []
+
+for d in data_toa:
+    hcn_rain_toa.append(pf.rainout(d, rain_spec = 'HCN_rain', g_per_mol = 27))
+    rain_toa.append(pf.rainout(d, rain_spec = 'H2O_rain', g_per_mol = 18))
+
+plot_vertical_n(data_toa, 'HCN', toa_pressure, 'TOA', figsave = True)
+plot_vertical_n(data_toa, 'H2O_l_s', toa_pressure, 'TOA', figsave = True)
+plot_vertical_n(data_toa, 'HNCO', toa_pressure, 'TOA', figsave = True)
+plot_vertical_n(data_toa, 'H2CN', toa_pressure, 'TOA', figsave = True)
+plot_vertical_n(data_toa, 'C2H3CN', toa_pressure, 'TOA', figsave = True)
+plot_vertical_n(data_toa, 'C2H3', toa_pressure, 'TOA', figsave = True)
+plot_vertical_n(data_toa, 'C2H6', toa_pressure, 'TOA', figsave = True)
+plot_vertical_n(data_toa, 'CH4', toa_pressure, 'TOA', figsave = True)
+plot_vertical_n(data_toa, 'CH3', toa_pressure, 'TOA', figsave = True)
+plot_rain(hcn_rain_toa, toa_pressure, 'TOA', figsave = True, rain_spec = 'HCN_rain')
+plot_rain(rain_toa, toa_pressure, 'TOA', figsave = True, rain_spec = 'H2O_rain')
+#%%
 # vetical mixing ratio plots for chosen prod and dest species
 pr.reset_plt(ticksize = 14, fontsize = 16, fxsize = 16, fysize = 8)
 plot_vertical_many(data_CtoO, C_to_O, 'CtoO', True)
 plot_vertical_many(data_star, T_eff, 'star', True)
 plot_vertical_many(data_dist, a_list, 'dist', True)
 plot_vertical_many(data_ch4_balanced, ch4_range, 'CH4-balanced', True)
+plot_vertical_many(data_toa, toa_pressure, 'TOA', True)
 #%%
 # reaction rate plots
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 10)
-r_to_lot, xmin, xmax, netmin, netmax = get_prod_dest_reactions_to_plot([data_bc, data_CtoO, data_dist, data_star, data_ch4_balanced], 'HCN')
+r_to_lot, xmin, xmax, netmin, netmax = get_prod_dest_reactions_to_plot([data_bc, data_CtoO, data_dist, data_star, data_ch4_balanced, data_toa], 'HCN')
 # boundary condition case
 plot_prod_dest_rates(data_bc, bomb_rate, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'BC')
 # C/O case
@@ -1142,6 +1166,8 @@ plot_prod_dest_rates(data_star, T_eff, 'HCN', r_to_lot, xmin, xmax, figsave = Tr
 plot_prod_dest_rates_archean(data_archean, 'HCN', r_to_lot, xmin, xmax, figsave = True)
 # CH4-balanced case
 plot_prod_dest_rates(data_ch4_balanced, ch4_range, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'CH4-balanced')
+# TOA case
+plot_prod_dest_rates(data_toa, toa_pressure, 'HCN', r_to_lot, xmin, xmax, figsave = True, sim_type = 'TOA')
 #%%
 pr.reset_plt(ticksize = 15, fontsize = 17, fxsize = 11, fysize = 15)
 plot_prod_dest_rates_normed(data_bc, bomb_rate, 'HCN', r_to_lot, netmin, netmax, figsave = True, sim_type = 'BC')
@@ -1155,6 +1181,7 @@ plot_prod_dest_rates_normed_selected(data_CtoO, C_to_O, 'HCN', r_to_lot, figsave
 plot_prod_dest_rates_normed_selected(data_dist, a_list, 'HCN', r_to_lot, figsave = True, sim_type = 'dist')
 plot_prod_dest_rates_normed_selected(data_star, T_eff, 'HCN', r_to_lot, figsave = True, sim_type = 'star')
 plot_prod_dest_rates_normed_selected(data_ch4_balanced, ch4_range, 'HCN', r_to_lot, figsave = True, sim_type = 'CH4-balanced')
+plot_prod_dest_rates_normed_selected(data_toa, toa_pressure, 'HCN', r_to_lot, figsave = True, sim_type = 'TOA')
 #%%
 pr.reset_plt(ticksize = 16, fontsize = 19, fxsize = 24, fysize = 27)
 plot_rainrates_hcn_watercon_air_PT([data_CtoO, data_dist, data_star, data_bc], [C_to_O, a_list, T_eff, bomb_rate], [hcn_rain_CtoO, hcn_rain_dist, hcn_rain_star, hcn_rain_bc], sim_types = ['CtoO', 'dist', 'star', 'BC'], figsave = True)
